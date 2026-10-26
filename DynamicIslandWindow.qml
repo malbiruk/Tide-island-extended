@@ -264,9 +264,11 @@ PanelWindow {
         }
     }
     // Panels that close on a click outside them. While one is open the surface grows to the
-    // full output height and its input mask covers it (outsideClickDismissArea). The file
-    // shelf is excluded so drags out of it can still drop onto other windows.
+    // full output height and its input mask covers it (outsideClickDismissArea); one sliding
+    // away has already closed. The file shelf is excluded so drags out of it can still drop
+    // onto other windows.
     readonly property bool outsideClickDismissActive: !root.connectivityPromptActive
+        && !islandContainer.transientSlideOut
         && (["control_center", "notification_center", "calendar", "weather", "glance",
             "clipboard", "privacy_hud", "expanded"]
             .indexOf(islandContainer.islandState) !== -1
@@ -320,6 +322,8 @@ PanelWindow {
         ? WlrLayer.Overlay
         : WlrLayer.Top
     WlrLayershell.keyboardFocus: {
+        if (islandContainer.transientSlideOut)
+            return WlrKeyboardFocus.None;
         if (islandContainer.controlCenterLayerVisible
                 || islandContainer.notificationCenterLayerVisible
                 || islandContainer.fileShelfLayerVisible
@@ -369,15 +373,16 @@ PanelWindow {
     readonly property bool restingActivityPinned: userConfig.islandAutoHideKeepActivities
         && islandContainer.islandState === "normal"
         && (islandContainer.restingMusicVisible || islandContainer.restingBatteryVisible)
+    // A connectivity popup keeps the island up while open, not while it fades out after closing.
     readonly property bool autoHideCanHideNow: autoHideEnabled
         && !restingActivityPinned
         && autoHideRestingState
         && !root.connectivityPromptActive
-        && !root.anyConnectivityDetailMounted
+        && !root.anyConnectivityDetailOpen
     readonly property bool autoHideMustShow: (!autoHideRestingState && !islandContainer.transientSlideOut)
         || restingActivityPinned
         || root.connectivityPromptActive
-        || root.anyConnectivityDetailMounted
+        || root.anyConnectivityDetailOpen
     readonly property bool autoHideTargetVisible: autoHideMustShow
         || (!autoHideForcedHidden && (!autoHideEnabled || autoHideVisible))
     readonly property bool autoHideSuppressesTransientReveal: (autoHideEnabled || autoHideForcedHidden)
@@ -385,7 +390,7 @@ PanelWindow {
     property real autoHideProgress: autoHideTargetVisible ? 1 : 0
     readonly property bool exclusiveZoneTargetActive: (!autoHideEnabled && autoHideTargetVisible)
         || (autoHideRevealSource === "edge" && autoHideTargetVisible)
-        || islandContainer.notificationLayerVisible
+        || (islandContainer.notificationLayerVisible && !islandContainer.transientSlideOut)
     property real exclusiveZoneProgress: exclusiveZoneTargetActive ? 1 : 0
     readonly property real autoHideRevealWidth: autoHideEnabled ? Math.min(root.width, Math.max(userConfig.islandWidth + 120, 240)) : 0
     readonly property real autoHideRevealHeight: autoHideEnabled ? 10 : 0
@@ -404,6 +409,7 @@ PanelWindow {
     property bool audioConnectivityDetailMounted: false
     property string audioConnectivityDetailKind: "audio_output"
     readonly property bool anyConnectivityDetailMounted: wifiConnectivityDetailMounted || bluetoothConnectivityDetailMounted || powerConnectivityDetailMounted || audioConnectivityDetailMounted
+    readonly property bool anyConnectivityDetailOpen: wifiConnectivityDetailOpen || bluetoothConnectivityDetailOpen || powerConnectivityDetailOpen || audioConnectivityDetailOpen
     readonly property real connectivityDetailWidth: 318
     readonly property real connectivityDetailHeight: 404
     readonly property bool controlCenterActiveRecording: ScreenRecorder ? ScreenRecorder.isRecording : false
@@ -452,9 +458,9 @@ PanelWindow {
     }
 
     function showAutoHiddenIsland(source) {
-        // Revealed (hover, edge, IPC...) while an OSD slides away: back to the resting layout.
+        // Revealed (edge, IPC...) while the island slides away: back to the resting layout.
         if (islandContainer.transientSlideOut)
-            islandContainer.cancelTransientSlideOut();
+            islandContainer.finishTransientSlideOut();
         setAutoHideRevealSource(source);
         autoHideForcedHidden = false;
         if (!autoHideEnabled) {
@@ -512,20 +518,43 @@ PanelWindow {
         autoHideVisible = false;
     }
 
-    // Whether the island would hide as soon as it is back at rest; then an OSD that revealed it
-    // can slide it away directly instead of morphing back to the clock first.
+    // Whether the island would hide once back at rest; then leaving a panel, popup or OSD slides
+    // it away directly instead of morphing back to the clock first.
     function transientCanSlideOut() {
         return (autoHideEnabled || autoHideForcedHidden)
-            && !autoHidePointerInside
+            && !pointerInsideAtRest()
             && !root.connectivityPromptActive
-            && !root.anyConnectivityDetailMounted
+            && !root.anyConnectivityDetailOpen
             && !(userConfig.islandAutoHideKeepActivities
                 && (islandContainer.restingMusicVisible || islandContainer.restingBatteryVisible));
+    }
+
+    // The pointer over the reveal strip or over the capsule as it rests, or a file drag on the
+    // island. Not the open panel: after a click on it the pointer is usually off the clock.
+    function pointerInsideAtRest() {
+        if (autoHideRevealArea.containsMouse || autoHideRevealDropArea.containsDrag
+                || islandFileDropArea.containsDrag)
+            return true;
+        if (!islandHoverTracker.hovered)
+            return false;
+        const point = islandHoverTracker.point.position;
+        const left = root.width * userConfig.islandPositionX / 100
+            - restingLayer.leftSectionWidth - restingLayer.centerSectionWidth / 2;
+        const top = root.edgeY(islandContainer.effectiveTopMargin, userConfig.islandHeight);
+        return point.x >= left && point.x < left + islandContainer.restingCapsuleWidth
+            && point.y >= top && point.y < top + userConfig.islandHeight;
     }
 
     onAutoHideProgressChanged: {
         if (islandContainer.transientSlideOut && autoHideProgress <= 0.001)
             islandContainer.finishTransientSlideOut();
+    }
+
+    // A connectivity popup closing over the resting island (the battery popup): when the island
+    // would hide anyway it goes with it, without the resting delay.
+    onAnyConnectivityDetailOpenChanged: {
+        if (!anyConnectivityDetailOpen && islandContainer.islandState === "normal" && transientCanSlideOut())
+            hideAutoHiddenIsland(true);
     }
 
     function toggleAutoHiddenIsland() {
@@ -716,7 +745,7 @@ PanelWindow {
         scheduleAutoHide();
     }
     function togglePlayerWindow() {
-        if (islandContainer.islandState === "expanded")
+        if (islandContainer.openState === "expanded")
             islandContainer.smartRestoreState();
         else
             islandContainer.showExpandedPlayer(false);
@@ -727,7 +756,7 @@ PanelWindow {
     }
 
     function toggleControlCenterWindow() {
-        if (islandContainer.islandState === "control_center") {
+        if (islandContainer.openState === "control_center") {
             if (controlCenterLoader.item && controlCenterLoader.item.powerViewActive) {
                 controlCenterLoader.item.powerViewActive = false;
             } else {
@@ -742,7 +771,7 @@ PanelWindow {
     }
 
     function togglePowerMenuWindow() {
-        if (islandContainer.islandState === "control_center"
+        if (islandContainer.openState === "control_center"
                 && controlCenterLoader.item
                 && controlCenterLoader.item.powerViewActive) {
             islandContainer.smartRestoreState();
@@ -758,21 +787,21 @@ PanelWindow {
     }
 
     function toggleNotificationCenterWindow() {
-        if (islandContainer.islandState === "notification_center")
+        if (islandContainer.openState === "notification_center")
             islandContainer.smartRestoreState();
         else
             islandContainer.showNotificationCenter();
     }
 
     function toggleFileShelfWindow() {
-        if (islandContainer.islandState === "file_shelf")
+        if (islandContainer.openState === "file_shelf")
             islandContainer.smartRestoreState();
         else
             islandContainer.showFileShelf(true);
     }
 
     function toggleClipboardWindow() {
-        if (islandContainer.islandState === "clipboard")
+        if (islandContainer.openState === "clipboard")
             islandContainer.smartRestoreState();
         else
             islandContainer.showClipboard();
@@ -788,7 +817,7 @@ PanelWindow {
     }
 
     function toggleWeatherWindow() {
-        if (islandContainer.islandState === "weather")
+        if (islandContainer.openState === "weather")
             islandContainer.smartRestoreState();
         else
             islandContainer.showWeather();
@@ -804,7 +833,7 @@ PanelWindow {
     }
 
     function toggleCalendarWindow() {
-        if (islandContainer.islandState === "calendar")
+        if (islandContainer.openState === "calendar")
             islandContainer.smartRestoreState();
         else
             islandContainer.showCalendar();
@@ -820,7 +849,7 @@ PanelWindow {
     }
 
     function togglePrivacyHudWindow() {
-        if (islandContainer.islandState === "privacy_hud")
+        if (islandContainer.openState === "privacy_hud")
             islandContainer.smartRestoreState();
         else {
             islandContainer.showPrivacyHud();
@@ -839,7 +868,7 @@ PanelWindow {
     }
 
     function toggleGlanceWindow() {
-        if (islandContainer.islandState === "glance")
+        if (islandContainer.openState === "glance")
             islandContainer.smartRestoreState();
         else {
             islandContainer.showGlance();
@@ -1076,14 +1105,9 @@ PanelWindow {
                 hoverExpandedActive = false;
             if (root.powerDetailStandalone && islandState !== "normal")
                 root.closeConnectivityOverlays();
-            if (islandState !== "split") {
-                osdRevealedHiddenIsland = false;
-                if (transientSlideOut) {
-                    // Something else (e.g. a notification) took over during the slide-out.
-                    transientSlideOut = false;
-                    root.showAutoHiddenIsland("state");
-                }
-            }
+            // Something else (e.g. a notification) took over during the slide-out.
+            if (islandState !== "normal")
+                stopTransientSlideOut();
             if (islandState === "notification_center" && root.shellRootController
                     && root.shellRootController.markNotificationsRead)
                 root.shellRootController.markNotificationsRead();
@@ -1194,7 +1218,7 @@ PanelWindow {
             && islandState === "normal"
         readonly property real privacyBubblesOffset: (cameraBubble.mounted ? privacyBubbleStep : 0) + (micBubble.mounted ? privacyBubbleStep : 0)
         readonly property bool fileShelfCanAutoOpen: islandState === "normal"
-        readonly property bool blocksTransientSplit: islandState === "expanded"
+        readonly property bool blocksTransientSplit: !transientSlideOut && (islandState === "expanded"
             || islandState === "control_center"
             || islandState === "notification"
             || islandState === "file_shelf"
@@ -1203,7 +1227,7 @@ PanelWindow {
             || islandState === "calendar"
             || islandState === "privacy_hud"
             || islandState === "glance"
-            || islandState === "notification_center"
+            || islandState === "notification_center")
         readonly property bool splitShowsProgress: islandState === "split" && osdProgress >= 0
         readonly property bool splitShowsText: islandState === "split" && osdProgress < 0 && osdCustomText !== ""
         readonly property bool splitShowsIconOnly: islandState === "split" && osdProgress < 0 && osdCustomText === ""
@@ -1429,30 +1453,32 @@ PanelWindow {
             notificationExpanded = false;
         }
 
-        // A volume/brightness OSD that revealed the hidden island slides it away still showing
-        // the OSD and only switches to the resting layout once it is out of sight.
-        property bool osdRevealedHiddenIsland: false
+        // Leaving a panel, popup or OSD when the island would hide at rest anyway: it slides away
+        // still showing it and switches to the resting layout once out of sight. Meanwhile it
+        // counts as closed (input mask, keyboard, toggles).
         property bool transientSlideOut: false
+        readonly property string openState: transientSlideOut ? "normal" : islandState
 
-        function handleAutoHideTimeout() {
-            if (islandState === "split" && osdRevealedHiddenIsland && root.transientCanSlideOut()) {
-                transientSlideOut = true;
-                root.hideAutoHiddenIsland(true);
-                return;
-            }
-            smartRestoreState();
+        function startTransientSlideOut() {
+            transientSlideOut = true;
+            stopAutoHideTimer();
+            root.hideAutoHiddenIsland(true);
+            if (root.autoHideProgress <= 0.001)
+                finishTransientSlideOut();
         }
 
+        // Out of sight, or revealed again on the way: the resting layout.
         function finishTransientSlideOut() {
-            transientSlideOut = false;
-            osdRevealedHiddenIsland = false;
             restoreRestingCapsule();
+            transientSlideOut = false;
         }
 
-        function cancelTransientSlideOut() {
+        // Something to show while the island slides away: it stays up for that instead.
+        function stopTransientSlideOut() {
+            if (!transientSlideOut)
+                return;
             transientSlideOut = false;
-            osdRevealedHiddenIsland = false;
-            restoreRestingCapsule();
+            root.showAutoHiddenIsland("state");
         }
 
         function restartAutoHideTimer(duration) {
@@ -1559,15 +1585,7 @@ PanelWindow {
                     && icon !== systemState.brightnessStatusIcon(progress)) return;
             if (blocksTransientSplit) return;
 
-            if (transientSlideOut) {
-                // A new value while the previous OSD slides away: bring it back, still the OSD
-                // that revealed a hidden island.
-                transientSlideOut = false;
-                root.showAutoHiddenIsland("state");
-            } else if (islandState !== "split") {
-                osdRevealedHiddenIsland = !root.autoHideTargetVisible;
-            }
-
+            stopTransientSlideOut();
             const nextProgress = progress >= 0 ? progress : -1.0;
             const animateProgress = islandState === "split" && osdProgress >= 0 && nextProgress >= 0;
 
@@ -1627,8 +1645,8 @@ PanelWindow {
                 return;
             }
 
-            const popupBlocked = mode !== "popup" || islandState === "control_center"
-                || islandState === "expanded" || islandState === "file_shelf";
+            const popupBlocked = mode !== "popup" || openState === "control_center"
+                || openState === "expanded" || openState === "file_shelf";
             // Everything but transient notifications reaches the history, so tide's own feedback
             // (negative ids) is still there when the popup is blocked.
             if (!record.transient)
@@ -1636,6 +1654,7 @@ PanelWindow {
             if (popupBlocked)
                 return;
 
+            stopTransientSlideOut();
             clearTransientCapsule();
             setNotificationPopupContent(record);
             notificationExpanded = false;
@@ -1801,10 +1820,20 @@ PanelWindow {
         }
 
         function smartRestoreState() {
-            restoreRestingCapsule();
+            if (transientSlideOut)
+                return;
+            // The control center's connectivity popups close with it (it clears its own panel
+            // state once hidden); closed, they no longer keep the island up.
+            if (islandState === "control_center")
+                root.closeAllConnectivityDetails();
+            if (islandState !== "normal" && root.transientCanSlideOut())
+                startTransientSlideOut();
+            else
+                restoreRestingCapsule();
         }
 
         function showExpandedPlayer(autoOpened) {
+            stopTransientSlideOut();
             clearTransientCapsule();
             islandState = "expanded";
             if (autoOpened) restartAutoHideTimer();
@@ -1812,12 +1841,14 @@ PanelWindow {
         }
 
         function showControlCenter() {
+            stopTransientSlideOut();
             clearTransientCapsule();
             islandState = "control_center";
             stopAutoHideTimer();
         }
 
         function showNotificationCenter() {
+            stopTransientSlideOut();
             clearTransientCapsule();
             islandState = "notification_center";
             stopAutoHideTimer();
@@ -1826,6 +1857,7 @@ PanelWindow {
 
         function showFileShelf(manuallyOpened) {
             const manual = manuallyOpened === true;
+            stopTransientSlideOut();
             if (islandState === "file_shelf") {
                 if (manual)
                     fileShelfOpenedManually = true;
@@ -1844,30 +1876,35 @@ PanelWindow {
         }
 
         function showClipboard() {
+            stopTransientSlideOut();
             clearTransientCapsule();
             islandState = "clipboard";
             stopAutoHideTimer();
         }
 
         function showWeather() {
+            stopTransientSlideOut();
             clearTransientCapsule();
             islandState = "weather";
             stopAutoHideTimer();
         }
 
         function showCalendar() {
+            stopTransientSlideOut();
             clearTransientCapsule();
             islandState = "calendar";
             stopAutoHideTimer();
         }
 
         function showPrivacyHud() {
+            stopTransientSlideOut();
             clearTransientCapsule();
             islandState = "privacy_hud";
             stopAutoHideTimer();
         }
 
         function showGlance() {
+            stopTransientSlideOut();
             clearTransientCapsule();
             islandState = "glance";
             stopAutoHideTimer();
@@ -1877,7 +1914,7 @@ PanelWindow {
             restoreRestingCapsule();
         }
 
-        Timer { id: autoHideTimer; interval: islandContainer.defaultAutoHideInterval; onTriggered: islandContainer.handleAutoHideTimeout() }
+        Timer { id: autoHideTimer; interval: islandContainer.defaultAutoHideInterval; onTriggered: islandContainer.smartRestoreState() }
         Timer {
             id: islandTimerTick
             interval: 1000
@@ -2021,8 +2058,10 @@ PanelWindow {
             }
             readonly property real targetRadius: 10
             color: Qt.rgba(StyleTokens.panel.r, StyleTokens.panel.g, StyleTokens.panel.b, userConfig.islandBackgroundOpacity / 100.0)
+            // Hidden, it clears the edge by its full height, also while that still shrinks to the
+            // resting height after sliding away with a panel.
             y: root.edgeY(islandContainer.effectiveTopMargin
-                - (1 - root.autoHideProgress) * (targetHeight + islandContainer.effectiveTopMargin + 8), height)
+                - (1 - root.autoHideProgress) * (Math.max(targetHeight, height) + islandContainer.effectiveTopMargin + 8), height)
             x: parent ? parent.width * userConfig.islandPositionX / 100 - width / 2 - centerShift : 0
             clip: true
             width: displayedWidth
@@ -2151,7 +2190,8 @@ PanelWindow {
                 }
 
                 onEntered: {
-                    if (root.autoHideEnabled) {
+                    // Not while it slides away: content moving under a still pointer enters too.
+                    if (root.autoHideEnabled && !islandContainer.transientSlideOut) {
                         root.showAutoHiddenIsland();
                     }
                     // Hovering a notification popup never expands the island.
@@ -3168,6 +3208,7 @@ PanelWindow {
             id: calendarNoteShell
 
             open: islandContainer.calendarLayerVisible
+                && !islandContainer.transientSlideOut
                 && calendarLoader.item !== null
                 && calendarLoader.item.noteOpen
             provider: calendarLoader.item
