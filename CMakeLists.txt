@@ -412,6 +412,9 @@ install(FILES
 # Install launcher
 configure_file(tide-island-launcher ${CMAKE_CURRENT_BINARY_DIR}/tide-island @ONLY)
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/tide-island DESTINATION ${CMAKE_INSTALL_BINDIR})
+# The lockscreen is gone; remove the symlink and desktop entry older versions installed.
+install(CODE "file(REMOVE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/tide-island-lock\"
+                          \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/applications/tide-island-lock.desktop\")")
 
 # Install helper executables and scripts
 install(TARGETS lyricsmpris

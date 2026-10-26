@@ -25,6 +25,12 @@ export QUICKSHELL_LYRICS_BACKEND="${QUICKSHELL_LYRICS_BACKEND:-$QML_PATH/bin/lyr
 # arena and a smaller thread cache keep the idle heap ~1.5 MB smaller.
 export MALLOC_CONF="${MALLOC_CONF:-narenas:1,background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:0,tcache_max:1024}"
 
+# The built-in lockscreen was removed; a stale lock binding must fail, not start a second shell.
+if [[ "$(basename "$0")" == "tide-island-lock" || "${1:-}" == "--lock" || "${1:-}" == "-l" || "${1:-}" == "lock" ]]; then
+  echo "tide-island: the built-in lockscreen was removed; run your screen locker (e.g. gtklock) directly" >&2
+  exit 2
+fi
+
 if [[ "${SYSTEMD_EXEC_PID:-}" != "$$" ]]; then
   running_pid="$(pgrep -u "$(id -u)" -f "quickshell.*tide-island" | head -n 1)"
   if [[ -n "$running_pid" ]]; then

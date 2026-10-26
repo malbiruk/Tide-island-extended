@@ -863,6 +863,8 @@ build_tide_island() {
   if ((!DRY_RUN)); then
     remove_obsolete_manifest_files "$previous_manifest" "$build_dir/install_manifest.txt"
   fi
+  # Left behind by versions that shipped the lockscreen (the symlink was never in a manifest).
+  run sudo rm -f -- "/usr/bin/tide-island-lock" "/usr/share/applications/tide-island-lock.desktop"
   run sudo install -d -m 0755 "$STATE_DIR"
   run sudo install -m 0644 "$build_dir/install_manifest.txt" "$INSTALL_MANIFEST"
   if command -v systemd-tmpfiles >/dev/null 2>&1; then
@@ -1019,7 +1021,7 @@ uninstall_tide_island() {
   fi
   remove_manifest_files
   run sudo rm -f -- "$INSTALL_MANIFEST"
-  run sudo rm -f -- "/usr/bin/tide-island-lock"
+  run sudo rm -f -- "/usr/bin/tide-island-lock" "/usr/share/applications/tide-island-lock.desktop"
 
   if [[ -f "$QUICKSHELL_INSTALL_MANIFEST" ]]; then
     local remove_qs=0
