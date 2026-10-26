@@ -75,6 +75,7 @@ PanelWindow {
     // or the reveal strip. Comes from the layer-wide HoverHandler, which child content cannot
     // obscure the way it does a MouseArea's containsMouse.
     readonly property bool autoHidePointerInside: root.pointerOverIsland() || autoHideRevealArea.containsMouse
+        || autoHideRevealDropArea.containsDrag || islandFileDropArea.containsDrag
     onAutoHidePointerInsideChanged: {
         if (!autoHidePointerInside)
             scheduleAutoHide();
@@ -206,13 +207,13 @@ PanelWindow {
         }
     }
     mask: Region {
-        // Input is the union of the island's visible surfaces plus a compact top
-        // gesture strip. The gesture strip must not grow with expanded content.
+        // Input is the union of the island's visible surfaces plus, with auto-hide, the edge
+        // strip that reveals it (pointer or file drag). The strip never grows with content.
         Region {
-            x: Math.floor(root.topGestureInputX)
+            x: Math.floor(root.autoHideRevealX)
             y: 0
-            width: Math.ceil(root.topGestureInputWidth)
-            height: Math.ceil(root.topGestureInputHeight)
+            width: Math.ceil(root.autoHideRevealWidth)
+            height: Math.ceil(root.autoHideRevealHeight)
         }
 
         Region {
@@ -316,18 +317,22 @@ PanelWindow {
     // shelf is excluded so drags out of it can still drop onto other windows.
     readonly property bool outsideClickDismissActive: !root.overviewVisible
         && !root.connectivityPromptActive
-        && ["control_center", "notification_center", "calendar", "weather", "glance",
+        && (["control_center", "notification_center", "calendar", "weather", "glance",
             "clipboard", "application_launcher", "wallpaper_picker", "privacy_hud"]
             .indexOf(islandContainer.islandState) !== -1
+            || (root.powerDetailStandalone && root.powerConnectivityDetailMounted))
     readonly property real outsideClickDismissWindowHeight: root.outsideClickDismissActive && root.screen
         ? root.screen.height
         : 0
     readonly property real capsuleWindowHeight: Math.ceil(
         islandContainer.effectiveTopMargin + mainCapsule.targetHeight + 12
     )
-    readonly property real connectivityDetailWindowHeight: root.anyConnectivityDetailMounted
-        ? Math.ceil(islandContainer.effectiveTopMargin + root.connectivityDetailHeight + 12)
-        : 0
+    readonly property real connectivityDetailWindowHeight: !root.anyConnectivityDetailMounted
+        ? 0
+        : root.powerDetailStandalone
+            ? Math.ceil(islandContainer.effectiveTopMargin + mainCapsule.targetHeight + root.connectivityDetailGap
+                + root.connectivityDetailHeight + 12)
+            : Math.ceil(islandContainer.effectiveTopMargin + root.connectivityDetailHeight + 12)
     readonly property real overviewWindowHeight: root.overviewVisible
         ? Math.ceil(islandContainer.effectiveTopMargin + root.overviewCapsuleHeight + 8)
         : 0
@@ -383,6 +388,8 @@ PanelWindow {
                 || islandContainer.glanceLayerVisible
                 || islandContainer.notificationCenterLayerVisible)
             return WlrKeyboardFocus.Exclusive;
+        if (root.powerDetailStandalone && root.powerConnectivityDetailMounted)
+            return WlrKeyboardFocus.Exclusive;
         if (islandContainer.notificationLayerVisible)
             return WlrKeyboardFocus.OnDemand;
         // Keep keyboard focus on the overview until an overview action closes it.
@@ -418,8 +425,6 @@ PanelWindow {
     }
     readonly property real baseExclusiveZone: userConfig.islandExclusiveZone
     readonly property bool hoverExpandEnabled: configuredHoverExpandAction > 0
-    // The resting island has no side pages any more, so no swipe strip either.
-    readonly property bool topGestureInputActive: false
     readonly property bool autoHideRuntimeEnabled: !shellRootController
         || shellRootController.islandAutoHideRuntimeEnabled === undefined
         || !!shellRootController.islandAutoHideRuntimeEnabled
@@ -451,19 +456,12 @@ PanelWindow {
         || (autoHideRevealSource === "edge" && autoHideTargetVisible)
         || islandContainer.notificationLayerVisible
     property real exclusiveZoneProgress: exclusiveZoneTargetActive ? 1 : 0
-    readonly property real autoHideRevealWidth: Math.min(root.width, Math.max(userConfig.islandWidth + 120, 240))
+    readonly property real autoHideRevealWidth: autoHideEnabled ? Math.min(root.width, Math.max(userConfig.islandWidth + 120, 240)) : 0
     readonly property real autoHideRevealHeight: autoHideEnabled ? 10 : 0
     readonly property real autoHideRevealX: Math.max(
         0,
         Math.min(root.width - autoHideRevealWidth, root.width * userConfig.islandPositionX / 100 - autoHideRevealWidth / 2)
     )
-    readonly property real topGestureInputX: autoHideEnabled ? autoHideRevealX : 0
-    readonly property real topGestureInputWidth: topGestureInputActive
-        ? (autoHideEnabled ? autoHideRevealWidth : root.width)
-        : 0
-    readonly property real topGestureInputHeight: topGestureInputActive
-        ? (autoHideEnabled ? autoHideRevealHeight : root.baseExclusiveZone)
-        : 0
     readonly property real overviewCapsuleWidth: islandContainer.overviewView ? islandContainer.overviewView.width : 760
     readonly property real overviewCapsuleHeight: islandContainer.overviewView ? islandContainer.overviewView.height : 308
     readonly property real overviewCapsuleRadius: islandContainer.overviewView
@@ -533,7 +531,7 @@ PanelWindow {
             return;
 
         const nextSource = String(source);
-        autoHideRevealSource = nextSource === "edge" || nextSource === "state" || nextSource === "manual"
+        autoHideRevealSource = ["edge", "state", "manual", "drag"].indexOf(nextSource) !== -1
             ? nextSource
             : "manual";
     }
@@ -778,6 +776,30 @@ PanelWindow {
                 audioConnectivityDetailCleanupTimer.restart();
             }
         }
+    }
+
+    // The battery section of the resting island opens the battery popup on its own, under the
+    // capsule, without the control center.
+    property bool powerDetailStandalone: false
+
+    function toggleStandalonePowerDetail() {
+        if (powerDetailStandalone && powerConnectivityDetailOpen) {
+            setConnectivityDetailVisible("power", false);
+            return;
+        }
+        powerDetailStandalone = true;
+        setConnectivityDetailVisible("power", true);
+        SystemServices.requestBatteryThresholdState();
+        const controlCenter = controlCenterLoader.item;
+        if (controlCenter && controlCenter.tlpControlsEnabled)
+            controlCenter.refreshBatteryModeState();
+        islandContainer.forceActiveFocus();
+    }
+
+    function closeConnectivityOverlays() {
+        if (controlCenterLoader.item && controlCenterLoader.item.closeConnectivityPanels)
+            controlCenterLoader.item.closeConnectivityPanels();
+        closeAllConnectivityDetails();
     }
 
     function closeAllConnectivityDetails() {
@@ -1268,7 +1290,10 @@ PanelWindow {
         id: powerConnectivityDetailCleanupTimer
         interval: root.connectivityDetailAnimationDuration
         repeat: false
-        onTriggered: root.powerConnectivityDetailMounted = false
+        onTriggered: {
+            root.powerConnectivityDetailMounted = false;
+            root.powerDetailStandalone = false;
+        }
     }
 
     Timer {
@@ -1399,6 +1424,8 @@ PanelWindow {
         onIslandStateChanged: {
             if (islandState === "normal" || islandState === "custom" || islandState === "lyrics")
                 hoverExpandedActive = false;
+            if (root.powerDetailStandalone && islandState !== "normal")
+                root.setConnectivityDetailVisible("power", false);
             if (islandState !== "split") {
                 osdRevealedHiddenIsland = false;
                 if (transientSlideOut) {
@@ -1445,6 +1472,27 @@ PanelWindow {
                 notificationTimeoutPaused = false;
                 if (islandState === "notification")
                     restartAutoHideTimer(Math.max(notificationTimeoutRemaining, notificationResumeMinimumMs));
+            }
+        }
+
+        // Resting-island section under the pointer; hover-expand only starts over the clock.
+        readonly property string hoveredRestingSection: {
+            if (islandState !== "normal" || !islandHoverTracker.hovered)
+                return "";
+            const point = restingLayer.mapFromItem(islandContainer,
+                islandHoverTracker.point.position.x, islandHoverTracker.point.position.y);
+            if (point.x < 0 || point.y < 0 || point.x > restingLayer.width || point.y > restingLayer.height)
+                return "";
+            return restingLayer.sectionAt(point.x, point.y);
+        }
+        onHoveredRestingSectionChanged: {
+            if (!root.hoverExpandEnabled)
+                return;
+            if (hoveredRestingSection === "clock") {
+                hoverCollapseDelayTimer.stop();
+                hoverExpandDelayTimer.restart();
+            } else {
+                hoverExpandDelayTimer.stop();
             }
         }
 
@@ -2678,6 +2726,7 @@ PanelWindow {
             onTriggered: {
                 if (!capsuleMouseArea.containsMouse) return;
                 if (!root.hoverExpandEnabled) return;
+                if (islandContainer.islandState === "normal" && islandContainer.hoveredRestingSection !== "clock") return;
 
                 const current = islandContainer.islandState;
                 const target = root.configuredHoverExpandAction === 2 ? "control_center" : "expanded";
@@ -3208,6 +3257,25 @@ PanelWindow {
                             root.shellRootController.setNotificationUnread(islandContainer.notificationId, false);
                         islandContainer.smartRestoreState();
                         return;
+                    }
+
+                    // Resting island: a left click on the bell, battery or music opens that directly;
+                    // the clock and the rest of the capsule follow the configured mapping.
+                    if (mouse.button === Qt.LeftButton && islandContainer.islandState === "normal") {
+                        const point = restingLayer.mapFromItem(capsuleMouseArea, mouse.x, mouse.y);
+                        const section = restingLayer.sectionAt(point.x, point.y);
+                        if (section !== "clock") {
+                            if (preparedOverviewOnPress)
+                                root.cancelPreparedOverviewEverywhere();
+                            preparedOverviewOnPress = false;
+                            if (section === "bell")
+                                islandContainer.showNotificationCenter();
+                            else if (section === "battery")
+                                root.toggleStandalonePowerDetail();
+                            else
+                                islandContainer.showExpandedPlayer(false);
+                            return;
+                        }
                     }
 
                     if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandPrimaryButton)) {
@@ -3831,18 +3899,9 @@ PanelWindow {
                     root.showAutoHiddenIsland("state");
                 }
 
-                onExited: islandContainer.closeAutoOpenedFileShelf()
+                onExited: fileDragLeaveTimer.restart()
 
-                onDropped: drop => {
-                    if (!root.dragCarriesFiles(drop)) {
-                        drop.accepted = false;
-                        return;
-                    }
-
-                    root.addFilesFromDrop(drop);
-                    drop.accept(Qt.CopyAction);
-                    islandContainer.closeAutoOpenedFileShelf();
-                }
+                onDropped: drop => root.acceptFileDrop(drop)
             }
 
             Rectangle {
@@ -4387,6 +4446,7 @@ PanelWindow {
             open: root.powerConnectivityDetailOpen
             mounted: root.powerConnectivityDetailMounted
             rightSide: true
+            below: root.powerDetailStandalone
             panelKind: "power"
             provider: controlCenterLoader.item
             mainCapsule: mainCapsule
@@ -4445,7 +4505,10 @@ PanelWindow {
                 mouse.accepted = false;
                 return;
             }
-            islandContainer.smartRestoreState();
+            if (root.powerDetailStandalone)
+                root.setConnectivityDetailVisible("power", false);
+            else
+                islandContainer.smartRestoreState();
         }
     }
 
@@ -4485,10 +4548,50 @@ PanelWindow {
         }
     }
 
-    IslandRootGestureArea {
-        anchors.fill: parent
-        enabled: root.topGestureInputActive
-        islandController: islandContainer
-        capsule: mainCapsule
+    // A file drag reaching the edge strip reveals the hidden island and opens the shelf (Wayland
+    // drags send no hover). A drop on the strip itself also goes to the shelf.
+    DropArea {
+        id: autoHideRevealDropArea
+
+        x: root.autoHideRevealX
+        y: 0
+        z: 21
+        width: root.autoHideRevealWidth
+        height: root.autoHideRevealHeight
+        enabled: root.autoHideEnabled
+
+        onEntered: drag => {
+            if (!root.dragCarriesFiles(drag)) {
+                drag.accepted = false;
+                return;
+            }
+            drag.accept(Qt.CopyAction);
+            root.showAutoHiddenIsland("drag");
+            if (islandContainer.fileShelfCanAutoOpen && !islandContainer.fileShelfLayerVisible)
+                islandContainer.showFileShelf(false);
+        }
+        onExited: fileDragLeaveTimer.restart()
+        onDropped: drop => root.acceptFileDrop(drop)
+    }
+
+    // Moving between the strip and the capsule leaves one drop area for the other; only close an
+    // auto-opened shelf when the drag has left both.
+    Timer {
+        id: fileDragLeaveTimer
+        interval: 150
+        onTriggered: {
+            if (!autoHideRevealDropArea.containsDrag && !islandFileDropArea.containsDrag)
+                islandContainer.closeAutoOpenedFileShelf();
+        }
+    }
+
+    function acceptFileDrop(drop) {
+        if (!root.dragCarriesFiles(drop)) {
+            drop.accepted = false;
+            return;
+        }
+        root.addFilesFromDrop(drop);
+        drop.accept(Qt.CopyAction);
+        islandContainer.closeAutoOpenedFileShelf();
     }
 }

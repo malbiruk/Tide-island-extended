@@ -6,6 +6,8 @@ Item {
     property bool open: false
     property bool mounted: false
     property bool rightSide: false
+    // Centred under the capsule instead of beside it (the battery popup opened from the island).
+    property bool below: false
     property string panelKind: "wifi"
     property var provider: null
     property var mainCapsule: null
@@ -24,11 +26,14 @@ Item {
     readonly property real capsuleY: mainCapsule ? mainCapsule.y : 0
     readonly property real capsuleWidth: mainCapsule ? mainCapsule.width : 0
     readonly property real capsuleHeight: mainCapsule ? mainCapsule.height : 0
-    readonly property real shownX: rightSide
-        ? Math.min(availableWidth - width - 16, capsuleX + capsuleWidth + detailGap)
-        : Math.max(16, capsuleX - width - detailGap)
-    readonly property real hiddenX: shownX + (rightSide ? -12 : 12)
-    readonly property real hiddenY: capsuleY + 4
+    readonly property real shownX: below
+        ? Math.max(16, Math.min(availableWidth - width - 16, capsuleX + capsuleWidth / 2 - width / 2))
+        : rightSide
+            ? Math.min(availableWidth - width - 16, capsuleX + capsuleWidth + detailGap)
+            : Math.max(16, capsuleX - width - detailGap)
+    readonly property real shownY: below ? capsuleY + capsuleHeight + detailGap : capsuleY
+    readonly property real hiddenX: below ? shownX : shownX + (rightSide ? -12 : 12)
+    readonly property real hiddenY: below ? shownY - 8 : capsuleY + 4
     readonly property real panelScale: 0.96 + revealProgress * 0.04
 
     function startPanelAnimation(nextOpen) {
@@ -48,7 +53,7 @@ Item {
     }
 
     x: hiddenX + (shownX - hiddenX) * revealProgress
-    y: hiddenY + (capsuleY - hiddenY) * revealProgress
+    y: hiddenY + (shownY - hiddenY) * revealProgress
     width: detailWidth
     height: detailHeight
     opacity: revealProgress
@@ -71,8 +76,8 @@ Item {
 
         anchors.fill: parent
         transform: Scale {
-            origin.x: shell.rightSide ? 0 : panelBody.width
-            origin.y: Math.min(panelBody.height - 32, Math.max(36, shell.capsuleHeight - 215))
+            origin.x: shell.below ? panelBody.width / 2 : (shell.rightSide ? 0 : panelBody.width)
+            origin.y: shell.below ? 0 : Math.min(panelBody.height - 32, Math.max(36, shell.capsuleHeight - 215))
             xScale: shell.panelScale
             yScale: shell.panelScale
         }

@@ -46,6 +46,18 @@ Item {
 
     readonly property real centerX: width / 2 + centerShift - centerSectionWidth / 2
 
+    // The section under (x, y) in this item: "music", "bell", "battery", or "clock" for the
+    // clock and any other capsule area.
+    function sectionAt(x, y) {
+        const rightStart = centerX + centerSectionWidth;
+        if (x >= rightStart) {
+            if (unreadVisible && (!batteryVisible || x < rightStart + bellWidth + innerSpacing / 2))
+                return "bell";
+            return batteryVisible ? "battery" : "clock";
+        }
+        return musicVisible && x < centerX ? "music" : "clock";
+    }
+
     anchors.fill: parent
     opacity: showCondition ? 1 : 0
     visible: opacity > 0.01
