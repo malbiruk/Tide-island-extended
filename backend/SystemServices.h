@@ -172,13 +172,11 @@ private:
 
     void startBusMonitor();
     void startPipeWireMonitor();
-    void startRecordingPortalMonitor();
     void stopProcess(QProcess *&process);
     void setPortalPipeWireActive(bool active);
 
     void handleBusMonitorOutput();
     void handlePipeWireOutput();
-    void handleRecordingPortalOutput();
     void processLines(QByteArray &buffer, const QByteArray &chunk, const std::function<void(const QString &)> &handler);
     void handleBusMonitorLine(const QString &line);
     void handlePipeWireLine(const QString &line);
@@ -233,8 +231,6 @@ private:
     QString m_pendingSessionCandidate;
 
 
-    qint64 m_lastCpuTotal = -1;
-    qint64 m_lastCpuIdle = -1;
 
     QVariantList m_cavaLevels;
     QSet<QString> m_cavaClients;

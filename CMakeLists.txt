@@ -225,19 +225,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/user_config_backend_tests.cpp")
     add_test(NAME user_config_backend COMMAND user_config_backend_tests)
 endif()
 
-add_executable(system_stats_tests
-    tests/system_stats_tests.cpp
-    backend/SystemStats.h
-    backend/SystemStats.cpp
-)
-target_include_directories(system_stats_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/backend)
-target_link_libraries(system_stats_tests PRIVATE Qt6::Core Qt6::Qml Qt6::Quick Qt6::Concurrent Qt6::Test)
-target_compile_definitions(system_stats_tests PRIVATE
-    ISLAND_SYSTEM_STATE_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/qml/island/IslandSystemState.qml"
-)
-add_test(NAME system_stats COMMAND system_stats_tests)
-set_tests_properties(system_stats PROPERTIES TIMEOUT 40 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/style_tokens_backend_tests.cpp")
     add_executable(style_tokens_backend_tests
         tests/style_tokens_backend_tests.cpp
@@ -323,8 +310,6 @@ qt_add_qml_module(IslandBackend
         backend/SysBackend.cpp
         backend/SystemServices.h
         backend/SystemServices.cpp
-        backend/SystemStats.h
-        backend/SystemStats.cpp
         backend/StyleTokensBackend.h
         backend/StyleTokensBackend.cpp
         backend/FileShelfModel.h
@@ -385,9 +370,6 @@ install(DIRECTORY qml
     FILES_MATCHING
         PATTERN "*.qml"
         PATTERN "*.js"
-        PATTERN "*.svg"
-        PATTERN "*.json"
-        PATTERN "*.ttf"
 )
 
 # Install IslandBackend backing library to /usr/lib

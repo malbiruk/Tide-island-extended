@@ -10,14 +10,10 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
-#include <QProcess>
-#include <QRegularExpression>
 #include <QSaveFile>
 #include <QSettings>
 #include <QStandardPaths>
-#include <QTemporaryFile>
 #include <QVariant>
-#include <QVariantList>
 
 namespace {
 constexpr auto colorSchemeKey = "appearance/colorScheme";
@@ -41,11 +37,6 @@ QString normalizedColorScheme(const QString &colorScheme)
     return colorScheme.trimmed().compare(QStringLiteral("dark"), Qt::CaseInsensitive) == 0
         ? QStringLiteral("dark")
         : QStringLiteral("light");
-}
-
-QString expandedPath(const QString &path)
-{
-    return path.startsWith(QStringLiteral("~/")) ? QDir::homePath() + path.sliced(1) : path;
 }
 
 UserConfigMap toUserConfigMap(const QVariantMap &userConfig){

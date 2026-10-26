@@ -4,7 +4,6 @@
 #include <QJsonValue>
 #include <QObject>
 #include <QTimer>
-#include <QVariantList>
 #include <QtQml/qqml.h>
 
 class UserConfigBackend final : public QObject {
@@ -33,7 +32,6 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(QString dynamicIslandSecondaryAction READ dynamicIslandSecondaryAction NOTIFY dynamicIslandSecondaryActionChanged FINAL)
     Q_PROPERTY(int dynamicIslandMiddleButton READ dynamicIslandMiddleButton NOTIFY dynamicIslandMiddleButtonChanged FINAL)
     Q_PROPERTY(QString dynamicIslandMiddleAction READ dynamicIslandMiddleAction NOTIFY dynamicIslandMiddleActionChanged FINAL)
-    Q_PROPERTY(QVariantList dynamicIslandLeftSwipeItems READ dynamicIslandLeftSwipeItems NOTIFY dynamicIslandLeftSwipeItemsChanged FINAL)
     Q_PROPERTY(int hoverExpandAction READ hoverExpandAction NOTIFY hoverExpandActionChanged FINAL)
     Q_PROPERTY(bool islandAutoHideEnabled READ islandAutoHideEnabled NOTIFY islandAutoHideEnabledChanged FINAL)
     Q_PROPERTY(int islandAutoHideDelayMs READ islandAutoHideDelayMs NOTIFY islandAutoHideDelayMsChanged FINAL)
@@ -93,7 +91,6 @@ public:
     QString dynamicIslandSecondaryAction() const;
     int dynamicIslandMiddleButton() const;
     QString dynamicIslandMiddleAction() const;
-    const QVariantList &dynamicIslandLeftSwipeItems() const;
     int hoverExpandAction() const;
     QString islandBatteryMode() const;
     bool islandAutoHideKeepActivities() const;
@@ -152,7 +149,6 @@ signals:
     void dynamicIslandSecondaryActionChanged();
     void dynamicIslandMiddleButtonChanged();
     void dynamicIslandMiddleActionChanged();
-    void dynamicIslandLeftSwipeItemsChanged();
     void islandBatteryModeChanged();
     void islandAutoHideKeepActivitiesChanged();
     void notificationTimeoutChanged();
@@ -211,7 +207,6 @@ private:
     QString m_dynamicIslandSecondaryAction = QStringLiteral("toggleControlCenter");
     int m_dynamicIslandMiddleButton = 2;
     QString m_dynamicIslandMiddleAction = QStringLiteral("toggleClipboard");
-    QVariantList m_dynamicIslandLeftSwipeItems;
     QString m_islandBatteryMode = QStringLiteral("low");
     bool m_islandAutoHideKeepActivities = true;
     int m_notificationTimeout = 8;

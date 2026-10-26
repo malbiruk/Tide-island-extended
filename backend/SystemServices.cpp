@@ -308,10 +308,6 @@ void SystemServices::startPipeWireMonitor() {
     m_pipeWireMonitor->start();
 }
 
-void SystemServices::startRecordingPortalMonitor() {
-    startBusMonitor();
-}
-
 void SystemServices::processLines(QByteArray &buffer,
                                   const QByteArray &chunk,
                                   const std::function<void(const QString &)> &handler) {
@@ -346,10 +342,6 @@ void SystemServices::handlePipeWireOutput() {
     processLines(m_pipeWireBuffer, m_pipeWireMonitor->readAllStandardOutput(), [this](const QString &line) {
         handlePipeWireLine(line);
     });
-}
-
-void SystemServices::handleRecordingPortalOutput() {
-    handleBusMonitorOutput();
 }
 
 // Called from shell.qml shortly after startup so the journal shows who serves notifications

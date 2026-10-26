@@ -130,16 +130,7 @@ void StyleTokensBackend::initDefaults()
     m_textOnBatteryLow = Qt::black;
     m_textOnBatteryCritical = Qt::white;
 
-    m_overviewCard = hex("#ee17181b");
-    m_overviewBorder = hex("#33ffffff");
     m_overviewInnerBorder = hex("#12ffffff");
-    m_workspaceCell = hex("#ff202226");
-    m_workspaceCellHover = hex("#ff2b2d34");
-    m_workspaceCellBorder = hex("#1effffff");
-    m_workspaceCellBorderHover = hex("#66d9f6ff");
-    m_workspaceOverlay = hex("#42070b10");
-    m_workspaceOverlayHover = hex("#280d131a");
-    m_workspaceActiveBorder = hex("#73d4ff");
 }
 
 QString StyleTokensBackend::resolveConfigHome() const
@@ -418,35 +409,6 @@ void StyleTokensBackend::loadPalette()
     m_buttonFillHover = getColor(paletteObj, {QStringLiteral("buttonFillHover"), QStringLiteral("surface_bright")}, Qt::white);
     m_buttonFillPressed = getColor(paletteObj, {QStringLiteral("buttonFillPressed"), QStringLiteral("on_surface_variant")}, m_buttonFillPressed);
 
-    // 7. Workspace & Overview
-    QColor ovCard = m_panel;
-    ovCard.setAlpha(0xee);
-    m_overviewCard = getColor(paletteObj, {QStringLiteral("overviewCard")}, ovCard);
-
-    QColor ovBorder = getColor(paletteObj, {QStringLiteral("outline_variant")}, QColor(255, 255, 255));
-    ovBorder.setAlpha(0x33);
-    m_overviewBorder = getColor(paletteObj, {QStringLiteral("overviewBorder")}, ovBorder);
-
-    m_workspaceCell = getColor(paletteObj,
-        {QStringLiteral("workspaceCell"), QStringLiteral("surface_container_low"), QStringLiteral("module")},
-        m_workspaceCell);
-
-    m_workspaceCellHover = getColor(paletteObj,
-        {QStringLiteral("workspaceCellHover"), QStringLiteral("surface_container"), QStringLiteral("moduleHover")},
-        m_workspaceCellHover);
-
-    m_workspaceCellBorder = getColor(paletteObj,
-        {QStringLiteral("workspaceCellBorder"), QStringLiteral("outline_variant")},
-        m_workspaceCellBorder);
-
-    m_workspaceCellBorderHover = getColor(paletteObj,
-        {QStringLiteral("workspaceCellBorderHover"), QStringLiteral("primary"), QStringLiteral("accent")},
-        m_workspaceCellBorderHover);
-
-    m_workspaceActiveBorder = getColor(paletteObj,
-        {QStringLiteral("workspaceActiveBorder"), QStringLiteral("primary"), QStringLiteral("accent")},
-        m_workspaceActiveBorder);
-
     // 8. Battery Colors & Matugen Theme Mapping
     m_batteryCharging = getColor(paletteObj,
         {QStringLiteral("batteryCharging"), QStringLiteral("battery_charging"), QStringLiteral("success"), QStringLiteral("primary")},
@@ -559,16 +521,7 @@ QColor StyleTokensBackend::buttonFill() const { return m_buttonFill; }
 QColor StyleTokensBackend::buttonFillHover() const { return m_buttonFillHover; }
 QColor StyleTokensBackend::buttonFillPressed() const { return m_buttonFillPressed; }
 
-QColor StyleTokensBackend::overviewCard() const { return m_overviewCard; }
-QColor StyleTokensBackend::overviewBorder() const { return m_overviewBorder; }
 QColor StyleTokensBackend::overviewInnerBorder() const { return m_overviewInnerBorder; }
-QColor StyleTokensBackend::workspaceCell() const { return m_workspaceCell; }
-QColor StyleTokensBackend::workspaceCellHover() const { return m_workspaceCellHover; }
-QColor StyleTokensBackend::workspaceCellBorder() const { return m_workspaceCellBorder; }
-QColor StyleTokensBackend::workspaceCellBorderHover() const { return m_workspaceCellBorderHover; }
-QColor StyleTokensBackend::workspaceOverlay() const { return m_workspaceOverlay; }
-QColor StyleTokensBackend::workspaceOverlayHover() const { return m_workspaceOverlayHover; }
-QColor StyleTokensBackend::workspaceActiveBorder() const { return m_workspaceActiveBorder; }
 
 int StyleTokensBackend::radiusPanel() const { return 28; }
 int StyleTokensBackend::radiusModule() const { return 20; }

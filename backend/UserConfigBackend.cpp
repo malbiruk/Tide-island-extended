@@ -5,7 +5,6 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
@@ -21,22 +20,6 @@
 #include <cmath>
 
 namespace {
-QVariantList defaultDynamicIslandLeftSwipeItems()
-{
-    return {
-        QStringLiteral("time"),
-        QStringLiteral("date"),
-        QStringLiteral("workspace"),
-        QStringLiteral("storage"),
-        QStringLiteral("battery"),
-        QStringLiteral("cpu"),
-        QStringLiteral("ram"),
-        QStringLiteral("cava"),
-        QStringLiteral("albumcover"),
-        QStringLiteral("trackname"),
-    };
-}
-
 // A command line as the shell would split it (quotes allowed); "~" in the program is the home dir.
 QStringList commandArguments(const QString &command)
 {
@@ -77,12 +60,6 @@ double jsonDouble(const QJsonObject &object, QLatin1String key, double fallback)
     return std::isfinite(number) ? number : fallback;
 }
 
-QVariantList jsonArray(const QJsonObject &object, QLatin1String key, const QVariantList &fallback)
-{
-    const QJsonValue value = object.value(key);
-    return value.isArray() ? value.toArray().toVariantList() : fallback;
-}
-
 bool jsonBool(const QJsonObject &object, QLatin1String key, bool fallback)
 {
     const QJsonValue value = object.value(key);
@@ -103,7 +80,6 @@ void updateField(Owner *owner, T &field, T nextValue, Signal signal)
 UserConfigBackend::UserConfigBackend(QObject *parent)
     : QObject(parent)
     , m_userConfigPath(configHome() + QStringLiteral("/tide-island/userconfig.json"))
-    , m_dynamicIslandLeftSwipeItems(defaultDynamicIslandLeftSwipeItems())
 {
     m_reloadTimer.setSingleShot(true);
     m_reloadTimer.setInterval(50);
@@ -217,11 +193,6 @@ int UserConfigBackend::dynamicIslandMiddleButton() const
 QString UserConfigBackend::dynamicIslandMiddleAction() const
 {
     return m_dynamicIslandMiddleAction;
-}
-
-const QVariantList &UserConfigBackend::dynamicIslandLeftSwipeItems() const
-{
-    return m_dynamicIslandLeftSwipeItems;
 }
 
 int UserConfigBackend::hoverExpandAction() const
@@ -590,7 +561,6 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_dynamicIslandSecondaryAction, jsonString(configObject, QLatin1String("dynamicIslandSecondaryAction"), QStringLiteral("toggleControlCenter")), &UserConfigBackend::dynamicIslandSecondaryActionChanged);
     updateField(this, m_dynamicIslandMiddleButton, jsonInt(configObject, QLatin1String("dynamicIslandMiddleButton"), 2), &UserConfigBackend::dynamicIslandMiddleButtonChanged);
     updateField(this, m_dynamicIslandMiddleAction, jsonString(configObject, QLatin1String("dynamicIslandMiddleAction"), QStringLiteral("toggleClipboard")), &UserConfigBackend::dynamicIslandMiddleActionChanged);
-    updateField(this, m_dynamicIslandLeftSwipeItems, jsonArray(configObject, QLatin1String("dynamicIslandLeftSwipeItems"), defaultDynamicIslandLeftSwipeItems()), &UserConfigBackend::dynamicIslandLeftSwipeItemsChanged);
     // Hover opens only the control center (2); anything else, including the old 1 (expanded
     // player), means off.
     updateField(this, m_hoverExpandAction,

@@ -105,7 +105,6 @@ Item {
     property real micLevel: -1
     property bool micMuted: false
     property int sliderIntroDelay: 0
-    property int currentWorkspace: 1
     property string currentTrack: ""
     property string currentArtist: ""
 

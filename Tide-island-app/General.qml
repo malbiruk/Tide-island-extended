@@ -10,7 +10,6 @@ PagePanel {
     HiddenPathDialog {
         id: avatarFileDialog
 
-        directoryMode: false
         nameFilters: ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.svg", "*.gif", "*.bmp"]
         onPathAccepted: function(path) {
             avatarRow.setPath(path)

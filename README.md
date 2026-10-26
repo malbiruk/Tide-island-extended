@@ -61,10 +61,6 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 
 ### Dynamic Island Capsules
 
-<p align="center">
-  <img src="docs/preview/island_custom_bar.png" width="100%" alt="Dynamic Island Custom Status Bar" />
-</p>
-
 <table>
   <tr>
     <td width="33%" align="center">

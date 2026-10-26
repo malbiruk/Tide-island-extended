@@ -75,16 +75,7 @@ class StyleTokensBackend final : public QObject {
     Q_PROPERTY(QColor textOnBatteryLow READ textOnBatteryLow NOTIFY colorsChanged FINAL)
     Q_PROPERTY(QColor textOnBatteryCritical READ textOnBatteryCritical NOTIFY colorsChanged FINAL)
 
-    Q_PROPERTY(QColor overviewCard READ overviewCard NOTIFY colorsChanged FINAL)
-    Q_PROPERTY(QColor overviewBorder READ overviewBorder NOTIFY colorsChanged FINAL)
     Q_PROPERTY(QColor overviewInnerBorder READ overviewInnerBorder NOTIFY colorsChanged FINAL)
-    Q_PROPERTY(QColor workspaceCell READ workspaceCell NOTIFY colorsChanged FINAL)
-    Q_PROPERTY(QColor workspaceCellHover READ workspaceCellHover NOTIFY colorsChanged FINAL)
-    Q_PROPERTY(QColor workspaceCellBorder READ workspaceCellBorder NOTIFY colorsChanged FINAL)
-    Q_PROPERTY(QColor workspaceCellBorderHover READ workspaceCellBorderHover NOTIFY colorsChanged FINAL)
-    Q_PROPERTY(QColor workspaceOverlay READ workspaceOverlay NOTIFY colorsChanged FINAL)
-    Q_PROPERTY(QColor workspaceOverlayHover READ workspaceOverlayHover NOTIFY colorsChanged FINAL)
-    Q_PROPERTY(QColor workspaceActiveBorder READ workspaceActiveBorder NOTIFY colorsChanged FINAL)
 
     Q_PROPERTY(int radiusPanel READ radiusPanel CONSTANT FINAL)
     Q_PROPERTY(int radiusModule READ radiusModule CONSTANT FINAL)
@@ -152,16 +143,7 @@ public:
     QColor textOnBatteryMedium() const;
     QColor textOnBatteryLow() const;
     QColor textOnBatteryCritical() const;
-    QColor overviewCard() const;
-    QColor overviewBorder() const;
     QColor overviewInnerBorder() const;
-    QColor workspaceCell() const;
-    QColor workspaceCellHover() const;
-    QColor workspaceCellBorder() const;
-    QColor workspaceCellBorderHover() const;
-    QColor workspaceOverlay() const;
-    QColor workspaceOverlayHover() const;
-    QColor workspaceActiveBorder() const;
 
     int radiusPanel() const;
     int radiusModule() const;
@@ -231,16 +213,7 @@ private:
     QColor m_buttonFill;
     QColor m_buttonFillHover;
     QColor m_buttonFillPressed;
-    QColor m_overviewCard;
-    QColor m_overviewBorder;
     QColor m_overviewInnerBorder;
-    QColor m_workspaceCell;
-    QColor m_workspaceCellHover;
-    QColor m_workspaceCellBorder;
-    QColor m_workspaceCellBorderHover;
-    QColor m_workspaceOverlay;
-    QColor m_workspaceOverlayHover;
-    QColor m_workspaceActiveBorder;
 
     QColor m_batteryCharging;
     QColor m_batteryHigh;

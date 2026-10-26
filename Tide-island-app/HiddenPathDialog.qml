@@ -8,14 +8,12 @@ import Qt.labs.folderlistmodel
 Dialog {
     id: dialog
 
-    property bool directoryMode: false
     property url currentFolder: folderUrl(StandardPaths.writableLocation(StandardPaths.HomeLocation))
-    property string selectedDirectory: ""
     property var nameFilters: []
 
     signal pathAccepted(string path)
 
-    title: directoryMode ? "Choose wallpaper library" : "Choose wallpaper target"
+    title: "Choose a file"
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape
@@ -71,31 +69,20 @@ Dialog {
 
     function openForPath(path) {
         const text = String(path || "")
-        selectedDirectory = ""
-
-        if (directoryMode) {
-            currentFolder = folderUrl(text.length > 0
-                ? text
-                : StandardPaths.writableLocation(StandardPaths.HomeLocation))
-        } else {
-            currentFolder = folderUrl(text.length > 0
-                ? parentPath(text)
-                : StandardPaths.writableLocation(StandardPaths.HomeLocation))
-        }
+        currentFolder = folderUrl(text.length > 0
+            ? parentPath(text)
+            : StandardPaths.writableLocation(StandardPaths.HomeLocation))
 
         open()
         Qt.callLater(function() {
             locationField.text = localPath(currentFolder)
             fileList.currentIndex = -1
-            if (!directoryMode) {
-                fileNameField.text = baseName(text)
-                fileNameField.field.selectAll()
-            }
+            fileNameField.text = baseName(text)
+            fileNameField.field.selectAll()
         })
     }
 
     function navigate(folder) {
-        selectedDirectory = ""
         fileList.currentIndex = -1
         currentFolder = folder
     }
@@ -107,26 +94,19 @@ Dialog {
     }
 
     function acceptSelection() {
-        let path = ""
-        if (directoryMode) {
-            path = selectedDirectory.length > 0 ? selectedDirectory : localPath(currentFolder)
-        } else {
-            const name = fileNameField.text.trim()
-            if (name.length === 0) {
-                fileNameField.field.forceActiveFocus()
-                return
-            }
-            path = name.startsWith("/") ? name : joinedPath(localPath(currentFolder), name)
+        const name = fileNameField.text.trim()
+        if (name.length === 0) {
+            fileNameField.field.forceActiveFocus()
+            return
         }
 
-        pathAccepted(path)
+        pathAccepted(name.startsWith("/") ? name : joinedPath(localPath(currentFolder), name))
         accept()
     }
 
     onCurrentFolderChanged: {
         locationField.text = localPath(currentFolder)
         fileList.currentIndex = -1
-        selectedDirectory = ""
     }
 
     background: Rectangle {
@@ -216,7 +196,7 @@ Dialog {
                     id: folderModel
 
                     folder: dialog.currentFolder
-                    showFiles: !dialog.directoryMode
+                    showFiles: true
                     showDirs: true
                     showDirsFirst: true
                     showDotAndDotDot: false
@@ -279,17 +259,14 @@ Dialog {
 
                         onClicked: {
                             fileList.currentIndex = entry.index
-                            if (dialog.directoryMode) {
-                                dialog.selectedDirectory = dialog.localPath(entry.fileUrl)
-                            } else if (!entry.fileIsDir) {
+                            if (!entry.fileIsDir)
                                 fileNameField.text = entry.fileName
-                            }
                         }
 
                         onDoubleClicked: {
                             if (entry.fileIsDir) {
                                 dialog.navigate(entry.fileUrl)
-                            } else if (!dialog.directoryMode) {
+                            } else {
                                 fileNameField.text = entry.fileName
                                 dialog.acceptSelection()
                             }
@@ -316,25 +293,12 @@ Dialog {
             Layout.bottomMargin: 16
             spacing: 8
 
-            Text {
-                visible: dialog.directoryMode
-                Layout.fillWidth: true
-                text: dialog.selectedDirectory.length > 0
-                    ? dialog.selectedDirectory
-                    : dialog.localPath(dialog.currentFolder)
-                elide: Text.ElideMiddle
-                color: Theme.secondaryTextColor
-                font.family: Theme.textFontFamily
-                font.pixelSize: 12
-            }
-
             CompactTextField {
                 id: fileNameField
-                visible: !dialog.directoryMode
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
                 textPixelSize: 13
-                placeholderText: "wallpaper.png"
+                placeholderText: "avatar.png"
                 onAccepted: dialog.acceptSelection()
             }
 

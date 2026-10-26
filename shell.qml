@@ -455,22 +455,6 @@ Scope {
             shellRoot.forFocusedWindow((window) => window.showTimerWindow());
         }
 
-        function showCustom() {
-            shellRoot.forFocusedWindow((window) => window.showCustomInfoWindow());
-        }
-
-        function showLyrics() {
-            shellRoot.forFocusedWindow((window) => window.showLyricsWindow());
-        }
-
-        function swipeRight() {
-            shellRoot.forFocusedWindow((window) => window.swipeRightWindow());
-        }
-
-        function swipeLeft() {
-            shellRoot.forFocusedWindow((window) => window.swipeLeftWindow());
-        }
-
         function togglePlayer() {
             shellRoot.forFocusedWindow((window) => window.togglePlayerWindow());
         }
