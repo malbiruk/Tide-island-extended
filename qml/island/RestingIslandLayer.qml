@@ -34,7 +34,7 @@ Item {
     readonly property real edgePadding: 12
     readonly property real innerSpacing: 8
     readonly property real coverSize: 20
-    readonly property real musicTextMaxWidth: 360
+    readonly property real musicTextMaxWidth: 480
     readonly property real bellWidth: 22
 
     readonly property real centerSectionWidth: Math.max(minimumCenterWidth, Math.ceil(timeMetrics.advanceWidth) + edgePadding * 2)
