@@ -336,6 +336,22 @@ private slots:
         QCOMPARE(runtime.islandEdge(), QStringLiteral("top"));
     }
 
+    void loadingTightensAReadableFileWithAPassword() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{\"tlpSudoPassword\": \"secret\"}"));
+        const QString path = directory.path() + QStringLiteral("/tide-island/userconfig.json");
+        QVERIFY(QFile::setPermissions(path, QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                                                | QFileDevice::ReadGroup | QFileDevice::ReadOther));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.tlpSudoPassword(), QStringLiteral("secret"));
+        const QFileDevice::Permissions permissions = QFile::permissions(path);
+        QVERIFY(permissions & QFileDevice::ReadOwner);
+        QVERIFY(!(permissions & (QFileDevice::ReadGroup | QFileDevice::ReadOther)));
+    }
+
     void savingKeepsAFileWithAPasswordOwnerOnly() {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());

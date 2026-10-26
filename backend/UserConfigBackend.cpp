@@ -517,6 +517,7 @@ void UserConfigBackend::loadConfig()
                     nextConfigError = QStringLiteral("Invalid JSON in %1: root value must be an object").arg(m_userConfigPath);
                 } else {
                     configObject = document.object();
+                    UserConfigFile::tightenIfSecret(m_userConfigPath, configObject);
                 }
             }
         }
