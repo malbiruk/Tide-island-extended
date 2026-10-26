@@ -108,7 +108,6 @@ Item {
     readonly property bool hyprlandNightLight: CompositorBackend.compositor === "hyprland"
     // Do-not-disturb is tide's own state, persisted as "doNotDisturb" in userconfig.json.
     readonly property bool focusEnabled: UserConfig.doNotDisturb
-    property bool focusBusy: false
 
     property string wifiLocalInfoMessage: ""
     property string wifiLocalError: ""
@@ -2587,7 +2586,6 @@ Item {
                     MouseArea {
                         id: focusButtonMouse
                         anchors.fill: parent
-                        enabled: !controlCenter.focusBusy
                         hoverEnabled: true
                         onClicked: controlCenter.toggleFocus()
                     }
@@ -2605,7 +2603,6 @@ Item {
                             width: 24
                             height: 24
                             scale: focusButtonMouse.pressed ? 0.94 : 1.0
-                            opacity: controlCenter.focusBusy ? 0.5 : 1.0
                             preferredRendererType: Shape.CurveRenderer
 
                             Behavior on scale {
@@ -2658,7 +2655,6 @@ Item {
                         font.family: textFontFamily
                         font.weight: Font.Medium
                         elide: Text.ElideRight
-                        opacity: controlCenter.focusBusy ? 0.5 : 1.0
                     }
                 }
 

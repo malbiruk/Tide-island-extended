@@ -18,7 +18,7 @@ Item {
 
     signal closeRequested()
     signal notificationDismissRequested(var id)
-    signal notificationActivated(var id, string appName, var senderPid, string summary, string body)
+    signal notificationActivated(var id, string appName, var senderPid, string summary, string body, string desktopEntry)
 
     readonly property real headerHeight: 28
     readonly property real listTopGap: 9
@@ -405,7 +405,8 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.notificationActivated(model.id, model.appName || "", model.senderPid || 0, model.summary || "", model.body || "")
+                    onClicked: root.notificationActivated(model.id, model.appName || "", model.senderPid || 0,
+                        model.summary || "", model.body || "", model.desktopEntry || "")
                 }
             }
         }

@@ -21,7 +21,6 @@ Item {
     property var senderPid: 0
     property string iconText: ""
     property bool expanded: false
-    property int toggleButton: Qt.LeftButton
     property var configSource: null
     readonly property var activeConfig: configSource || userConfig
     property string iconFontFamily: activeConfig.iconFontFamily
@@ -306,10 +305,17 @@ Item {
         return "";
     }
 
+    // The body is plain text: escape it first, then turn http(s) links ([text](url) or bare)
+    // into anchors. Nothing else from the sender is interpreted as markup.
     function formatNotificationBody(rawText) {
         if (!rawText) return "";
-        let formatted = rawText.replace(/\[([^\]]+)\]\(["']?([^)"']+)["']?\)/g, '<a href="$2">$1</a>');
-        formatted = formatted.replace(/(^|[^"'>])(https?:\/\/[^\s<]+)/g, '$1<a href="$2">$2</a>');
+        const escaped = String(rawText)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+        let formatted = escaped.replace(/\[([^\]]+)\]\((?:&quot;|')?(https?:\/\/[^)\s"']+?)(?:&quot;|')?\)/g, '<a href="$2">$1</a>');
+        formatted = formatted.replace(/(^|[^"'>=])(https?:\/\/[^\s<]+)/g, '$1<a href="$2">$2</a>');
         return formatted;
     }
     readonly property string combinedPreviewText: {
@@ -332,7 +338,7 @@ Item {
 
     readonly property real compactPreferredWidth: {
         let textW = Math.max(contentMetrics.advanceWidth, titleMetrics.advanceWidth);
-        let extraW = 38 + horizontalPadding * 2 + 12; // icon slot + padding + spacing
+        let extraW = 38 + horizontalPadding * 2 + 12 + 29; // icon slot + padding + spacing + expand chevron
         if (hasOtp) {
             extraW += 120; // OTP pill button
         } else if (hasCompactActions) {
@@ -388,6 +394,7 @@ Item {
     }
 
     Text {
+        textFormat: Text.PlainText
         id: compactContentProbe
         x: -10000
         y: -10000
@@ -472,6 +479,7 @@ Item {
                     }
 
                     Text {
+                        textFormat: Text.PlainText
                         anchors.centerIn: parent
                         visible: compactAvatarImg.status !== Image.Ready && !root.hasResolvedAppIcon
                         text: root.iconText
@@ -545,6 +553,7 @@ Item {
                     }
 
                     Text {
+                        textFormat: Text.PlainText
                         anchors.centerIn: parent
                         visible: !root.hasResolvedAppIcon || appIconImage.status === Image.Error
                         text: root.isAgentNotification ? "✦" : (root.urgency === 2 ? "" : root.iconText)
@@ -565,6 +574,7 @@ Item {
                 clip: true
 
                 Text {
+                    textFormat: Text.PlainText
                     id: compactTitleText
                     width: parent.width
                     text: root.displayTitle
@@ -578,6 +588,7 @@ Item {
                 }
 
                 Text {
+                    textFormat: Text.PlainText
                     id: compactBodyText
                     width: parent.width
                     visible: root.displayBody !== ""
@@ -625,6 +636,7 @@ Item {
                             spacing: 5
 
                             Text {
+                                textFormat: Text.PlainText
                                 text: root.otpCopied ? "✓" : "📋"
                                 font.pixelSize: 11
                                 font.family: root.textFontFamily
@@ -633,6 +645,7 @@ Item {
                             }
 
                             Text {
+                                textFormat: Text.PlainText
                                 text: root.otpCopied ? "Copied!" : ("Copy " + root.extractedOtp)
                                 font.pixelSize: 11
                                 font.family: root.textFontFamily
@@ -694,6 +707,7 @@ Item {
 
                             // Circular Focus Icon (↗)
                             Text {
+                                textFormat: Text.PlainText
                                 anchors.centerIn: parent
                                 visible: inlineBtn.isFocusAction
                                 text: "↗"
@@ -713,6 +727,7 @@ Item {
                                 spacing: 4
 
                                 Text {
+                                    textFormat: Text.PlainText
                                     visible: inlineBtn.isPositive || inlineBtn.isNegative
                                     text: inlineBtn.isPositive ? "✓" : "✕"
                                     font.pixelSize: 10
@@ -723,6 +738,7 @@ Item {
                                 }
 
                                 Text {
+                                    textFormat: Text.PlainText
                                     text: inlineBtn.btnText
                                     color: StyleTokens.textPrimaryBright
                                     font.pixelSize: 11
@@ -741,6 +757,32 @@ Item {
                             }
                         }
                     }
+                }
+            }
+
+            // --- Expand: the body itself acts on the notification ---
+            Item {
+                visible: root.hasOverflowContent
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: 18
+                Layout.preferredHeight: 28
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u{F0140}"
+                    textFormat: Text.PlainText
+                    color: expandMouse.containsMouse ? StyleTokens.textPrimary : StyleTokens.textMuted
+                    font.family: root.iconFontFamily
+                    font.pixelSize: 14
+                }
+
+                MouseArea {
+                    id: expandMouse
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.expansionToggleRequested()
                 }
             }
         }
@@ -824,6 +866,7 @@ Item {
                         }
 
                         Text {
+                            textFormat: Text.PlainText
                             anchors.centerIn: parent
                             visible: !root.hasSenderAvatar && (!root.hasResolvedAppIcon || appIconHeaderImage.status === Image.Error)
                             text: root.isAgentNotification ? "✦" : (root.urgency === 2 ? "" : root.iconText)
@@ -843,6 +886,7 @@ Item {
                     Row {
                         spacing: 6
                         Text {
+                            textFormat: Text.PlainText
                             text: root.appName !== "" ? root.appName : "Notification"
                             color: StyleTokens.textPrimaryBright
                             font.pixelSize: 12
@@ -851,6 +895,7 @@ Item {
                         }
 
                         Text {
+                            textFormat: Text.PlainText
                             text: "•"
                             color: StyleTokens.textMuted
                             font.pixelSize: 10
@@ -858,6 +903,7 @@ Item {
                         }
 
                         Text {
+                            textFormat: Text.PlainText
                             text: root.isAgentNotification
                                 ? "Agent Prompt"
                                 : (root.isMessagingApp ? "Message" : (root.urgency === 2 ? "High Priority" : "Just now"))
@@ -871,7 +917,30 @@ Item {
                     }
                 }
 
+                // Collapse back to the compact popup
+                Item {
+                    Layout.preferredWidth: 18
+                    Layout.preferredHeight: 28
+                    Layout.alignment: Qt.AlignVCenter
 
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\u{F0143}"
+                        textFormat: Text.PlainText
+                        color: collapseMouse.containsMouse ? StyleTokens.textPrimary : StyleTokens.textMuted
+                        font.family: root.iconFontFamily
+                        font.pixelSize: 14
+                    }
+
+                    MouseArea {
+                        id: collapseMouse
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.expansionToggleRequested()
+                    }
+                }
             }
 
             // Divider Line
@@ -899,6 +968,7 @@ Item {
 
                     // Title / Summary
                     Text {
+                        textFormat: Text.PlainText
                         id: expandedSummaryText
                         width: parent.width
                         text: root.displayTitle
@@ -919,7 +989,8 @@ Item {
                         textFormat: Text.StyledText
                         linkColor: StyleTokens.accent
                         onLinkActivated: function(link) {
-                            Qt.openUrlExternally(link);
+                            if (/^https?:\/\//i.test(link))
+                                Qt.openUrlExternally(link);
                         }
                         color: StyleTokens.textSecondary
                         font.pixelSize: 12
@@ -951,6 +1022,7 @@ Item {
                                 spacing: 1
 
                                 Text {
+                                    textFormat: Text.PlainText
                                     text: root.extractedOtp
                                     color: StyleTokens.textPrimaryBright
                                     font.pixelSize: 17
@@ -960,6 +1032,7 @@ Item {
                                 }
 
                                 Text {
+                                    textFormat: Text.PlainText
                                     text: root.otpCopied ? "✓ Copied to clipboard!" : "Verification code detected"
                                     color: root.otpCopied ? StyleTokens.success : StyleTokens.textMuted
                                     font.pixelSize: 11
@@ -978,6 +1051,7 @@ Item {
                                 border.width: 1
 
                                 Text {
+                                    textFormat: Text.PlainText
                                     id: otpCardBtnText
                                     anchors.centerIn: parent
                                     text: root.otpCopied ? "Copied" : "Copy Code"
@@ -1076,6 +1150,7 @@ Item {
                             spacing: 5
 
                             Text {
+                                textFormat: Text.PlainText
                                 visible: expandedActionBtn.isPositive || expandedActionBtn.isNegative || expandedActionBtn.isFocusAction
                                 text: expandedActionBtn.isFocusAction ? "↗" : (expandedActionBtn.isPositive ? "✓" : "✕")
                                 font.pixelSize: expandedActionBtn.isFocusAction ? 13 : 11
@@ -1088,6 +1163,7 @@ Item {
                             }
 
                             Text {
+                                textFormat: Text.PlainText
                                 text: expandedActionBtn.isFocusAction ? "Focus Window" : expandedActionBtn.btnText
                                 color: expandedActionBtn.isPositive
                                     ? StyleTokens.success
@@ -1121,6 +1197,7 @@ Item {
                     border.width: 1
 
                     Text {
+                        textFormat: Text.PlainText
                         id: dismissLabel
                         anchors.centerIn: parent
                         text: "Dismiss"
@@ -1140,12 +1217,5 @@ Item {
                 }
             }
         }
-    }
-
-    // Tap outside interactive buttons toggles expansion
-    TapHandler {
-        enabled: root.hasOverflowContent
-        acceptedButtons: root.toggleButton
-        onTapped: root.expansionToggleRequested()
     }
 }

@@ -60,15 +60,19 @@ Scope {
     // --- Notification daemon ---------------------------------------------------------------
     // tide-island owns org.freedesktop.Notifications. Every notification stays tracked (and in
     // the history) until it is dismissed in tide or closed by the sending app; a popup timing
-    // out only hides the popup.
+    // out only hides the popup. Transient notifications only pop up and then expire.
     readonly property int maxTrackedNotifications: 50
+    readonly property int transientNotificationLifetimeMs: 15000
     property var trackedNotifications: ({})
+    property var notificationUpdatedAt: ({})
+    property var transientNotificationShownAt: ({})
+    property int internalNotificationSerial: 0
 
     NotificationServer {
         id: notificationServer
 
         bodySupported: true
-        // Markup is stripped to plain text before display, so advertising it is safe.
+        // Markup is reduced to plain text (links stay clickable) before display.
         bodyMarkupSupported: true
         actionsSupported: true
         imageSupported: true
@@ -85,62 +89,160 @@ Scope {
         onTriggered: SystemServices.logNotificationDaemonOwner()
     }
 
-    function receiveNotification(notification) {
-        notification.tracked = true;
-        const id = notification.id;
-        trackedNotifications[id] = notification;
-
-        notification.closed.connect(function() {
-            shellRoot.forgetNotification(id);
-        });
-        // replaces_id updates the same object in place: refresh its popup/history entry.
-        const refresh = function() {
-            Qt.callLater(shellRoot.presentNotification, notification, false);
-        };
-        notification.summaryChanged.connect(refresh);
-        notification.bodyChanged.connect(refresh);
-        notification.imageChanged.connect(refresh);
-        notification.actionsChanged.connect(refresh);
-
-        // Notifications re-emitted after a Quickshell reload go to the history only.
-        presentNotification(notification, notification.lastGeneration);
-        trimTrackedNotifications();
+    Timer {
+        id: transientNotificationExpiry
+        interval: 2000
+        repeat: true
+        onTriggered: shellRoot.expireTransientNotifications()
     }
 
-    function presentNotification(notification, historyOnly) {
-        if (!trackedNotifications[notification.id])
-            return;
+    // Ids for tide's own feedback notices; negative so they never collide with daemon ids.
+    function nextInternalNotificationId() {
+        internalNotificationSerial += 1;
+        return -internalNotificationSerial;
+    }
 
+    function notificationRecord(notification) {
         const actions = [];
         const notificationActions = notification.actions || [];
         for (let i = 0; i < notificationActions.length; i++)
             actions.push({ id: notificationActions[i].identifier, text: notificationActions[i].text });
 
-        const urgency = Number(notification.urgency);
-        // Do-not-disturb: no popups except critical ones; everything still goes to the history.
-        const popup = !historyOnly && (!focusEnabled || urgency === NotificationUrgency.Critical);
-        shellRoot.forEachWindow((window) => {
-            if (popup && window.showNotification)
-                window.showNotification(notification.id, notification.appName, notification.appIcon,
-                    notification.summary, notification.body, actions, notification.image, urgency, 0);
-            else if (!popup && window.recordNotification)
-                window.recordNotification(notification.id, notification.appName, notification.appIcon,
-                    notification.summary, notification.body, actions, notification.image, urgency, 0);
+        const hints = notification.hints || {};
+        const senderPid = Number(hints["sender-pid"]);
+        return {
+            id: notification.id,
+            appName: notification.appName,
+            appIcon: notification.appIcon,
+            summary: notification.summary,
+            body: notification.body,
+            actions: actions,
+            imagePath: notification.image,
+            urgency: Number(notification.urgency),
+            senderPid: Number.isFinite(senderPid) && senderPid > 0 ? Math.floor(senderPid) : 0,
+            desktopEntry: notification.desktopEntry || "",
+            transient: !!notification.transient
+        };
+    }
+
+    function receiveNotification(notification) {
+        notification.tracked = true;
+        const id = notification.id;
+        trackedNotifications[id] = notification;
+        notificationUpdatedAt[id] = Date.now();
+
+        notification.closed.connect(function() {
+            shellRoot.forgetNotification(id);
         });
+
+        // replaces_id updates the same object in place. Each notification gets its own closure,
+        // so Qt.callLater coalesces one notification's burst of changes without dropping others.
+        let shownUrgency = Number(notification.urgency);
+        const update = function() {
+            if (!shellRoot.trackedNotifications[id])
+                return;
+            shellRoot.notificationUpdatedAt[id] = Date.now();
+            const urgency = Number(notification.urgency);
+            const escalated = urgency > shownUrgency;
+            shownUrgency = Math.max(shownUrgency, urgency);
+            shellRoot.presentNotification(notification, escalated ? "popup" : "update");
+        };
+        const scheduleUpdate = function() {
+            Qt.callLater(update);
+        };
+        notification.summaryChanged.connect(scheduleUpdate);
+        notification.bodyChanged.connect(scheduleUpdate);
+        notification.imageChanged.connect(scheduleUpdate);
+        notification.actionsChanged.connect(scheduleUpdate);
+        notification.urgencyChanged.connect(scheduleUpdate);
+        notification.appIconChanged.connect(scheduleUpdate);
+        notification.appNameChanged.connect(scheduleUpdate);
+
+        // Notifications re-emitted after a Quickshell reload go to the history only.
+        presentNotification(notification, notification.lastGeneration ? "history" : "popup");
+        if (!notification.lastGeneration)
+            supersedeDuplicates(notification);
+        trimTrackedNotifications();
+    }
+
+    // mode: "popup" (new or escalated), "update" (content changed: refresh in place, no new
+    // popup), "history" (record only).
+    function presentNotification(notification, mode) {
+        if (!trackedNotifications[notification.id])
+            return;
+
+        const record = notificationRecord(notification);
+        // Do-not-disturb: no popups except critical ones; everything still goes to the history.
+        if (mode === "popup" && focusEnabled && record.urgency !== NotificationUrgency.Critical)
+            mode = "history";
+
+        if (record.transient) {
+            // Transient: a popup only, never history.
+            if (mode === "history") {
+                notification.expire();
+                return;
+            }
+            if (mode === "popup") {
+                transientNotificationShownAt[record.id] = Date.now();
+                transientNotificationExpiry.start();
+            }
+        }
+
+        shellRoot.forEachWindow((window) => {
+            if (window.presentNotificationRecord)
+                window.presentNotificationRecord(record, mode);
+        });
+    }
+
+    function expireTransientNotifications() {
+        const now = Date.now();
+        const ids = Object.keys(transientNotificationShownAt);
+        for (let i = 0; i < ids.length; i++) {
+            if (now - transientNotificationShownAt[ids[i]] < transientNotificationLifetimeMs)
+                continue;
+            const notification = trackedNotifications[ids[i]];
+            delete transientNotificationShownAt[ids[i]];
+            if (notification)
+                notification.expire();
+        }
+        if (Object.keys(transientNotificationShownAt).length === 0)
+            transientNotificationExpiry.stop();
+    }
+
+    // A new notification with the same content as older ones replaces them in the history
+    // (counted there), so close the superseded ones for their senders too.
+    function supersedeDuplicates(notification) {
+        if (notification.transient)
+            return;
+        const ids = Object.keys(trackedNotifications);
+        for (let i = 0; i < ids.length; i++) {
+            const other = trackedNotifications[ids[i]];
+            if (!other || other.id === notification.id || other.transient)
+                continue;
+            if (other.appName === notification.appName && other.summary === notification.summary
+                    && other.body === notification.body)
+                other.dismiss();
+        }
     }
 
     function forgetNotification(id) {
         delete trackedNotifications[id];
+        delete notificationUpdatedAt[id];
+        delete transientNotificationShownAt[id];
         shellRoot.forEachWindow((window) => {
             if (window.removeNotification)
                 window.removeNotification(id);
         });
     }
 
+    // Keep at most maxTrackedNotifications (transient ones don't count); the least recently
+    // updated go first.
     function trimTrackedNotifications() {
-        const ids = Object.keys(trackedNotifications).map(Number).sort((a, b) => a - b);
+        const ids = Object.keys(trackedNotifications)
+            .filter((key) => !trackedNotifications[key].transient)
+            .sort((a, b) => notificationUpdatedAt[a] - notificationUpdatedAt[b]);
         for (let i = 0; i < ids.length - maxTrackedNotifications; i++)
-            dismissNotification(ids[i]);
+            dismissNotification(Number(ids[i]));
     }
 
     // Dismiss in tide: tells the sender (NotificationClosed) and removes it everywhere.
@@ -152,10 +254,14 @@ Scope {
             forgetNotification(id);
     }
 
-    function dismissAllNotifications() {
+    function clearAllNotifications() {
         const ids = Object.keys(trackedNotifications);
         for (let i = 0; i < ids.length; i++)
             dismissNotification(Number(ids[i]));
+        shellRoot.forEachWindow((window) => {
+            if (window.clearNotificationHistory)
+                window.clearNotificationHistory();
+        });
     }
 
     function invokeNotificationAction(id, actionKey) {
@@ -172,14 +278,9 @@ Scope {
         return false;
     }
 
-    function notificationHasAction(id, actionKey) {
+    function notificationIsResident(id) {
         const notification = trackedNotifications[id];
-        const notificationActions = notification ? (notification.actions || []) : [];
-        for (let i = 0; i < notificationActions.length; i++) {
-            if (notificationActions[i].identifier === actionKey)
-                return true;
-        }
-        return false;
+        return !!(notification && notification.resident);
     }
 
     function anyOverviewOpen() {

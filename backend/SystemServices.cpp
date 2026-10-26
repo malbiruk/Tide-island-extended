@@ -433,17 +433,12 @@ void SystemServices::startBusMonitor() {
         m_busMonitor->deleteLater();
         m_busMonitor = nullptr;
         m_busMonitorBuffer.clear();
-        m_notificationCaptureActive = false;
         m_pendingScreenCastMember.clear();
         m_pendingSessionCandidate.clear();
         if (!m_shuttingDown)
             m_busMonitorRestartTimer.start();
     });
     m_busMonitor->start();
-}
-
-void SystemServices::startNotificationMonitor() {
-    startBusMonitor();
 }
 
 void SystemServices::startPipeWireMonitor() {
@@ -501,11 +496,6 @@ void SystemServices::handleBusMonitorOutput() {
 void SystemServices::handleBusMonitorLine(const QString &line) {
     if (line.isEmpty()) return;
     handleRecordingPortalLine(line);
-    handleNotificationLine(line);
-}
-
-void SystemServices::handleNotificationOutput() {
-    handleBusMonitorOutput();
 }
 
 void SystemServices::handlePipeWireOutput() {
@@ -517,284 +507,6 @@ void SystemServices::handlePipeWireOutput() {
 
 void SystemServices::handleRecordingPortalOutput() {
     handleBusMonitorOutput();
-}
-
-QString SystemServices::decodeEscapedString(const QString &escaped) const {
-    QString decoded;
-    decoded.reserve(escaped.size());
-
-    for (int i = 0; i < escaped.size(); ++i) {
-        const QChar ch = escaped.at(i);
-        if (ch != QLatin1Char('\\') || i + 1 >= escaped.size()) {
-            decoded.append(ch);
-            continue;
-        }
-
-        const QChar next = escaped.at(++i);
-        if (next == QLatin1Char('n')) decoded.append(QLatin1Char('\n'));
-        else if (next == QLatin1Char('r')) decoded.append(QLatin1Char('\r'));
-        else if (next == QLatin1Char('t')) decoded.append(QLatin1Char('\t'));
-        else if (next == QLatin1Char('\"')) decoded.append(QLatin1Char('\"'));
-        else if (next == QLatin1Char('\\')) decoded.append(QLatin1Char('\\'));
-        else decoded.append(next);
-    }
-
-    return decoded;
-}
-
-bool SystemServices::extractDbusString(const QString &line, QString &result) {
-    if (m_pendingNotificationInString) {
-        if (line.endsWith(QLatin1Char('\"')) && !line.endsWith(QStringLiteral("\\\""))) {
-            m_pendingNotificationStringAccumulator.append(QLatin1Char('\n'));
-            m_pendingNotificationStringAccumulator.append(line.left(line.size() - 1));
-            result = decodeEscapedString(m_pendingNotificationStringAccumulator);
-            m_pendingNotificationInString = false;
-            m_pendingNotificationStringAccumulator.clear();
-            return true;
-        } else {
-            m_pendingNotificationStringAccumulator.append(QLatin1Char('\n'));
-            m_pendingNotificationStringAccumulator.append(line);
-            return false;
-        }
-    }
-
-    static const QRegularExpression singleLinePattern(QStringLiteral("^\\s*string \"(.*)\"\\s*$"));
-    const QRegularExpressionMatch singleMatch = singleLinePattern.match(line);
-    if (singleMatch.hasMatch()) {
-        result = decodeEscapedString(singleMatch.captured(1));
-        return true;
-    }
-
-    static const QRegularExpression multiLineStartPattern(QStringLiteral("^\\s*string \"(.*)$"));
-    const QRegularExpressionMatch startMatch = multiLineStartPattern.match(line);
-    if (startMatch.hasMatch()) {
-        m_pendingNotificationInString = true;
-        m_pendingNotificationStringAccumulator = startMatch.captured(1);
-        return false;
-    }
-
-    return false;
-}
-
-QString SystemServices::decodeDbusMonitorString(const QString &line) const {
-    static const QRegularExpression stringPattern(QStringLiteral("^\\s*string \"(.*)\"\\s*$"));
-    const QRegularExpressionMatch match = stringPattern.match(line);
-    if (!match.hasMatch()) return QString();
-    return decodeEscapedString(match.captured(1));
-}
-
-void SystemServices::handleNotificationLine(const QString &line) {
-    if (line.isEmpty()) return;
-
-    if (line.startsWith(QLatin1String("method call")) || line.startsWith(QLatin1String("method_call")) || line.startsWith(QLatin1String("signal "))) {
-        if (!line.contains(QStringLiteral("member=Notify"))) {
-            m_notificationCaptureActive = false;
-            m_notificationCaptureStage = -1;
-            return;
-        }
-    }
-
-    if (line.contains(QStringLiteral("member=Notify"))) {
-        m_notificationCaptureActive = true;
-        m_notificationCaptureStage = 0;
-        m_pendingNotificationId = ++m_nextNotificationId;
-        m_pendingNotificationReplacesId = 0;
-        m_pendingNotificationAppName.clear();
-        m_pendingNotificationAppIcon.clear();
-        m_pendingNotificationSummary.clear();
-        m_pendingNotificationBody.clear();
-        m_pendingNotificationActions.clear();
-        m_pendingNotificationActionKey.clear();
-        m_pendingNotificationImagePath.clear();
-        m_pendingNotificationUrgency = 1;
-        m_pendingNotificationSenderPid = 0;
-        m_pendingHintKey.clear();
-        m_pendingNotificationInString = false;
-        m_pendingNotificationStringAccumulator.clear();
-
-        static const QRegularExpression senderPattern(QStringLiteral("\\bsender=(:[0-9\\.]+)"));
-        const QRegularExpressionMatch senderMatch = senderPattern.match(line);
-        if (senderMatch.hasMatch()) {
-            const QString senderBusName = senderMatch.captured(1);
-            QDBusConnectionInterface *iface = QDBusConnection::sessionBus().interface();
-            if (iface) {
-                QDBusReply<uint> reply = iface->servicePid(senderBusName);
-                if (reply.isValid() && reply.value() > 0) {
-                    m_pendingNotificationSenderPid = reply.value();
-                }
-            }
-        }
-        return;
-    }
-
-    if (!m_notificationCaptureActive) return;
-
-    QString parsedString;
-
-    switch (m_notificationCaptureStage) {
-    case 0: // app_name
-        if (!extractDbusString(line, parsedString)) return;
-        m_pendingNotificationAppName = parsedString;
-        m_notificationCaptureStage = 1;
-        return;
-    case 1: // replaces_id (uint32)
-        if (line.contains(QStringLiteral("uint32 "))) {
-            const QString numStr = line.section(QStringLiteral("uint32 "), 1, 1).trimmed();
-            bool ok = false;
-            const uint idVal = numStr.toUInt(&ok);
-            if (ok && idVal > 0) {
-                m_pendingNotificationReplacesId = idVal;
-                m_pendingNotificationId = idVal;
-            }
-            m_notificationCaptureStage = 2;
-        }
-        return;
-    case 2: // app_icon
-        if (!extractDbusString(line, parsedString)) return;
-        m_pendingNotificationAppIcon = parsedString;
-        m_notificationCaptureStage = 3;
-        return;
-    case 3: // summary
-        if (!extractDbusString(line, parsedString)) return;
-        m_pendingNotificationSummary = parsedString;
-        m_notificationCaptureStage = 4;
-        return;
-    case 4: // body
-        if (!extractDbusString(line, parsedString)) return;
-        m_pendingNotificationBody = parsedString;
-        m_notificationCaptureStage = 5;
-        return;
-    case 5: // actions array
-        if (line.trimmed() == QStringLiteral("]")) {
-            m_notificationCaptureStage = 6;
-            return;
-        }
-        if (extractDbusString(line, parsedString)) {
-            if (m_pendingNotificationActionKey.isEmpty()) {
-                m_pendingNotificationActionKey = parsedString;
-            } else {
-                const QString lowerKey = m_pendingNotificationActionKey.toLower();
-                const QString lowerText = parsedString.toLower();
-                if (lowerKey != QStringLiteral("settings")
-                    && lowerKey != QStringLiteral("app-settings")
-                    && lowerText != QStringLiteral("settings")
-                    && lowerText != QStringLiteral("configure")) {
-                    QVariantMap act;
-                    act.insert(QStringLiteral("id"), m_pendingNotificationActionKey);
-                    act.insert(QStringLiteral("text"), parsedString);
-                    m_pendingNotificationActions.append(act);
-                }
-                m_pendingNotificationActionKey.clear();
-            }
-        }
-        return;
-    case 6: // hints dictionary
-        if (line.trimmed() == QStringLiteral("]")) {
-            if (m_pendingNotificationImagePath.isEmpty()
-                && (m_pendingNotificationAppIcon.startsWith(QLatin1Char('/'))
-                    || m_pendingNotificationAppIcon.startsWith(QStringLiteral("file://")))) {
-                m_pendingNotificationImagePath = m_pendingNotificationAppIcon;
-            }
-
-            m_pendingNotificationImagePath = cacheNotificationImage(m_pendingNotificationImagePath, m_pendingNotificationId);
-            if (m_pendingNotificationAppIcon.startsWith(QLatin1Char('/'))
-                || m_pendingNotificationAppIcon.startsWith(QStringLiteral("file://"))) {
-                m_pendingNotificationAppIcon = cacheNotificationImage(m_pendingNotificationAppIcon, m_pendingNotificationId);
-            }
-
-            emit notificationReceived(m_pendingNotificationId,
-                                      m_pendingNotificationAppName,
-                                      m_pendingNotificationAppIcon,
-                                      m_pendingNotificationSummary,
-                                      m_pendingNotificationBody,
-                                      m_pendingNotificationActions,
-                                      m_pendingNotificationImagePath,
-                                      m_pendingNotificationUrgency,
-                                      m_pendingNotificationSenderPid);
-            m_notificationCaptureActive = false;
-            m_notificationCaptureStage = -1;
-            return;
-        }
-        if (line.contains(QStringLiteral("string \"image-path\""))
-            || line.contains(QStringLiteral("string \"image_path\""))
-            || line.contains(QStringLiteral("string \"sender-avatar\""))
-            || line.contains(QStringLiteral("string \"x-kde-avatar\""))
-            || line.contains(QStringLiteral("string \"avatar-path\""))
-            || line.contains(QStringLiteral("string \"image-data\""))
-            || line.contains(QStringLiteral("string \"icon_data\""))) {
-            m_pendingHintKey = QStringLiteral("image-path");
-            return;
-        }
-        if (line.contains(QStringLiteral("string \"sender-pid\""))) {
-            m_pendingHintKey = QStringLiteral("sender-pid");
-            return;
-        }
-        if (line.contains(QStringLiteral("string \"urgency\""))) {
-            m_pendingHintKey = QStringLiteral("urgency");
-            return;
-        }
-        if (line.contains(QStringLiteral("string \"desktop-entry\""))) {
-            m_pendingHintKey = QStringLiteral("desktop-entry");
-            return;
-        }
-        if (!m_pendingHintKey.isEmpty()) {
-            if (m_pendingHintKey == QStringLiteral("image-path")) {
-                if (line.contains(QStringLiteral("variant")) && line.contains(QStringLiteral("string "))) {
-                    static const QRegularExpression variantStringPattern(QStringLiteral("variant\\s+string\\s+\"(.*)\""));
-                    const QRegularExpressionMatch m = variantStringPattern.match(line);
-                    if (m.hasMatch()) {
-                        m_pendingNotificationImagePath = decodeEscapedString(m.captured(1));
-                    }
-                    m_pendingHintKey.clear();
-                }
-            } else if (m_pendingHintKey == QStringLiteral("sender-pid")) {
-                if (line.contains(QStringLiteral("int64 ")) || line.contains(QStringLiteral("uint32 ")) || line.contains(QStringLiteral("int32 "))) {
-                    const QString numStr = line.section(QLatin1Char(' '), -1, -1).trimmed();
-                    bool ok = false;
-                    const qint64 pidVal = numStr.toLongLong(&ok);
-                    if (ok && pidVal > 0) m_pendingNotificationSenderPid = pidVal;
-                    m_pendingHintKey.clear();
-                }
-            } else if (m_pendingHintKey == QStringLiteral("urgency")) {
-                if (line.contains(QStringLiteral("byte "))) {
-                    const QString bStr = line.section(QStringLiteral("byte "), 1, 1).trimmed();
-                    bool ok = false;
-                    const int urg = bStr.toInt(&ok);
-                    if (ok) m_pendingNotificationUrgency = urg;
-                    m_pendingHintKey.clear();
-                }
-            } else if (m_pendingHintKey == QStringLiteral("desktop-entry")) {
-                if (line.contains(QStringLiteral("variant")) && line.contains(QStringLiteral("string "))) {
-                    static const QRegularExpression variantStringPattern(QStringLiteral("variant\\s+string\\s+\"(.*)\""));
-                    const QRegularExpressionMatch m = variantStringPattern.match(line);
-                    if (m.hasMatch() && m_pendingNotificationAppIcon.isEmpty()) {
-                        m_pendingNotificationAppIcon = decodeEscapedString(m.captured(1));
-                    }
-                    m_pendingHintKey.clear();
-                }
-            }
-        }
-        return;
-    default:
-        m_notificationCaptureActive = false;
-        m_notificationCaptureStage = -1;
-        return;
-    }
-}
-
-void SystemServices::invokeNotificationAction(uint id, const QString &actionKey) {
-    QDBusMessage msg = QDBusMessage::createSignal(
-        QStringLiteral("/org/freedesktop/Notifications"),
-        QStringLiteral("org.freedesktop.Notifications"),
-        QStringLiteral("ActionInvoked")
-    );
-    msg << id << actionKey;
-    QDBusConnection::sessionBus().send(msg);
-
-    const QString dunstctl = findExecutable(QStringLiteral("dunstctl"));
-    if (!dunstctl.isEmpty()) {
-        startCommand(dunstctl, {QStringLiteral("action")}, 1000, nullptr);
-    }
 }
 
 // Called from shell.qml shortly after startup so the journal shows who serves notifications
@@ -823,21 +535,6 @@ void SystemServices::logNotificationDaemonOwner() const {
                                            "once that process releases the name").arg(name, owner).arg(ownerPid);
 }
 
-void SystemServices::closeNotification(uint id, uint reason) {
-    QDBusMessage msg = QDBusMessage::createSignal(
-        QStringLiteral("/org/freedesktop/Notifications"),
-        QStringLiteral("org.freedesktop.Notifications"),
-        QStringLiteral("NotificationClosed")
-    );
-    msg << id << reason;
-    QDBusConnection::sessionBus().send(msg);
-
-    const QString dunstctl = findExecutable(QStringLiteral("dunstctl"));
-    if (!dunstctl.isEmpty()) {
-        startCommand(dunstctl, {QStringLiteral("close"), QString::number(id)}, 1000, nullptr);
-    }
-}
-
 void SystemServices::copyToClipboard(const QString &text) {
     if (text.isEmpty()) return;
 
@@ -852,51 +549,6 @@ void SystemServices::copyToClipboard(const QString &text) {
             cb->setText(text, QClipboard::Selection);
         }
     }
-}
-
-QString SystemServices::cacheNotificationImage(const QString &sourcePath, uint notifId)
-{
-    if (sourcePath.isEmpty()) return QString();
-
-    QString localPath = sourcePath;
-    if (localPath.startsWith(QLatin1String("file://"))) {
-        localPath = QUrl(sourcePath).toLocalFile();
-    }
-    if (!localPath.startsWith(QLatin1Char('/'))) {
-        return sourcePath;
-    }
-
-    QFileInfo fi(localPath);
-    if (!fi.exists() || !fi.isFile()) {
-        return sourcePath;
-    }
-
-    // Cache temporary notification files (e.g. from browsers in /tmp or /var/tmp) so they persist in history
-    if (localPath.startsWith(QLatin1String("/tmp/"))
-        || localPath.startsWith(QLatin1String("/var/tmp/"))
-        || localPath.contains(QLatin1String("scoped_dir"))) {
-        const QString cacheDir = QDir::homePath() + QStringLiteral("/.cache/tide-island/notification-icons");
-        QDir().mkpath(cacheDir);
-
-        const QString ext = fi.suffix().isEmpty() ? QStringLiteral("png") : fi.suffix();
-        const QString destPath = QStringLiteral("%1/%2_%3.%4")
-            .arg(cacheDir)
-            .arg(notifId)
-            .arg(QDateTime::currentMSecsSinceEpoch())
-            .arg(ext);
-
-        if (QFile::copy(localPath, destPath)) {
-            // Keep directory bounded to ~100 files
-            QDir cDir(cacheDir);
-            QFileInfoList list = cDir.entryInfoList(QDir::Files, QDir::Time);
-            while (list.size() > 100) {
-                QFile::remove(list.takeLast().absoluteFilePath());
-            }
-            return destPath;
-        }
-    }
-
-    return sourcePath;
 }
 
 QList<qint64> SystemServices::processAncestorPids(qint64 pid) const {
@@ -920,7 +572,35 @@ QList<qint64> SystemServices::processAncestorPids(qint64 pid) const {
     return list;
 }
 
-void SystemServices::focusSenderWindow(const QString &appName, qint64 pid, const QString &summary, const QString &body) {
+// driftwm: `driftwm msg focus <query>` focuses a window whose app_id contains the query
+// (case-insensitive) and exits non-zero when nothing matches, so candidates are tried in turn.
+void SystemServices::focusWithDriftwm(QStringList queries) {
+    while (!queries.isEmpty() && queries.first().trimmed().isEmpty())
+        queries.removeFirst();
+    if (queries.isEmpty())
+        return;
+
+    const QString query = queries.takeFirst().trimmed();
+    queries.removeAll(query);
+    startCommand(QStringLiteral("driftwm"), {QStringLiteral("msg"), QStringLiteral("focus"), query}, 2000,
+        [this, queries](const CommandResult &result) {
+            if (!result.errorString.isEmpty() || result.exitStatus != QProcess::NormalExit || result.exitCode != 0)
+                focusWithDriftwm(queries);
+        });
+}
+
+void SystemServices::focusSenderWindow(const QString &appName, qint64 pid, const QString &summary, const QString &body,
+                                       const QString &desktopEntry) {
+    const QString compositorOverride = QString::fromLocal8Bit(qgetenv("TIDE_ISLAND_COMPOSITOR")).toLower();
+    const bool isDriftwm = compositorOverride == QStringLiteral("driftwm")
+        || (compositorOverride.isEmpty()
+            && (QString::fromLocal8Bit(qgetenv("XDG_CURRENT_DESKTOP")).toLower().contains(QStringLiteral("driftwm"))
+                || !qgetenv("DRIFTWM_SOCKET").isEmpty()));
+    if (isDriftwm) {
+        focusWithDriftwm({desktopEntry, appName});
+        return;
+    }
+
     // 1. Resolve ancestor PIDs if PID is known (e.g. notify-send -> bash -> kitty)
     QList<qint64> ancestorPids;
     if (pid > 0) {
@@ -1058,10 +738,11 @@ void SystemServices::focusSenderWindow(const QString &appName, qint64 pid, const
                 const QString wAppId = w.value(QStringLiteral("app_id")).toString().toLower();
                 const QString wTitle = w.value(QStringLiteral("title")).toString().toLower();
 
-                bool classMatch = cleanAppLower.isEmpty()
-                    || wAppId.contains(cleanAppLower)
-                    || cleanAppLower.contains(wAppId)
-                    || wTitle.contains(cleanAppLower);
+                // An empty app name must not match every window.
+                bool classMatch = !cleanAppLower.isEmpty()
+                    && (wAppId.contains(cleanAppLower)
+                        || (!wAppId.isEmpty() && cleanAppLower.contains(wAppId))
+                        || wTitle.contains(cleanAppLower));
 
                 if (!classMatch && !cleanAppLower.isEmpty()) {
                     static const QRegularExpression splitRegex(QStringLiteral("[\\s\\-_.]+"));
@@ -1170,7 +851,7 @@ void SystemServices::focusSenderWindow(const QString &appName, qint64 pid, const
         "  local ic = (w.initialClass or \"\"):lower()\n"
         "  local t = (w.title or \"\"):lower()\n"
         "  local it = (w.initialTitle or \"\"):lower()\n"
-        "  local classMatch = (app == \"\" or c:find(app, 1, true) or ic:find(app, 1, true))\n"
+        "  local classMatch = (app ~= \"\" and (c:find(app, 1, true) or ic:find(app, 1, true)))\n"
         "  if classMatch then\n"
         "    local score = 1\n"
         "    if agentKw ~= \"\" and (t:find(agentKw, 1, true) or it:find(agentKw, 1, true)) then\n"
