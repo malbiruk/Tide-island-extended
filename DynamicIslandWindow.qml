@@ -782,18 +782,20 @@ PanelWindow {
     // capsule, without the control center.
     property bool powerDetailStandalone: false
 
+    // The control center stays hidden but is loaded as the popup's provider; it owns the panel
+    // state (and Escape), as when the popup is opened from its header.
     function toggleStandalonePowerDetail() {
         if (powerDetailStandalone && powerConnectivityDetailOpen) {
-            setConnectivityDetailVisible("power", false);
+            closeConnectivityOverlays();
             return;
         }
         powerDetailStandalone = true;
-        setConnectivityDetailVisible("power", true);
-        SystemServices.requestBatteryThresholdState();
+        powerConnectivityDetailMounted = true;
         const controlCenter = controlCenterLoader.item;
-        if (controlCenter && controlCenter.tlpControlsEnabled)
-            controlCenter.refreshBatteryModeState();
-        islandContainer.forceActiveFocus();
+        if (controlCenter)
+            controlCenter.toggleConnectivityOverlay("power");
+        else
+            setConnectivityDetailVisible("power", true);
     }
 
     function closeConnectivityOverlays() {
@@ -1425,7 +1427,7 @@ PanelWindow {
             if (islandState === "normal" || islandState === "custom" || islandState === "lyrics")
                 hoverExpandedActive = false;
             if (root.powerDetailStandalone && islandState !== "normal")
-                root.setConnectivityDetailVisible("power", false);
+                root.closeConnectivityOverlays();
             if (islandState !== "split") {
                 osdRevealedHiddenIsland = false;
                 if (transientSlideOut) {
@@ -4506,7 +4508,7 @@ PanelWindow {
                 return;
             }
             if (root.powerDetailStandalone)
-                root.setConnectivityDetailVisible("power", false);
+                root.closeConnectivityOverlays();
             else
                 islandContainer.smartRestoreState();
         }
