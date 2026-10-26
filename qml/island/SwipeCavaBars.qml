@@ -1,4 +1,5 @@
 import QtQuick
+import IslandBackend
 
 Item {
     id: root
@@ -8,7 +9,7 @@ Item {
     property real barWidth: 4
     property real barSpacing: 3
     property real minimumBarHeight: 4
-    property color barColor: "white"
+    property color barColor: StyleTokens.textPrimary
 
     implicitWidth: barCount * barWidth + Math.max(0, barCount - 1) * barSpacing
     implicitHeight: 18

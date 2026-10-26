@@ -26,7 +26,7 @@ Item {
 
     Behavior on scale {
         NumberAnimation {
-            duration: 100
+            duration: 60
         }
     }
 

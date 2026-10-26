@@ -29,7 +29,7 @@ FocusScope {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: root.showCondition ? StyleTokens.durationStandard : StyleTokens.durationFast
+            duration: root.showCondition ? Math.round(StyleTokens.durationStandard * 0.6) : Math.round(StyleTokens.durationFast * 0.6)
             easing.type: Easing.InOutQuad
         }
     }
@@ -129,7 +129,7 @@ FocusScope {
                         color: Qt.rgba(0, 0, 0, 0.4)
                         opacity: avatarHover.containsMouse ? 1 : 0
                         visible: opacity > 0
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                        Behavior on opacity { NumberAnimation { duration: 90 } }
 
                         Text {
                             anchors.centerIn: parent
@@ -246,8 +246,8 @@ FocusScope {
                 border.width: 1
                 border.color: updatesHover.containsMouse ? StyleTokens.accent : StyleTokens.inputBorder
 
-                Behavior on border.color { ColorAnimation { duration: 150 } }
-                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 90 } }
+                Behavior on color { ColorAnimation { duration: 90 } }
 
                 Row {
                     id: updatesContentRow
@@ -300,8 +300,8 @@ FocusScope {
                 border.width: 1
                 border.color: batteryHover.containsMouse ? StyleTokens.accent : StyleTokens.inputBorder
 
-                Behavior on border.color { ColorAnimation { duration: 150 } }
-                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 90 } }
+                Behavior on color { ColorAnimation { duration: 90 } }
 
                 readonly property int effectiveCap: (SystemGlance && SystemGlance.batteryCapacity > 0)
                     ? SystemGlance.batteryCapacity
@@ -309,6 +309,9 @@ FocusScope {
                 readonly property bool effectiveCharging: root.isCharging
                     || (SystemGlance && SystemGlance.batteryStatus === "Charging")
                     || (typeof SysBackend !== "undefined" && (SysBackend.batteryStatus === "Charging" || SysBackend.batteryStatus === "Full"))
+                // SystemGlance only reads BAT*/battery* supplies; fall back to SysBackend (e.g. macsmc-battery).
+                readonly property string effectiveStatus: (SystemGlance && SystemGlance.batteryStatus)
+                    || ((typeof SysBackend !== "undefined" && SysBackend.batteryStatus !== "Unknown") ? SysBackend.batteryStatus : "")
                 readonly property bool isConservation: SystemGlance.batteryConservationActive || (SystemServices.batteryConservationMode ?? false)
                 readonly property int effectiveHealth: SystemGlance.batteryHealthPercent > 0 ? SystemGlance.batteryHealthPercent : (SystemServices.batteryHealthPercent || 100)
 
@@ -368,7 +371,7 @@ FocusScope {
                                 return SystemGlance.batteryRateText;
                             if (batteryBadge.effectiveCharging)
                                 return "Charging";
-                            return "Plugged In";
+                            return batteryBadge.effectiveStatus === "Not charging" ? "Plugged In" : "On Battery";
                         }
                         font.family: root.textFontFamily
                         font.pixelSize: 10
@@ -412,7 +415,7 @@ FocusScope {
                     width: tooltipCol.implicitWidth + 20
                     height: tooltipCol.implicitHeight + 14
                     radius: 8
-                    color: Qt.rgba(0.08, 0.08, 0.1, 0.95)
+                    color: StyleTokens.module
                     border.width: 1
                     border.color: StyleTokens.inputBorder
                     opacity: batteryHover.containsMouse ? 1 : 0
@@ -420,7 +423,7 @@ FocusScope {
                     z: 9999
 
                     Behavior on opacity {
-                        NumberAnimation { duration: 150 }
+                        NumberAnimation { duration: 90 }
                     }
 
                     Column {
@@ -437,7 +440,7 @@ FocusScope {
                         }
 
                         Text {
-                            text: "Status: " + (SystemGlance.batteryStatus || (batteryBadge.effectiveCharging ? "Charging" : "Discharging"))
+                            text: "Status: " + (batteryBadge.effectiveStatus || (batteryBadge.effectiveCharging ? "Charging" : "Discharging"))
                             font.family: root.textFontFamily
                             font.pixelSize: 9
                             color: StyleTokens.textPrimaryBright
@@ -485,7 +488,7 @@ FocusScope {
             Rectangle {
                 width: Math.floor((metricGrid.width - metricGrid.spacing) / 2)
                 height: 76
-                radius: 14
+                radius: 10
                 color: StyleTokens.cardFill
                 border.width: 1
                 border.color: StyleTokens.inputBorder
@@ -583,7 +586,7 @@ FocusScope {
                                 : ((SystemGlance.cpuUsage || 0) >= 60 ? StyleTokens.warning : StyleTokens.accent)
 
                             Behavior on width {
-                                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
                             }
                         }
                     }
@@ -596,7 +599,7 @@ FocusScope {
             Rectangle {
                 width: Math.floor((metricGrid.width - metricGrid.spacing) / 2)
                 height: 76
-                radius: 14
+                radius: 10
                 color: StyleTokens.cardFill
                 border.width: 1
                 border.color: StyleTokens.inputBorder
@@ -616,7 +619,7 @@ FocusScope {
                             spacing: 6
 
                             Text {
-                                text: "\uf538"
+                                text: "\u{F035B}" // nf-md-memory (FA5 U+F538 isn't in Nerd Fonts)
                                 font.family: root.iconFontFamily
                                 font.pixelSize: 11
                                 color: "#af52de"
@@ -691,7 +694,7 @@ FocusScope {
                             color: "#af52de"
 
                             Behavior on width {
-                                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
                             }
                         }
                     }
@@ -704,7 +707,7 @@ FocusScope {
             Rectangle {
                 width: Math.floor((metricGrid.width - metricGrid.spacing) / 2)
                 height: 76
-                radius: 14
+                radius: 10
                 color: StyleTokens.cardFill
                 border.width: 1
                 border.color: StyleTokens.inputBorder
@@ -824,7 +827,7 @@ FocusScope {
             Rectangle {
                 width: Math.floor((metricGrid.width - metricGrid.spacing) / 2)
                 height: 76
-                radius: 14
+                radius: 10
                 color: StyleTokens.cardFill
                 border.width: 1
                 border.color: StyleTokens.inputBorder
@@ -906,7 +909,7 @@ FocusScope {
                             color: StyleTokens.warning
 
                             Behavior on width {
-                                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
                             }
                         }
                     }
@@ -921,12 +924,12 @@ FocusScope {
             id: kernelPill
             width: parent.width
             height: 44
-            radius: 14
+            radius: 10
             color: StyleTokens.clearBlack
             border.width: 1
             border.color: kernelHover.containsMouse ? StyleTokens.accent : StyleTokens.inputBorder
 
-            Behavior on border.color { ColorAnimation { duration: 150 } }
+            Behavior on border.color { ColorAnimation { duration: 90 } }
 
             Row {
                 anchors.fill: parent

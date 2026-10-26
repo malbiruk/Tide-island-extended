@@ -36,12 +36,12 @@ Item {
 
         if (nextOpen) {
             revealAnimation.to = 1;
-            revealAnimation.duration = 240;
+            revealAnimation.duration = 140;
             revealAnimation.easing.type = Easing.OutCubic;
             revealAnimation.start();
         } else {
             revealAnimation.to = 0;
-            revealAnimation.duration = 160;
+            revealAnimation.duration = 100;
             revealAnimation.easing.type = Easing.OutCubic;
             revealAnimation.start();
         }

@@ -41,7 +41,7 @@ Item {
         enabled: slideDirection === "none"
 
         NumberAnimation {
-            duration: showCondition ? 280 : 200
+            duration: showCondition ? 170 : 120
             easing.type: Easing.InOutQuad
         }
     }
@@ -60,7 +60,7 @@ Item {
 
             Text {
                 text: iconText
-                color: "white"
+                color: StyleTokens.textPrimary
                 font.pixelSize: userConfig.iconFontSize
                 font.family: iconFontFamily
                 anchors.verticalCenter: parent.verticalCenter
@@ -68,8 +68,8 @@ Item {
 
             Text {
                 text: Math.round(progress * 100) + "%"
-                color: "white"
-                font.pixelSize: userConfig.titleFontSize
+                color: StyleTokens.textPrimary
+                font.pixelSize: userConfig.bodyFontSize
                 font.family: heroFontFamily
                 font.weight: Font.Bold
                 font.letterSpacing: -0.35
@@ -89,8 +89,8 @@ Item {
                 width: 16
                 height: 16
                 radius: 8
-                color: "#111111"
-                border.color: "#1f1f1f"
+                color: StyleTokens.module
+                border.color: StyleTokens.moduleHover
                 border.width: 1
             }
 
@@ -116,12 +116,12 @@ Item {
                     ctx.lineCap = "round";
                     ctx.lineWidth = lineWidth;
 
-                    ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
+                    ctx.strokeStyle = StyleTokens.withAlpha(StyleTokens.textPrimary, 0.16);
                     ctx.beginPath();
                     ctx.arc(center, center, radius, 0, Math.PI * 2, false);
                     ctx.stroke();
 
-                    ctx.strokeStyle = "#ffffff";
+                    ctx.strokeStyle = StyleTokens.textPrimary;
                     ctx.beginPath();
                     ctx.arc(center, center, radius, startAngle, endAngle, false);
                     ctx.stroke();
@@ -142,7 +142,7 @@ Item {
 
             Text {
                 text: iconText
-                color: "white"
+                color: StyleTokens.textPrimary
                 font.pixelSize: userConfig.iconFontSize
                 font.family: iconFontFamily
                 anchors.verticalCenter: parent.verticalCenter
@@ -150,7 +150,7 @@ Item {
 
             Text {
                 text: customText
-                color: "white"
+                color: StyleTokens.textPrimary
                 font.pixelSize: userConfig.bodyFontSize
                 font.family: textFontFamily
                 font.weight: Font.DemiBold

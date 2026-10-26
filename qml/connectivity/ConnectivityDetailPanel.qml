@@ -152,7 +152,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: 140
+                duration: 80
                 easing.type: Easing.OutCubic
             }
         }
@@ -221,7 +221,7 @@ Item {
             Rectangle {
                 width: parent.width
                 height: visible ? 64 : 0
-                radius: 16
+                radius: 10
                 color: StyleTokens.transparent
                 visible: root.isWifi && root.provider && root.provider.wifiEnabled && root.provider.wifiCurrentSsid.length > 0
 
@@ -354,7 +354,7 @@ Item {
                         ? 122
                         : ((root.provider && root.provider.bluetoothPairingRequiresConfirmation) ? 110 : 82))
                     : 0
-                radius: 16
+                radius: 10
                 color: StyleTokens.prompt
                 visible: root.isBluetooth && root.provider && root.provider.bluetoothPairingActive
                 clip: true
@@ -387,7 +387,7 @@ Item {
                         Text {
                             width: parent.width
                             text: root.provider ? root.provider.bluetoothPairingMessage : ""
-                            color: "#d2d4da"
+                            color: StyleTokens.textSecondary
                             font.pixelSize: 11
                             font.family: root.textFontFamily
                             wrapMode: Text.Wrap
@@ -409,7 +409,7 @@ Item {
                                 ? Math.max(0, parent.width - bluetoothPrimaryButton.width - bluetoothCancelButton.width - 16)
                                 : 0
                             height: 34
-                            radius: 12
+                            radius: 10
                             color: StyleTokens.input
                             border.color: StyleTokens.inputBorder
                             border.width: 1
@@ -475,7 +475,7 @@ Item {
                             id: bluetoothPrimaryButton
                             width: root.provider && root.provider.bluetoothPairingRequiresInput ? 50 : 76
                             height: 34
-                            radius: 12
+                            radius: 10
                             color: StyleTokens.accent
 
                             Text {
@@ -483,7 +483,7 @@ Item {
                                 text: root.provider && root.provider.bluetoothPairingRequiresConfirmation
                                     ? "Confirm"
                                     : "Pair"
-                                color: StyleTokens.white
+                                color: StyleTokens.textOnAccent
                                 font.pixelSize: 11
                                 font.family: root.textFontFamily
                                 font.weight: Font.DemiBold
@@ -507,7 +507,7 @@ Item {
                             id: bluetoothCancelButton
                             width: 58
                             height: 34
-                            radius: 12
+                            radius: 10
                             color: StyleTokens.secondaryButton
 
                             Text {
@@ -535,7 +535,7 @@ Item {
                 id: wifiPasswordPrompt
                 width: parent.width
                 height: visible ? 92 : 0
-                radius: 16
+                radius: 10
                 color: StyleTokens.prompt
                 visible: root.isWifi && root.provider && root.provider.wifiPendingPasswordSsid.length > 0
                 clip: true
@@ -567,7 +567,7 @@ Item {
                         anchors.rightMargin: 8
                         anchors.bottom: parent.bottom
                         height: 34
-                        radius: 12
+                        radius: 10
                         color: StyleTokens.input
                         border.color: StyleTokens.inputBorder
                         border.width: 1
@@ -630,13 +630,13 @@ Item {
                         anchors.bottom: parent.bottom
                         width: 50
                         height: 34
-                        radius: 12
+                        radius: 10
                         color: StyleTokens.accent
 
                         Text {
                             anchors.centerIn: parent
                             text: "Join"
-                            color: StyleTokens.white
+                            color: StyleTokens.textOnAccent
                             font.pixelSize: 11
                             font.family: root.textFontFamily
                             font.weight: Font.DemiBold
@@ -657,7 +657,7 @@ Item {
                         anchors.bottom: parent.bottom
                         width: 50
                         height: 34
-                        radius: 12
+                        radius: 10
                         color: StyleTokens.secondaryButton
 
                         Text {
@@ -702,7 +702,7 @@ Item {
                     visible: root.isPower
                     width: parent.width
                     height: 58
-                    radius: 16
+                    radius: 10
                     color: StyleTokens.secondaryButton
 
                     Item {
@@ -817,7 +817,7 @@ Item {
                     visible: root.isPower && SystemServices.batteryThresholdSupported
                     width: parent.width
                     implicitHeight: thresholdContentCol.implicitHeight + 20
-                    radius: 16
+                    radius: 10
                     color: StyleTokens.secondaryButton
 
                     Column {
@@ -883,7 +883,7 @@ Item {
                                 opacity: SystemServices.batteryThresholdBusy ? 0.6 : 1.0
 
                                 Behavior on color {
-                                    ColorAnimation { duration: 150 }
+                                    ColorAnimation { duration: 90 }
                                 }
 
                                 Text {
@@ -911,7 +911,7 @@ Item {
                                 opacity: SystemServices.batteryThresholdBusy ? 0.6 : 1.0
 
                                 Behavior on color {
-                                    ColorAnimation { duration: 150 }
+                                    ColorAnimation { duration: 90 }
                                 }
 
                                 Text {
@@ -950,7 +950,7 @@ Item {
                                     opacity: SystemServices.batteryThresholdBusy ? 0.6 : 1.0
 
                                     Behavior on color {
-                                        ColorAnimation { duration: 150 }
+                                        ColorAnimation { duration: 90 }
                                     }
 
                                     Text {
@@ -1017,7 +1017,7 @@ Item {
                     delegate: Rectangle {
                         width: contentColumn.width
                         height: visible ? 52 : 0
-                        radius: 14
+                        radius: 10
                         color: StyleTokens.transparent
                         visible: root.wifiEntryVisible(connected)
                         clip: true
@@ -1089,7 +1089,7 @@ Item {
 
                                 Text {
                                     text: signal + "%"
-                                    color: "#f0f0f3"
+                                    color: StyleTokens.textPrimary
                                     font.pixelSize: 11
                                     font.family: root.textFontFamily
                                     visible: signal >= 0

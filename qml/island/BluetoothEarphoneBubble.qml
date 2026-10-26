@@ -19,7 +19,7 @@ Item {
 
     Behavior on shownX {
         NumberAnimation {
-            duration: 320
+            duration: 190
             easing.type: Easing.OutQuint
         }
     }
@@ -38,7 +38,7 @@ Item {
 
     Behavior on animatedProgress {
         NumberAnimation {
-            duration: 400
+            duration: 240
             easing.type: Easing.OutCubic
         }
     }
@@ -74,7 +74,7 @@ Item {
 
     Behavior on scale {
         NumberAnimation {
-            duration: 160
+            duration: 100
             easing.type: Easing.OutQuad
         }
     }
@@ -97,7 +97,7 @@ Item {
         property: "reveal"
         from: root.reveal
         to: 1
-        duration: 360
+        duration: 220
         easing.type: Easing.OutCubic
     }
 
@@ -107,7 +107,7 @@ Item {
         property: "reveal"
         from: root.reveal
         to: 0
-        duration: 280
+        duration: 170
         easing.type: Easing.InCubic
         onStopped: {
             if (!root.active && root.reveal <= 0.001)
@@ -145,8 +145,8 @@ Item {
         anchors.fill: parent
         anchors.margins: 2.5
         radius: width / 2
-        color: Qt.rgba(StyleTokens.panel.r, StyleTokens.panel.g, StyleTokens.panel.b, 0.86)
-        border.width: 1
+        color: StyleTokens.panel
+        border.width: 2
         border.color: StyleTokens.surfaceBorder
         antialiasing: true
 
@@ -165,10 +165,10 @@ Item {
             opacity: (mouseArea.containsMouse && root.batteryPercent >= 0) ? 0 : 1
 
             Behavior on opacity {
-                NumberAnimation { duration: 140 }
+                NumberAnimation { duration: 80 }
             }
             Behavior on color {
-                ColorAnimation { duration: 140 }
+                ColorAnimation { duration: 80 }
             }
         }
 
@@ -187,7 +187,7 @@ Item {
             opacity: mouseArea.containsMouse ? 1 : 0
 
             Behavior on opacity {
-                NumberAnimation { duration: 140 }
+                NumberAnimation { duration: 80 }
             }
         }
     }

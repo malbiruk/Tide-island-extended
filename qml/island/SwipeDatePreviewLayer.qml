@@ -31,7 +31,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: showCondition ? 220 : 140
+            duration: showCondition ? 130 : 80
             easing.type: Easing.InOutQuad
         }
     }
@@ -41,7 +41,7 @@ Item {
         x: dateX
         anchors.verticalCenter: parent.verticalCenter
         text: leadingText
-        color: "white"
+        color: StyleTokens.textPrimary
         font.pixelSize: textPixelSize
         font.family: heroFontFamily
         font.weight: Font.Bold
@@ -55,7 +55,7 @@ Item {
         x: timeX
         anchors.verticalCenter: parent.verticalCenter
         text: trailingText
-        color: "white"
+        color: StyleTokens.textPrimary
         font.pixelSize: textPixelSize
         font.family: heroFontFamily
         font.weight: Font.Bold

@@ -79,7 +79,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: showCondition ? 220 : 140
+            duration: showCondition ? 130 : 80
             easing.type: Easing.InOutQuad
         }
     }
@@ -289,7 +289,7 @@ Item {
                         anchors.verticalCenterOffset: root.iconVerticalOffset
                         visible: parent.parent.hasIcon && !parent.parent.isBattery && !parent.parent.isWeather
                         text: itemDelegate.itemIcon
-                        color: "white"
+                        color: StyleTokens.textPrimary
                         font.pixelSize: root.iconPixelSize
                         font.family: root.iconFontFamily
                     }
@@ -331,7 +331,7 @@ Item {
                                 return StyleTokens.batteryTextColor(level, charging);
                             return level <= 20 ? StyleTokens.textOnBatteryCritical : "black";
                         }
-                        readonly property color emptyColor: Qt.rgba(1, 1, 1, 0.56)
+                        readonly property color emptyColor: StyleTokens.withAlpha(StyleTokens.textPrimary, 0.56)
 
                         Rectangle {
                             id: batteryBody
@@ -359,12 +359,12 @@ Item {
 
                                 Behavior on width {
                                     NumberAnimation {
-                                        duration: 300
+                                        duration: 180
                                         easing.type: Easing.OutCubic
                                     }
                                 }
                                 Behavior on color {
-                                    ColorAnimation { duration: 300 }
+                                    ColorAnimation { duration: 180 }
                                 }
                             }
 
@@ -420,7 +420,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
 
                             Behavior on color {
-                                ColorAnimation { duration: 300 }
+                                ColorAnimation { duration: 180 }
                             }
                         }
                     }
@@ -443,7 +443,7 @@ Item {
                     anchors.leftMargin: parent.hasLeadingVisual && !parent.isBattery ? root.iconSpacing : 0
                     anchors.verticalCenter: parent.verticalCenter
                     text: itemDelegate.itemText
-                    color: "white"
+                    color: StyleTokens.textPrimary
                     pixelSize: root.textPixelSize
                     fontFamily: root.textFontFamily
                     fontWeight: Font.Bold
@@ -473,7 +473,7 @@ Item {
         width: textWidth
         anchors.verticalCenter: parent.verticalCenter
         text: timeText
-        color: "white"
+        color: StyleTokens.textPrimary
         opacity: 1 - clampedProgress
         font.pixelSize: root.textPixelSize + 1
         font.family: timeFontFamily

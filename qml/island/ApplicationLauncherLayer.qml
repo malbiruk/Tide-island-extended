@@ -40,7 +40,7 @@ FocusScope {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: root.showCondition ? 220 : 120
+            duration: root.showCondition ? 130 : 70
             easing.type: Easing.InOutQuad
         }
     }
@@ -521,20 +521,20 @@ FocusScope {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: Math.min(650, parent.width - 120)
                 height: parent.height
-                radius: 17
-                color: searchInput.activeFocus ? "#17181c" : "#111216"
+                radius: 10
+                color: StyleTokens.input
                 border.width: 1
-                border.color: searchInput.activeFocus ? "#3d3f47" : "#292a30"
+                border.color: searchInput.activeFocus ? StyleTokens.accent : StyleTokens.inputBorder
 
-                Behavior on color { ColorAnimation { duration: 140 } }
-                Behavior on border.color { ColorAnimation { duration: 140 } }
+                Behavior on color { ColorAnimation { duration: 80 } }
+                Behavior on border.color { ColorAnimation { duration: 80 } }
 
                 Text {
                     anchors.left: parent.left
                     anchors.leftMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
                     text: "\uf002"
-                    color: searchInput.activeFocus ? "#d1d1d6" : "#8e8e93"
+                    color: searchInput.activeFocus ? StyleTokens.textPrimary : StyleTokens.textMuted
                     font.family: root.iconFontFamily
                     font.pixelSize: 15
                 }
@@ -546,9 +546,9 @@ FocusScope {
                     anchors.right: parent.right
                     anchors.rightMargin: root.query === "" ? 16 : 42
                     anchors.verticalCenter: parent.verticalCenter
-                    color: "#f5f5f7"
-                    selectionColor: "#0a84ff"
-                    selectedTextColor: "#ffffff"
+                    color: StyleTokens.textPrimary
+                    selectionColor: StyleTokens.accent
+                    selectedTextColor: StyleTokens.textOnAccent
                     font.family: root.textFontFamily
                     font.pixelSize: 15
                     clip: true
@@ -595,12 +595,12 @@ FocusScope {
                     width: 24
                     height: 24
                     radius: 12
-                    color: clearSearchArea.containsMouse ? "#34353b" : "#24252a"
+                    color: clearSearchArea.containsMouse ? StyleTokens.withAlpha(StyleTokens.textPrimary, 0.16) : StyleTokens.withAlpha(StyleTokens.textPrimary, 0.08)
 
                     Text {
                         anchors.centerIn: parent
                         text: "\uf00d"
-                        color: "#a5a6ac"
+                        color: StyleTokens.textMuted
                         font.family: root.iconFontFamily
                         font.pixelSize: 10
                     }
@@ -669,7 +669,7 @@ FocusScope {
                         : (appDelegate.selected || appArea.containsMouse ? 1.035 : 1)
 
                     Behavior on scale {
-                        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
                     }
 
                     transform: [
@@ -683,7 +683,7 @@ FocusScope {
 
                             Behavior on x {
                                 NumberAnimation {
-                                    duration: 150
+                                    duration: 90
                                     easing.type: Easing.OutCubic
                                 }
                             }
@@ -712,7 +712,7 @@ FocusScope {
                             z: 100
                             visible: appIcon.source.toString() === ""
                             text: String(appDelegate.entry.name).charAt(0).toLocaleUpperCase()
-                            color: "white"
+                            color: StyleTokens.textPrimary
                             font.family: root.textFontFamily
                             font.pixelSize: 24
                             font.weight: Font.DemiBold
@@ -725,7 +725,7 @@ FocusScope {
                             anchors.leftMargin: -2
                             visible: appDelegate.favoriteNumber > 0
                             text: appDelegate.favoriteNumber
-                            color: "#a5a6ac"
+                            color: StyleTokens.textMuted
                             font.family: root.textFontFamily
                             font.pixelSize: 12
                             font.weight: Font.DemiBold
@@ -738,7 +738,7 @@ FocusScope {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width - 8
                         text: appDelegate.entry.name
-                        color: appDelegate.selected ? "#f5f5f7" : "#d0d1d5"
+                        color: appDelegate.selected ? StyleTokens.textPrimary : StyleTokens.textDim
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
                         font.family: root.textFontFamily
@@ -817,7 +817,7 @@ FocusScope {
                 anchors.centerIn: parent
                 visible: root.visibleApplicationCount === 0
                 text: root.query === "" ? "没有找到可启动的应用" : "没有找到“" + root.query + "”"
-                color: "#696b72"
+                color: StyleTokens.textTertiary
                 font.family: root.textFontFamily
                 font.pixelSize: 13
             }
@@ -828,7 +828,7 @@ FocusScope {
         id: appScrollAnim
         target: appGrid
         property: "contentX"
-        duration: 140
+        duration: 80
         easing.type: Easing.OutCubic
     }
 

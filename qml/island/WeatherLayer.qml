@@ -23,7 +23,7 @@ FocusScope {
     opacity: root.showCondition ? 1 : 0
     Behavior on opacity {
         NumberAnimation {
-            duration: StyleTokens.durationStandard
+            duration: Math.round(StyleTokens.durationStandard * 0.6)
             easing.type: Easing.InOutQuad
         }
     }
@@ -112,7 +112,7 @@ FocusScope {
 
                 Behavior on scale {
                     NumberAnimation {
-                        duration: 120
+                        duration: 70
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -189,7 +189,7 @@ FocusScope {
 
                     Behavior on scale {
                         NumberAnimation {
-                            duration: 120
+                            duration: 70
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -197,7 +197,7 @@ FocusScope {
                     Text {
                         anchors.centerIn: parent
                         text: "Retry"
-                        color: StyleTokens.white
+                        color: StyleTokens.textOnAccent
                         font.family: root.textFontFamily
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
@@ -225,7 +225,7 @@ FocusScope {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 82
-                    radius: 16
+                    radius: 10
                     color: StyleTokens.module
 
                     RowLayout {
@@ -298,7 +298,7 @@ FocusScope {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 56
-                        radius: 12
+                        radius: 10
                         color: StyleTokens.module
 
                         ColumnLayout {
@@ -339,7 +339,7 @@ FocusScope {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 56
-                        radius: 12
+                        radius: 10
                         color: StyleTokens.module
 
                         ColumnLayout {
@@ -380,7 +380,7 @@ FocusScope {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 56
-                        radius: 12
+                        radius: 10
                         color: StyleTokens.module
 
                         ColumnLayout {
@@ -421,7 +421,7 @@ FocusScope {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 56
-                        radius: 12
+                        radius: 10
                         color: StyleTokens.module
 
                         ColumnLayout {
@@ -469,7 +469,7 @@ FocusScope {
                     Rectangle {
                         Layout.preferredWidth: 120
                         Layout.fillHeight: true
-                        radius: 12
+                        radius: 10
                         color: StyleTokens.module
 
                         ColumnLayout {
@@ -526,7 +526,7 @@ FocusScope {
                                 required property var modelData
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                radius: 12
+                                radius: 10
                                 color: StyleTokens.module
 
                                 ColumnLayout {

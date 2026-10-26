@@ -368,6 +368,12 @@ Item {
         interval: 16
 
         onTriggered: {
+            // The first reading after startup is a silent baseline, not a change.
+            if (root._lastVolType === "") {
+                root._lastVolType = root._pendingVolType;
+                root._lastVolVal = root._pendingVolVal;
+                return;
+            }
             if (root._bluetoothVolumeSuppressed) return;
             if (root._pendingVolType !== root._lastVolType
                     || Math.abs(root._pendingVolVal - root._lastVolVal) > 0.001) {
@@ -388,6 +394,11 @@ Item {
         interval: 16
 
         onTriggered: {
+            if (root._lastMicType === "") {
+                root._lastMicType = root._pendingMicType;
+                root._lastMicVal = root._pendingMicVal;
+                return;
+            }
             if (root._pendingMicType !== root._lastMicType
                     || Math.abs(root._pendingMicVal - root._lastMicVal) > 0.001) {
                 root._lastMicType = root._pendingMicType;

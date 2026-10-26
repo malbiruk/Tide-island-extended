@@ -35,7 +35,7 @@ Item {
         enabled: slideDirection === "none"
 
         NumberAnimation {
-            duration: showCondition ? 220 : 150
+            duration: showCondition ? 130 : 90
             easing.type: Easing.InOutQuad
         }
     }
@@ -45,7 +45,7 @@ Item {
         width: parent.width
         anchors.verticalCenter: parent.verticalCenter
         text: iconText
-        color: "white"
+        color: StyleTokens.textPrimary
         font.pixelSize: userConfig.iconFontSize
         font.family: iconFontFamily
         horizontalAlignment: Text.AlignHCenter

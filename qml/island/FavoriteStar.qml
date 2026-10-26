@@ -73,7 +73,7 @@ Item {
                     property: "scale"
                     from: 1
                     to: 0.9
-                    duration: 167
+                    duration: 100
                     easing.type: Easing.InOutCubic
                 }
                 NumberAnimation {
@@ -81,29 +81,29 @@ Item {
                     property: "scale"
                     from: 0.9
                     to: 1
-                    duration: 166
+                    duration: 100
                     easing.type: Easing.InOutCubic
                 }
             }
             SequentialAnimation {
-                PauseAnimation { duration: 66 }
+                PauseAnimation { duration: 40 }
                 NumberAnimation {
                     target: filledStar
                     property: "scale"
                     from: 0.5
                     to: 1
-                    duration: 267
+                    duration: 160
                     easing.type: Easing.InOutCubic
                 }
             }
             SequentialAnimation {
-                PauseAnimation { duration: 66 }
+                PauseAnimation { duration: 40 }
                 NumberAnimation {
                     target: filledStar
                     property: "opacity"
                     from: 0
                     to: 1
-                    duration: 167
+                    duration: 100
                     easing.type: Easing.InOutQuad
                 }
             }
@@ -135,7 +135,7 @@ Item {
                     property: "scale"
                     from: 1
                     to: 0.9
-                    duration: 167
+                    duration: 100
                     easing.type: Easing.InOutCubic
                 }
                 NumberAnimation {
@@ -143,7 +143,7 @@ Item {
                     property: "scale"
                     from: 0.9
                     to: 1
-                    duration: 166
+                    duration: 100
                     easing.type: Easing.InOutCubic
                 }
             }
@@ -152,17 +152,17 @@ Item {
                 property: "scale"
                 from: 1
                 to: 0.5
-                duration: 267
+                duration: 160
                 easing.type: Easing.InOutCubic
             }
             SequentialAnimation {
-                PauseAnimation { duration: 100 }
+                PauseAnimation { duration: 60 }
                 NumberAnimation {
                     target: filledStar
                     property: "opacity"
                     from: 1
                     to: 0
-                    duration: 167
+                    duration: 100
                     easing.type: Easing.InOutQuad
                 }
             }

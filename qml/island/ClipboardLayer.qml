@@ -42,7 +42,7 @@ FocusScope {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: root.showCondition ? StyleTokens.durationStandard : StyleTokens.durationFast
+            duration: root.showCondition ? Math.round(StyleTokens.durationStandard * 0.6) : Math.round(StyleTokens.durationFast * 0.6)
             easing.type: Easing.OutCubic
         }
     }
@@ -309,7 +309,7 @@ FocusScope {
     Timer {
         id: holdDeleteTimer
         property string entryId: ""
-        interval: 160
+        interval: 100
         repeat: false
         onTriggered: {
             root.collapsingId = entryId;
@@ -321,7 +321,7 @@ FocusScope {
     Timer {
         id: removeTimer
         property string entryId: ""
-        interval: 200
+        interval: 120
         repeat: false
         onTriggered: {
             const currentIdx = root.selectedIndex;
@@ -542,7 +542,7 @@ FocusScope {
                     height: 24
                     opacity: listModel.count > 0 ? (wipeMouse.containsMouse ? 1 : 0.6) : 0.25
 
-                    Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                    Behavior on opacity { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
 
                     Item {
                         id: trashIcon
@@ -551,7 +551,7 @@ FocusScope {
                         height: 24
                         scale: wipeMouse.pressed ? 0.70 : 0.75
 
-                        Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+                        Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
 
                         Shape {
                             id: trashBodyShape
@@ -561,7 +561,7 @@ FocusScope {
                             height: parent.height
                             preferredRendererType: Shape.CurveRenderer
 
-                            Behavior on y { NumberAnimation { duration: 360; easing.type: Easing.OutCubic } }
+                            Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
                             ShapePath {
                                 fillColor: StyleTokens.transparent
@@ -585,8 +585,8 @@ FocusScope {
                             height: parent.height
                             rotation: wipeMouse.containsMouse ? 12 : 0
 
-                            Behavior on y { NumberAnimation { duration: 360; easing.type: Easing.OutCubic } }
-                            Behavior on rotation { NumberAnimation { duration: 360; easing.type: Easing.OutCubic } }
+                            Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                            Behavior on rotation { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
                             Shape {
                                 anchors.fill: parent
@@ -634,8 +634,8 @@ FocusScope {
             visible: !root.imgFullPreview
             antialiasing: true
 
-            Behavior on color { ColorAnimation { duration: 140 } }
-            Behavior on border.color { ColorAnimation { duration: 140 } }
+            Behavior on color { ColorAnimation { duration: 80 } }
+            Behavior on border.color { ColorAnimation { duration: 80 } }
 
             RowLayout {
                 anchors.fill: parent
@@ -829,7 +829,7 @@ FocusScope {
                     Rectangle {
                         width: parent.width
                         height: parent.height - 34
-                        radius: 14
+                        radius: 10
                         color: StyleTokens.module
                         border.width: 1
                         border.color: StyleTokens.surfaceBorder
@@ -857,7 +857,7 @@ FocusScope {
                                 target: fullPreviewImg
                                 property: "slideY"
                                 to: 0
-                                duration: 180
+                                duration: 110
                                 easing.type: Easing.OutCubic
                             }
                         }
@@ -879,7 +879,7 @@ FocusScope {
                             height: 24
                             width: previewInfoText.implicitWidth + 18
                             radius: 8
-                            color: StyleTokens.withAlpha(StyleTokens.panel, 0.82)
+                            color: StyleTokens.panel
                             border.width: 0
 
                             Text {
@@ -898,10 +898,10 @@ FocusScope {
                         // Deletion flash overlay
                         Rectangle {
                             anchors.fill: parent
-                            radius: 14
+                            radius: 10
                             color: StyleTokens.danger
                             opacity: (previewArea.currentEntry && String(previewArea.currentEntry.id) === root.deletingId) ? 0.65 : 0
-                            Behavior on opacity { NumberAnimation { duration: 120 } }
+                            Behavior on opacity { NumberAnimation { duration: 70 } }
                         }
 
                         // Deletion label
@@ -914,8 +914,8 @@ FocusScope {
                             font.weight: Font.Bold
                             opacity: (previewArea.currentEntry && String(previewArea.currentEntry.id) === root.deletingId) ? 1 : 0
                             scale: (previewArea.currentEntry && String(previewArea.currentEntry.id) === root.deletingId) ? 1 : 0.85
-                            Behavior on opacity { NumberAnimation { duration: 120 } }
-                            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack } }
+                            Behavior on opacity { NumberAnimation { duration: 70 } }
+                            Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutBack } }
                         }
                     }
 
@@ -1010,7 +1010,7 @@ FocusScope {
                     height: isCollapsing
                         ? 0
                         : ((rowDelegate.model.imagePath !== "" || rowDelegate.clipType === "image") ? 60 : 46)
-                    radius: 12
+                    radius: 10
                     clip: true
                     opacity: isCollapsing ? 0 : 1
                     scale: isCollapsing ? 0.85 : 1
@@ -1037,11 +1037,11 @@ FocusScope {
                     border.width: 1
                     antialiasing: true
 
-                    Behavior on height { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                    Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-                    Behavior on color { ColorAnimation { duration: 110 } }
-                    Behavior on border.color { ColorAnimation { duration: 110 } }
+                    Behavior on height { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                    Behavior on opacity { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+                    Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: 70 } }
+                    Behavior on border.color { ColorAnimation { duration: 70 } }
 
                     // Keep the row target behind the action buttons so each
                     // button receives its own click instead of copying the row.
@@ -1268,7 +1268,7 @@ FocusScope {
                                 height: 22
                                 opacity: copyActionMouse.containsMouse ? 1 : 0.65
 
-                                Behavior on opacity { NumberAnimation { duration: 120 } }
+                                Behavior on opacity { NumberAnimation { duration: 70 } }
 
                                 Shape {
                                     anchors.centerIn: parent
@@ -1277,7 +1277,7 @@ FocusScope {
                                     scale: copyActionMouse.pressed ? 0.85 : 1.0
                                     preferredRendererType: Shape.CurveRenderer
 
-                                    Behavior on scale { NumberAnimation { duration: 150 } }
+                                    Behavior on scale { NumberAnimation { duration: 90 } }
 
                                     ShapePath {
                                         fillColor: StyleTokens.transparent
@@ -1309,7 +1309,7 @@ FocusScope {
                                 height: 22
                                 opacity: deleteActionMouse.containsMouse ? 1 : 0.65
 
-                                Behavior on opacity { NumberAnimation { duration: 120 } }
+                                Behavior on opacity { NumberAnimation { duration: 70 } }
 
                                 Shape {
                                     anchors.centerIn: parent
@@ -1318,7 +1318,7 @@ FocusScope {
                                     scale: deleteActionMouse.pressed ? 0.85 : 1.0
                                     preferredRendererType: Shape.CurveRenderer
 
-                                    Behavior on scale { NumberAnimation { duration: 150 } }
+                                    Behavior on scale { NumberAnimation { duration: 90 } }
 
                                     ShapePath {
                                         fillColor: StyleTokens.transparent

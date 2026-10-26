@@ -21,7 +21,7 @@ Item {
     readonly property real headerHeight: 28
     readonly property real listTopGap: 9
     readonly property real cardHeight: 49
-    readonly property real cardRadius: 16
+    readonly property real cardRadius: 10
     readonly property real cardGap: 7
     readonly property int maxVisibleItems: 3
     readonly property int itemCount: notificationModel ? notificationModel.count : 0
@@ -161,14 +161,14 @@ Item {
                     NumberAnimation {
                         property: "opacity"
                         to: 0
-                        duration: 170
+                        duration: 100
                         easing.type: Easing.InOutCubic
                     }
 
                     NumberAnimation {
                         property: "scale"
                         to: 0.94
-                        duration: 190
+                        duration: 110
                         easing.type: Easing.InOutCubic
                     }
                 }
@@ -177,7 +177,7 @@ Item {
             removeDisplaced: Transition {
                 NumberAnimation {
                     properties: "x,y"
-                    duration: 260
+                    duration: 160
                     easing.type: Easing.OutCubic
                 }
             }
@@ -206,7 +206,7 @@ Item {
 
                 Behavior on scale {
                     NumberAnimation {
-                        duration: 120
+                        duration: 70
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -355,7 +355,7 @@ Item {
                             anchors.fill: parent
                             radius: 14
                             color: StyleTokens.transparent
-                            border.color: StyleTokens.withAlpha(StyleTokens.white, 0.15)
+                            border.color: StyleTokens.withAlpha(StyleTokens.textPrimary, 0.15)
                             border.width: 1
                         }
                     }

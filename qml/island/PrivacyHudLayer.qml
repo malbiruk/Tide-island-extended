@@ -27,7 +27,7 @@ FocusScope {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: root.showCondition ? StyleTokens.durationStandard : StyleTokens.durationFast
+            duration: root.showCondition ? Math.round(StyleTokens.durationStandard * 0.6) : Math.round(StyleTokens.durationFast * 0.6)
             easing.type: Easing.InOutQuad
         }
     }
@@ -95,7 +95,7 @@ FocusScope {
 
                     width: parent.width
                     height: 52
-                    radius: 12
+                    radius: 10
                     color: StyleTokens.cardFill
                     border.width: 1
                     border.color: StyleTokens.inputBorder
@@ -218,7 +218,7 @@ FocusScope {
                 visible: root.appCount === 0
                 width: parent.width
                 height: 48
-                radius: 12
+                radius: 10
                 color: StyleTokens.cardFill
                 border.width: 1
                 border.color: StyleTokens.inputBorder

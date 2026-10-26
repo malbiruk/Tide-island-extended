@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import Quickshell.Io
 import IslandBackend
 import "../island"
 
@@ -8,6 +9,7 @@ Item {
 
     signal clearAllRequested()
     signal closeRequested()
+    signal focusModeChanged(bool enabled)
 
     focus: true
 
@@ -23,7 +25,10 @@ Item {
         }
     }
 
-    Component.onCompleted: notificationCenter.forceActiveFocus()
+    Component.onCompleted: {
+        notificationCenter.forceActiveFocus();
+        focusStateProcess.running = true;
+    }
 
     property var notificationModel: null
     property string iconFontFamily: userConfig.iconFontFamily
@@ -34,6 +39,59 @@ Item {
     readonly property real contentHeight: 218
     readonly property real verticalPadding: 10
     readonly property real horizontalPadding: 22
+
+    // Focus / do-not-disturb: same swaync-client calls the control center's Focus toggle used.
+    property bool focusEnabled: false
+    property bool focusBusy: false
+
+    function toggleFocus() {
+        if (focusBusy)
+            return;
+
+        focusBusy = true;
+        if (focusEnabled)
+            focusDisableProcess.running = true;
+        else
+            focusEnableProcess.running = true;
+    }
+
+    Process {
+        id: focusStateProcess
+        command: ["sh", "-c", "if command -v swaync-client >/dev/null 2>&1; then swaync-client --get-dnd; fi"]
+        running: false
+
+        stdout: SplitParser {
+            onRead: function(line) {
+                const enabled = line.trim().toLowerCase() === "true";
+                notificationCenter.focusEnabled = enabled;
+                notificationCenter.focusModeChanged(enabled);
+            }
+        }
+    }
+
+    Process {
+        id: focusEnableProcess
+        command: ["sh", "-c", "if command -v swaync-client >/dev/null 2>&1; then swaync-client -dn; else exit 127; fi"]
+        running: false
+
+        onExited: function(exitCode) {
+            notificationCenter.focusBusy = false;
+            notificationCenter.focusEnabled = exitCode === 0;
+            notificationCenter.focusModeChanged(notificationCenter.focusEnabled);
+        }
+    }
+
+    Process {
+        id: focusDisableProcess
+        command: ["sh", "-c", "if command -v swaync-client >/dev/null 2>&1; then swaync-client -df; else exit 127; fi"]
+        running: false
+
+        onExited: function(exitCode) {
+            notificationCenter.focusBusy = false;
+            notificationCenter.focusEnabled = false;
+            notificationCenter.focusModeChanged(false);
+        }
+    }
 
     NotificationHistory {
         id: notificationHistory
@@ -48,6 +106,39 @@ Item {
         textFontFamily: notificationCenter.textFontFamily
         heroFontFamily: notificationCenter.heroFontFamily
         onCloseRequested: notificationCenter.closeRequested()
+    }
+
+    Item {
+        id: focusButton
+
+        z: 100
+        anchors.right: clearButton.left
+        anchors.rightMargin: 6
+        anchors.verticalCenter: clearButton.verticalCenter
+        width: 24
+        height: 24
+        opacity: notificationCenter.focusBusy ? 0.5 : 1
+
+        Text {
+            anchors.centerIn: parent
+            text: notificationCenter.focusEnabled ? "\u{F009B}" : "\u{F009C}"
+            color: notificationCenter.focusEnabled
+                ? StyleTokens.accent
+                : (focusMouse.containsMouse ? StyleTokens.textPrimary : StyleTokens.textDim)
+            font.pixelSize: 16
+            font.family: notificationCenter.iconFontFamily
+            scale: focusMouse.pressed ? 0.9 : 1
+        }
+
+        MouseArea {
+            id: focusMouse
+
+            anchors.fill: parent
+            enabled: !notificationCenter.focusBusy
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: notificationCenter.toggleFocus()
+        }
     }
 
     // Keep the action inside the first notification card so it does not create
@@ -66,7 +157,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: 180
+                duration: 110
                 easing.type: Easing.OutCubic
             }
         }
@@ -81,7 +172,7 @@ Item {
 
             Behavior on scale {
                 NumberAnimation {
-                    duration: 280
+                    duration: 170
                     easing.type: Easing.OutCubic
                 }
             }
@@ -97,7 +188,7 @@ Item {
 
                 Behavior on y {
                     NumberAnimation {
-                        duration: 360
+                        duration: 220
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -127,14 +218,14 @@ Item {
 
                 Behavior on y {
                     NumberAnimation {
-                        duration: 360
+                        duration: 220
                         easing.type: Easing.OutCubic
                     }
                 }
 
                 Behavior on rotation {
                     NumberAnimation {
-                        duration: 360
+                        duration: 220
                         easing.type: Easing.OutCubic
                     }
                 }

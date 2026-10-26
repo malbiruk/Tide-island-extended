@@ -364,7 +364,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: showCondition ? 260 : 140
+            duration: showCondition ? 160 : 80
             easing.type: Easing.InOutQuad
         }
     }
@@ -484,7 +484,7 @@ Item {
                         anchors.fill: parent
                         radius: 17
                         color: StyleTokens.transparent
-                        border.color: StyleTokens.withAlpha(StyleTokens.white, 0.22)
+                        border.color: StyleTokens.withAlpha(StyleTokens.textPrimary, 0.22)
                         border.width: 1
                     }
                 }
@@ -496,8 +496,8 @@ Item {
                     radius: 7.5
                     x: 21
                     y: 21
-                    color: StyleTokens.mainBackground
-                    border.color: StyleTokens.withAlpha(StyleTokens.white, 0.28)
+                    color: StyleTokens.panel
+                    border.color: StyleTokens.withAlpha(StyleTokens.textPrimary, 0.28)
                     border.width: 1
                     clip: true
                     visible: root.hasSenderAvatar && root.hasResolvedAppIcon
@@ -527,7 +527,7 @@ Item {
                         : (root.urgency === 2 ? StyleTokens.withAlpha(StyleTokens.danger, 0.2) : StyleTokens.cardFillActive)
                     border.color: root.isAgentNotification
                         ? StyleTokens.withAlpha(StyleTokens.accent, 0.5)
-                        : (root.urgency === 2 ? StyleTokens.danger : StyleTokens.withAlpha(StyleTokens.white, 0.14))
+                        : (root.urgency === 2 ? StyleTokens.danger : StyleTokens.withAlpha(StyleTokens.textPrimary, 0.14))
                     border.width: 1
 
                     Image {
@@ -702,7 +702,7 @@ Item {
                                 font.weight: Font.Bold
                                 color: inlineMouse.containsMouse ? StyleTokens.accent : StyleTokens.textPrimaryBright
                                 scale: inlineMouse.pressed ? 0.90 : (inlineMouse.containsMouse ? 1.12 : 1.0)
-                                Behavior on scale { NumberAnimation { duration: 120 } }
+                                Behavior on scale { NumberAnimation { duration: 70 } }
                             }
 
                             // Action Pill Label (Allow, Deny, etc.)
@@ -784,7 +784,7 @@ Item {
                                 : (root.urgency === 2 ? StyleTokens.withAlpha(StyleTokens.danger, 0.2) : StyleTokens.cardFillActive))
                         border.color: root.isAgentNotification
                             ? StyleTokens.withAlpha(StyleTokens.accent, 0.45)
-                            : (root.urgency === 2 ? StyleTokens.danger : StyleTokens.withAlpha(StyleTokens.white, 0.15))
+                            : (root.urgency === 2 ? StyleTokens.danger : StyleTokens.withAlpha(StyleTokens.textPrimary, 0.15))
                         border.width: 1
                         Rectangle {
                             id: expandedAvatarMask
@@ -878,7 +878,7 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
-                color: StyleTokens.withAlpha(StyleTokens.white, 0.08)
+                color: StyleTokens.withAlpha(StyleTokens.textPrimary, 0.08)
             }
 
             // --- Scrollable Body Content ---

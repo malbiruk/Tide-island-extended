@@ -28,7 +28,7 @@ Item {
 
     Behavior on shownX {
         NumberAnimation {
-            duration: 320
+            duration: 190
             easing.type: Easing.OutQuint
         }
     }
@@ -52,7 +52,7 @@ Item {
 
     Behavior on scale {
         NumberAnimation {
-            duration: 160
+            duration: 100
             easing.type: Easing.OutQuad
         }
     }
@@ -74,7 +74,7 @@ Item {
         property: "reveal"
         from: root.reveal
         to: 1
-        duration: 360
+        duration: 220
         easing.type: Easing.OutCubic
     }
 
@@ -84,7 +84,7 @@ Item {
         property: "reveal"
         from: root.reveal
         to: 0
-        duration: 280
+        duration: 170
         easing.type: Easing.InCubic
         onStopped: {
             if (!root.active && root.reveal <= 0.001)
@@ -97,13 +97,13 @@ Item {
         id: bubbleBody
         anchors.fill: parent
         radius: width / 2
-        color: Qt.rgba(StyleTokens.panel.r, StyleTokens.panel.g, StyleTokens.panel.b, 0.86)
-        border.width: 1
-        border.color: mouseArea.containsMouse ? StyleTokens.withAlpha(StyleTokens.white, 0.28) : StyleTokens.surfaceBorder
+        color: StyleTokens.panel
+        border.width: 2
+        border.color: mouseArea.containsMouse ? StyleTokens.accentSoft : StyleTokens.surfaceBorder
         antialiasing: true
 
         Behavior on border.color {
-            ColorAnimation { duration: 150 }
+            ColorAnimation { duration: 90 }
         }
 
         Text {
@@ -130,7 +130,7 @@ Item {
             radius: width / 2
             color: root.accentColor
             border.width: 2
-            border.color: StyleTokens.black
+            border.color: StyleTokens.panel
             antialiasing: true
 
             SequentialAnimation on opacity {

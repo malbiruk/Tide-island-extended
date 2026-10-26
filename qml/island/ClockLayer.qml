@@ -19,7 +19,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: showCondition ? 300 : 200
+            duration: showCondition ? 180 : 120
             easing.type: Easing.InOutQuad
         }
     }
@@ -33,7 +33,7 @@ Item {
         Text {
             anchors.centerIn: parent
             text: currentTime
-            color: "white"
+            color: StyleTokens.textPrimary
             font.pixelSize: textPixelSize
             font.family: heroFontFamily
             font.weight: Font.Bold

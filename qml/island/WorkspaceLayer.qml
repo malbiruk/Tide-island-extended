@@ -44,7 +44,7 @@ Item {
         enabled: animateVisibility
 
         NumberAnimation {
-            duration: showCondition ? 300 : 100
+            duration: showCondition ? 180 : 60
             easing.type: Easing.InOutQuad
         }
     }
@@ -54,7 +54,7 @@ Item {
         width: textWidth
         anchors.verticalCenter: parent.verticalCenter
         text: displayText
-        color: "white"
+        color: StyleTokens.textPrimary
         opacity: revealProgress
         font.pixelSize: textPixelSize
         font.family: textFontFamily

@@ -22,7 +22,7 @@ Item {
     Rectangle {
         id: cardBg
         anchors.fill: parent
-        radius: StyleTokens.radiusModule
+        radius: 10
         color: StyleTokens.clearBlack
         clip: true
 
@@ -65,7 +65,7 @@ Item {
                 width: Math.max(18, countText.implicitWidth + 10)
                 radius: 9
                 color: StyleTokens.cardFillActive
-                border.color: StyleTokens.withAlpha(StyleTokens.white, 0.08)
+                border.color: StyleTokens.withAlpha(StyleTokens.textPrimary, 0.08)
                 border.width: 1
 
                 Text {
@@ -144,7 +144,7 @@ Item {
 
                             Behavior on scale {
                                 NumberAnimation {
-                                    duration: 120
+                                    duration: 70
                                     easing.type: Easing.OutCubic
                                 }
                             }
@@ -157,11 +157,11 @@ Item {
                                     : (trayMouse.containsMouse ? root.buttonBgHover : StyleTokens.transparent)
                                 border.color: modelData.status === 2
                                     ? root.cardAccent
-                                    : (trayMouse.containsMouse ? StyleTokens.withAlpha(StyleTokens.white, 0.12) : StyleTokens.transparent)
+                                    : (trayMouse.containsMouse ? StyleTokens.withAlpha(StyleTokens.textPrimary, 0.12) : StyleTokens.transparent)
                                 border.width: 1
 
                                 Behavior on color {
-                                    ColorAnimation { duration: 120 }
+                                    ColorAnimation { duration: 70 }
                                 }
 
                                 Image {

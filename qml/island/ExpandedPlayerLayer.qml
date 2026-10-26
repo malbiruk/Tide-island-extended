@@ -147,7 +147,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: showCondition ? 300 : 100
+            duration: showCondition ? 180 : 60
             easing.type: Easing.InOutQuad
         }
     }
@@ -163,7 +163,7 @@ Item {
             property: "pageProgress"
             from: pageSettleAnimation.startProgress
             to: pageSettleAnimation.endProgress
-            duration: 220
+            duration: 130
             easing.type: Easing.OutCubic
         }
 
@@ -369,7 +369,7 @@ Item {
 
                                         Behavior on color {
                                             ColorAnimation {
-                                                duration: isPlaying ? 140 : 280
+                                                duration: isPlaying ? 80 : 170
                                                 easing.type: Easing.InOutQuad
                                             }
                                         }
@@ -442,7 +442,7 @@ Item {
                                 scale: prevArea.pressed ? 0.8 : 1.0
 
                                 Behavior on scale {
-                                    NumberAnimation { duration: 100 }
+                                    NumberAnimation { duration: 60 }
                                 }
 
                                 Canvas {
@@ -491,7 +491,7 @@ Item {
                                 scale: playArea.pressed ? 0.8 : 1.0
 
                                 Behavior on scale {
-                                    NumberAnimation { duration: 100 }
+                                    NumberAnimation { duration: 60 }
                                 }
 
                                 Row {
@@ -545,7 +545,7 @@ Item {
                                 scale: nextArea.pressed ? 0.8 : 1.0
 
                                 Behavior on scale {
-                                    NumberAnimation { duration: 100 }
+                                    NumberAnimation { duration: 60 }
                                 }
 
                                 Canvas {
@@ -715,7 +715,7 @@ Item {
 
         Behavior on animatedProgress {
             NumberAnimation {
-                duration: 700
+                duration: 420
                 easing.type: Easing.InOutCubic
             }
         }
@@ -988,7 +988,7 @@ Item {
 
         Behavior on scale {
             NumberAnimation {
-                duration: 90
+                duration: 50
                 easing.type: Easing.OutCubic
             }
         }

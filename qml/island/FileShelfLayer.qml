@@ -37,7 +37,7 @@ FocusScope {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: root.showCondition ? StyleTokens.durationStandard : StyleTokens.durationFast
+            duration: root.showCondition ? Math.round(StyleTokens.durationStandard * 0.6) : Math.round(StyleTokens.durationFast * 0.6)
             easing.type: Easing.InOutQuad
         }
     }
@@ -405,13 +405,13 @@ FocusScope {
 
                             Behavior on x {
                                 enabled: !root.reorderCommitting
-                                NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                                NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
                             }
                         }
                     ]
 
                     Behavior on scale {
-                        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
                     }
 
                     Item {
@@ -495,7 +495,7 @@ FocusScope {
 
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: 120
+                            duration: 70
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -594,7 +594,7 @@ FocusScope {
         id: shelfScrollAnim
         target: trayViewport
         property: "contentX"
-        duration: 140
+        duration: 80
         easing.type: Easing.OutCubic
     }
 

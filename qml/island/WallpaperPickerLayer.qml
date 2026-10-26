@@ -181,7 +181,7 @@ FocusScope {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: showCondition ? 240 : 120
+            duration: showCondition ? 140 : 70
             easing.type: Easing.InOutQuad
         }
     }
@@ -597,13 +597,13 @@ FocusScope {
                 height: 34
                 anchors.right: parent.right
                 radius: 10
-                color: Qt.rgba(1, 1, 1, searchBar.expanded ? 0.06 : (iconMouse.containsMouse ? 0.10 : 0.06))
+                color: StyleTokens.withAlpha(StyleTokens.textPrimary, searchBar.expanded ? 0.06 : (iconMouse.containsMouse ? 0.10 : 0.06))
                 border.width: searchInput.activeFocus ? 1 : 0
                 border.color: "#60a5fa"
 
                 Behavior on width {
                     NumberAnimation {
-                        duration: 180
+                        duration: 110
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -621,7 +621,7 @@ FocusScope {
                     text: "\uf002"
                     font.family: root.iconFontFamily
                     font.pixelSize: 12
-                    color: Qt.rgba(1, 1, 1, searchBar.expanded ? 0.55 : 0.35)
+                    color: StyleTokens.withAlpha(StyleTokens.textPrimary, searchBar.expanded ? 0.55 : 0.35)
                 }
 
                 MouseArea {
@@ -642,7 +642,7 @@ FocusScope {
                 anchors.leftMargin: 10
                 anchors.rightMargin: 6
                 anchors.verticalCenter: parent.verticalCenter
-                color: "white"
+                color: StyleTokens.textPrimary
                 font.pixelSize: 12
                 font.family: root.textFontFamily
                 clip: true
@@ -667,7 +667,7 @@ FocusScope {
                 text: "Search wallpapers…"
                 font.pixelSize: 12
                 font.family: root.textFontFamily
-                color: Qt.rgba(1, 1, 1, 0.28)
+                color: StyleTokens.withAlpha(StyleTokens.textPrimary, 0.28)
                 anchors.left: searchInput.left
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -678,7 +678,7 @@ FocusScope {
                 width: 20
                 height: 20
                 radius: 10
-                color: clearMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
+                color: clearMouse.containsMouse ? StyleTokens.withAlpha(StyleTokens.textPrimary, 0.12) : "transparent"
                 anchors.right: iconButton.left
                 anchors.rightMargin: 4
                 anchors.verticalCenter: parent.verticalCenter
@@ -688,7 +688,7 @@ FocusScope {
                     text: "\uf00d"
                     font.family: root.iconFontFamily
                     font.pixelSize: 10
-                    color: Qt.rgba(1, 1, 1, 0.5)
+                    color: StyleTokens.withAlpha(StyleTokens.textPrimary, 0.5)
                 }
 
                 MouseArea {
@@ -717,14 +717,14 @@ FocusScope {
                     text: !root.wallpapersLoaded ? "Scanning…" : "\uf03e"
                     font.pixelSize: !root.wallpapersLoaded ? 12 : 26
                     font.family: !root.wallpapersLoaded ? root.textFontFamily : root.iconFontFamily
-                    color: Qt.rgba(1, 1, 1, 0.22)
+                    color: StyleTokens.withAlpha(StyleTokens.textPrimary, 0.22)
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: root.wallpapersLoaded && filteredWallpapers.count === 0
                     text: allWallpapers.count === 0 ? ("No wallpapers found\nin " + root.displayPath(root.wallpaperDir)) : ("No wallpapers match \"" + root.searchQuery + "\"")
                     horizontalAlignment: Text.AlignHCenter
-                    color: Qt.rgba(1, 1, 1, 0.22)
+                    color: StyleTokens.withAlpha(StyleTokens.textPrimary, 0.22)
                     font.pixelSize: 11
                     font.family: root.textFontFamily
                     lineHeight: 1.5
@@ -744,7 +744,7 @@ FocusScope {
                 preferredHighlightBegin: 0.5
                 preferredHighlightEnd: 0.5
                 highlightRangeMode: PathView.StrictlyEnforceRange
-                highlightMoveDuration: 200
+                highlightMoveDuration: 120
 
                 path: Path {
                     startX: pathView.width / 2 - root.spacing * 2
@@ -767,7 +767,7 @@ FocusScope {
                     property real sc: isCurrent ? 1.0 : onPath ? root.sideScale : 0.0
                     Behavior on sc {
                         NumberAnimation {
-                            duration: 200
+                            duration: 120
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -775,7 +775,7 @@ FocusScope {
                     property real op: isCurrent ? 1.0 : onPath ? 0.65 : 0.0
                     Behavior on op {
                         NumberAnimation {
-                            duration: 180
+                            duration: 110
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -797,7 +797,7 @@ FocusScope {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: root.cardW
                             height: root.cardH
-                            radius: 14
+                            radius: 10
                             color: "#1a1a1a"
                             antialiasing: false
 
@@ -817,7 +817,7 @@ FocusScope {
                                     opacity: parent.status === Image.Ready ? 0 : 1
                                     Behavior on opacity {
                                         NumberAnimation {
-                                            duration: 200
+                                            duration: 120
                                         }
                                     }
                                 }
@@ -830,13 +830,13 @@ FocusScope {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: root.cardW
                             height: root.cardH
-                            radius: 14
+                            radius: 10
                             color: "transparent"
                             border.width: (model.filePath === root.effectiveActiveWallpaper) ? 2.5 : 0
                             border.color: "#60a5fa"
                             Behavior on border.width {
                                 NumberAnimation {
-                                    duration: 150
+                                    duration: 90
                                 }
                             }
 
@@ -864,7 +864,7 @@ FocusScope {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: root.cardW - 4
                             text: model.fileName
-                            color: del.isCurrent ? "white" : Qt.rgba(1, 1, 1, 0.50)
+                            color: del.isCurrent ? StyleTokens.textPrimary : StyleTokens.withAlpha(StyleTokens.textPrimary, 0.50)
                             font.pixelSize: del.isCurrent ? 11 : 10
                             font.family: root.textFontFamily
                             font.weight: del.isCurrent ? Font.Medium : Font.Normal
@@ -872,7 +872,7 @@ FocusScope {
                             elide: Text.ElideMiddle
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: 150
+                                    duration: 90
                                 }
                             }
                         }

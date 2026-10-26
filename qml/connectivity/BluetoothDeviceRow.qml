@@ -39,7 +39,7 @@ Rectangle {
 
     width: parent ? parent.width : 0
     height: 56
-    radius: 14
+    radius: 10
     color: primaryMouse.containsMouse && root.canInteract
         ? StyleTokens.moduleHover
         : StyleTokens.transparent
@@ -47,7 +47,7 @@ Rectangle {
     clip: true
 
     Behavior on color {
-        ColorAnimation { duration: StyleTokens.durationFast }
+        ColorAnimation { duration: Math.round(StyleTokens.durationFast * 0.6) }
     }
 
     MouseArea {

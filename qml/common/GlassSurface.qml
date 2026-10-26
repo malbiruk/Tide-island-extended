@@ -6,10 +6,10 @@ import IslandBackend
 Rectangle {
     id: root
 
-    property real materialOpacity: 0.82
+    property real materialOpacity: 1
     property color tint: StyleTokens.panel
 
-    radius: StyleTokens.radiusPanel
+    radius: 10
     color: Qt.rgba(tint.r, tint.g, tint.b, materialOpacity)
     border.width: 1
     border.color: StyleTokens.surfaceBorder

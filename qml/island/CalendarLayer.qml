@@ -85,7 +85,7 @@ FocusScope {
     opacity: root.showCondition ? 1 : 0
     Behavior on opacity {
         NumberAnimation {
-            duration: StyleTokens.durationStandard
+            duration: Math.round(StyleTokens.durationStandard * 0.6)
             easing.type: Easing.InOutQuad
         }
     }
@@ -428,8 +428,8 @@ FocusScope {
                 border.width: 1
                 border.color: root.isViewingCurrentMonth ? StyleTokens.accent : StyleTokens.inputBorder
 
-                Behavior on color { ColorAnimation { duration: 100 } }
-                Behavior on border.color { ColorAnimation { duration: 100 } }
+                Behavior on color { ColorAnimation { duration: 60 } }
+                Behavior on border.color { ColorAnimation { duration: 60 } }
 
                 Text {
                     id: todayLabel
@@ -464,7 +464,7 @@ FocusScope {
                     height: 14
                     scale: prevMouse.pressed ? 0.85 : (prevMouse.containsMouse ? 1.08 : 1.0)
                     preferredRendererType: Shape.CurveRenderer
-                    Behavior on scale { NumberAnimation { duration: 100 } }
+                    Behavior on scale { NumberAnimation { duration: 60 } }
 
                     ShapePath {
                         fillColor: StyleTokens.transparent
@@ -500,7 +500,7 @@ FocusScope {
                     height: 14
                     scale: nextMouse.pressed ? 0.85 : (nextMouse.containsMouse ? 1.08 : 1.0)
                     preferredRendererType: Shape.CurveRenderer
-                    Behavior on scale { NumberAnimation { duration: 100 } }
+                    Behavior on scale { NumberAnimation { duration: 60 } }
 
                     ShapePath {
                         fillColor: StyleTokens.transparent
@@ -610,7 +610,7 @@ FocusScope {
                         : StyleTokens.transparent
                     border.width: 0
 
-                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Behavior on color { ColorAnimation { duration: 60 } }
 
                     Rectangle {
                         id: dateMark

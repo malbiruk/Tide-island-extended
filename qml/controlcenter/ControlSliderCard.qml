@@ -32,7 +32,7 @@ Rectangle {
         return Math.max(0, Math.min(1, nextValue));
     }
 
-    radius: StyleTokens.radiusModule
+    radius: 10
     color: StyleTokens.clearBlack
     clip: true
 
@@ -70,7 +70,7 @@ Rectangle {
 
                 Behavior on scale {
                     NumberAnimation {
-                        duration: 120
+                        duration: 70
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -79,10 +79,10 @@ Rectangle {
                     anchors.centerIn: parent
                     text: root.iconText
                     color: iconMouse.containsMouse ? root.accentColor : root.textSecondary
-                    font.pixelSize: 13
+                    font.pixelSize: 16
                     font.family: root.iconFontFamily
 
-                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: 70 } }
                 }
 
                 MouseArea {
@@ -102,7 +102,7 @@ Rectangle {
 
                 Behavior on scale {
                     NumberAnimation {
-                        duration: 120
+                        duration: 70
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -117,7 +117,7 @@ Rectangle {
                     font.family: root.textFontFamily
                     font.weight: Font.DemiBold
 
-                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: 70 } }
                 }
 
                 MouseArea {
@@ -130,25 +130,31 @@ Rectangle {
             }
         }
 
-        Rectangle {
+        // 24px hit area, thin Glance-style bar centred inside it
+        Item {
             id: sliderTrack
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 24
-            radius: 12
-            color: "#30000000"
-            border.width: 1
-            border.color: StyleTokens.surfaceHighlight
-            clip: true
 
             Rectangle {
-                width: root.value <= 0.001
-                    ? 0
-                    : Math.min(sliderTrack.width, sliderTrack.width * root.value)
-                height: parent.height
-                radius: parent.radius
-                color: root.accentColor
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                height: 4
+                radius: 2
+                color: StyleTokens.cardFillHover
+                clip: true
+
+                Rectangle {
+                    width: root.value <= 0.001
+                        ? 0
+                        : Math.min(sliderTrack.width, sliderTrack.width * root.value)
+                    height: parent.height
+                    radius: parent.radius
+                    color: root.accentColor
+                }
             }
 
             MouseArea {

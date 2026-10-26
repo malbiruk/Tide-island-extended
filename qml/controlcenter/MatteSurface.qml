@@ -4,7 +4,7 @@ import IslandBackend
 Item {
     id: root
 
-    property real radius: StyleTokens.radiusModule
+    property real radius: 10
     property bool hovered: false
     property bool pressed: false
 
@@ -20,11 +20,11 @@ Item {
         antialiasing: true
 
         Behavior on color {
-            ColorAnimation { duration: StyleTokens.durationFast }
+            ColorAnimation { duration: Math.round(StyleTokens.durationFast * 0.6) }
         }
 
         Behavior on border.color {
-            ColorAnimation { duration: StyleTokens.durationFast }
+            ColorAnimation { duration: Math.round(StyleTokens.durationFast * 0.6) }
         }
 
         // Specular glass highlight reflection

@@ -1,12 +1,13 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import IslandBackend
 
 Item {
     id: root
 
     property string text: ""
-    property color color: "white"
+    property color color: StyleTokens.textPrimary
     property int pixelSize: 14
     property string fontFamily: ""
     property int fontWeight: Font.Bold

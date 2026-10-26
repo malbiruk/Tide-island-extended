@@ -34,9 +34,9 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 28
+        radius: 10
         color: StyleTokens.module
-        opacity: 0.9
+        opacity: 1
     }
 
     Item {
@@ -47,7 +47,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: 140
+                duration: 80
                 easing.type: Easing.OutCubic
             }
         }
@@ -115,7 +115,7 @@ Item {
                     radius: 18
                     color: root.activeTab === "outputs" ? StyleTokens.accent : (outMouse.containsMouse ? StyleTokens.moduleHover : StyleTokens.transparent)
 
-                    Behavior on color { ColorAnimation { duration: 140 } }
+                    Behavior on color { ColorAnimation { duration: 80 } }
 
                     Row {
                         anchors.centerIn: parent
@@ -155,7 +155,7 @@ Item {
                     radius: 18
                     color: root.activeTab === "inputs" ? StyleTokens.accent : (inMouse.containsMouse ? StyleTokens.moduleHover : StyleTokens.transparent)
 
-                    Behavior on color { ColorAnimation { duration: 140 } }
+                    Behavior on color { ColorAnimation { duration: 80 } }
 
                     Row {
                         anchors.centerIn: parent
@@ -195,7 +195,7 @@ Item {
                     radius: 18
                     color: root.activeTab === "apps" ? StyleTokens.accent : (appMouse.containsMouse ? StyleTokens.moduleHover : StyleTokens.transparent)
 
-                    Behavior on color { ColorAnimation { duration: 140 } }
+                    Behavior on color { ColorAnimation { duration: 80 } }
 
                     Row {
                         anchors.centerIn: parent
@@ -248,15 +248,15 @@ Item {
                 required property var modelData
                 width: outputsList.width
                 height: 56
-                radius: 16
+                radius: 10
                 color: modelData.active
                     ? StyleTokens.withAlpha(StyleTokens.accent, 0.15)
                     : (outputMouse.containsMouse ? StyleTokens.moduleHover : StyleTokens.cardFill)
                 border.width: 1
                 border.color: modelData.active ? StyleTokens.accent : StyleTokens.inputBorder
 
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on border.color { ColorAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: 70 } }
+                Behavior on border.color { ColorAnimation { duration: 70 } }
 
                 Item {
                     anchors.fill: parent
@@ -362,15 +362,15 @@ Item {
                 required property var modelData
                 width: inputsList.width
                 height: 56
-                radius: 16
+                radius: 10
                 color: modelData.active
                     ? StyleTokens.withAlpha(StyleTokens.accent, 0.15)
                     : (inputMouse.containsMouse ? StyleTokens.moduleHover : StyleTokens.cardFill)
                 border.width: 1
                 border.color: modelData.active ? StyleTokens.accent : StyleTokens.inputBorder
 
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on border.color { ColorAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: 70 } }
+                Behavior on border.color { ColorAnimation { duration: 70 } }
 
                 Item {
                     anchors.fill: parent
@@ -520,7 +520,7 @@ Item {
                     required property var modelData
                     width: streamsList.width
                     height: 72
-                    radius: 16
+                    radius: 10
                     color: StyleTokens.cardFill
                     border.width: 1
                     border.color: StyleTokens.inputBorder
@@ -677,7 +677,7 @@ Item {
                                     ? StyleTokens.withAlpha(StyleTokens.accent, 0.45)
                                     : StyleTokens.accent
 
-                                Behavior on color { ColorAnimation { duration: 140 } }
+                                Behavior on color { ColorAnimation { duration: 80 } }
                             }
 
                             MouseArea {

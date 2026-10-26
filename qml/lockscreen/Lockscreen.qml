@@ -488,10 +488,10 @@ Scope {
         }
     }
 
-    // 420ms provides a silky exit animation before the session lock surface is dropped
+    // 250ms provides a silky exit animation before the session lock surface is dropped
     Timer {
         id: unlockTimer
-        interval: 420
+        interval: 250
         onTriggered: {
             sessionLock.locked = false;
             root.buffer = "";
@@ -595,7 +595,7 @@ Scope {
                     property: "animProgress"
                     from: 0
                     to: 1
-                    duration: 520
+                    duration: 310
                     easing.type: Easing.OutCubic
                 }
 
@@ -605,7 +605,7 @@ Scope {
                     property: "exitProgress"
                     from: 0
                     to: 1
-                    duration: 400
+                    duration: 240
                     easing.type: Easing.OutCubic
                 }
 
@@ -681,7 +681,7 @@ Scope {
                     opacity: status === Image.Ready ? 1 : 0
 
                     Behavior on opacity {
-                        NumberAnimation { duration: 300 }
+                        NumberAnimation { duration: 180 }
                     }
 
                     layer.enabled: root.locked && root.blurEnabled
@@ -815,11 +815,11 @@ Scope {
                         // Organic decaying shake on password fail
                         SequentialAnimation {
                             id: shakeAnim
-                            NumberAnimation { target: boxWrap; property: "shakeOff"; to: -18; duration: 45; easing.type: Easing.OutQuad }
-                            NumberAnimation { target: boxWrap; property: "shakeOff"; to: 16; duration: 55; easing.type: Easing.InOutQuad }
-                            NumberAnimation { target: boxWrap; property: "shakeOff"; to: -10; duration: 55; easing.type: Easing.InOutQuad }
-                            NumberAnimation { target: boxWrap; property: "shakeOff"; to: 6; duration: 50; easing.type: Easing.InOutQuad }
-                            NumberAnimation { target: boxWrap; property: "shakeOff"; to: 0; duration: 45; easing.type: Easing.OutQuad }
+                            NumberAnimation { target: boxWrap; property: "shakeOff"; to: -18; duration: 30; easing.type: Easing.OutQuad }
+                            NumberAnimation { target: boxWrap; property: "shakeOff"; to: 16; duration: 30; easing.type: Easing.InOutQuad }
+                            NumberAnimation { target: boxWrap; property: "shakeOff"; to: -10; duration: 30; easing.type: Easing.InOutQuad }
+                            NumberAnimation { target: boxWrap; property: "shakeOff"; to: 6; duration: 30; easing.type: Easing.InOutQuad }
+                            NumberAnimation { target: boxWrap; property: "shakeOff"; to: 0; duration: 30; easing.type: Easing.OutQuad }
                         }
 
                         // Deep diffused dark drop shadow
@@ -1010,7 +1010,7 @@ Scope {
                                                 antialiasing: true
 
                                                 Behavior on height {
-                                                    NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+                                                    NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
                                                 }
 
                                                 Column {
@@ -1096,10 +1096,10 @@ Scope {
                                                                     anchors.verticalCenter: parent.verticalCenter
 
                                                                     Behavior on height {
-                                                                        NumberAnimation { duration: 75; easing.type: Easing.OutQuad }
+                                                                        NumberAnimation { duration: 50; easing.type: Easing.OutQuad }
                                                                     }
                                                                     Behavior on color {
-                                                                        ColorAnimation { duration: 150 }
+                                                                        ColorAnimation { duration: 90 }
                                                                     }
                                                                 }
                                                             }
@@ -1118,7 +1118,7 @@ Scope {
                                                             font.weight: Font.Medium
                                                             color: trackContainer.isHovered ? StyleTokens.textPrimaryBright : StyleTokens.textMuted
                                                             Layout.alignment: Qt.AlignVCenter
-                                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                                            Behavior on color { ColorAnimation { duration: 90 } }
                                                         }
 
                                                         Item {
@@ -1147,10 +1147,10 @@ Scope {
                                                                 clip: true
 
                                                                 Behavior on height {
-                                                                    NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                                                                    NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
                                                                 }
-                                                                Behavior on color { ColorAnimation { duration: 150 } }
-                                                                Behavior on border.color { ColorAnimation { duration: 150 } }
+                                                                Behavior on color { ColorAnimation { duration: 90 } }
+                                                                Behavior on border.color { ColorAnimation { duration: 90 } }
 
                                                                 // Active filled progress capsule
                                                                 Rectangle {
@@ -1166,7 +1166,7 @@ Scope {
 
                                                                     Behavior on width {
                                                                         enabled: !progressMouse.pressed
-                                                                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+                                                                        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
                                                                     }
                                                                 }
                                                             }
@@ -1191,7 +1191,7 @@ Scope {
                                                             font.weight: Font.Medium
                                                             color: trackContainer.isHovered ? StyleTokens.textPrimaryBright : StyleTokens.textMuted
                                                             Layout.alignment: Qt.AlignVCenter
-                                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                                            Behavior on color { ColorAnimation { duration: 90 } }
                                                         }
                                                     }
 
@@ -1218,9 +1218,9 @@ Scope {
                                                                 anchors.verticalCenter: parent.verticalCenter
                                                                 antialiasing: true
 
-                                                                Behavior on scale { NumberAnimation { duration: 100 } }
-                                                                Behavior on color { ColorAnimation { duration: 120 } }
-                                                                Behavior on border.color { ColorAnimation { duration: 120 } }
+                                                                Behavior on scale { NumberAnimation { duration: 60 } }
+                                                                Behavior on color { ColorAnimation { duration: 70 } }
+                                                                Behavior on border.color { ColorAnimation { duration: 70 } }
 
                                                                 Text {
                                                                     anchors.centerIn: parent
@@ -1247,7 +1247,7 @@ Scope {
                                                                 scale: playMouse.pressed ? 0.90 : (playMouse.containsMouse ? 1.08 : 1.0)
                                                                 anchors.verticalCenter: parent.verticalCenter
 
-                                                                Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                                                                Behavior on scale { NumberAnimation { duration: 70; easing.type: Easing.OutCubic } }
 
                                                                 // Ambient glow on play button
                                                                 RectangularGlow {
@@ -1328,9 +1328,9 @@ Scope {
                                                                 anchors.verticalCenter: parent.verticalCenter
                                                                 antialiasing: true
 
-                                                                Behavior on scale { NumberAnimation { duration: 100 } }
-                                                                Behavior on color { ColorAnimation { duration: 120 } }
-                                                                Behavior on border.color { ColorAnimation { duration: 120 } }
+                                                                Behavior on scale { NumberAnimation { duration: 60 } }
+                                                                Behavior on color { ColorAnimation { duration: 70 } }
+                                                                Behavior on border.color { ColorAnimation { duration: 70 } }
 
                                                                 Text {
                                                                     anchors.centerIn: parent
@@ -1522,13 +1522,13 @@ Scope {
                                                 antialiasing: true
 
                                                 Behavior on border.color {
-                                                    ColorAnimation { duration: 180 }
+                                                    ColorAnimation { duration: 110 }
                                                 }
 
                                                 SequentialAnimation {
                                                     id: typePulse
-                                                    NumberAnimation { target: field; property: "scale"; to: 1.018; duration: 60; easing.type: Easing.OutQuad }
-                                                    NumberAnimation { target: field; property: "scale"; to: 1.0; duration: 120; easing.type: Easing.OutQuad }
+                                                    NumberAnimation { target: field; property: "scale"; to: 1.018; duration: 40; easing.type: Easing.OutQuad }
+                                                    NumberAnimation { target: field; property: "scale"; to: 1.0; duration: 70; easing.type: Easing.OutQuad }
                                                 }
 
                                                 Connections {
@@ -1549,7 +1549,7 @@ Scope {
                                                     color: StyleTokens.textMuted
                                                     opacity: root.buffer.length === 0 ? 0.75 : 0
                                                     Behavior on opacity {
-                                                        NumberAnimation { duration: 160 }
+                                                        NumberAnimation { duration: 100 }
                                                     }
                                                 }
 
@@ -1582,12 +1582,12 @@ Scope {
                                                                 NumberAnimation on pop {
                                                                     from: 0
                                                                     to: 1
-                                                                    duration: 220
+                                                                    duration: 130
                                                                     easing.type: Easing.OutBack
                                                                 }
 
                                                                 Behavior on color {
-                                                                    ColorAnimation { duration: 160 }
+                                                                    ColorAnimation { duration: 100 }
                                                                 }
                                                             }
                                                         }
@@ -1608,9 +1608,9 @@ Scope {
                                                     opacity: live ? (root.lockedOut ? 0.4 : 1.0) : 0
                                                     scale: goArea.pressed ? 0.90 : (live ? 1.0 : 0.6)
 
-                                                    Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-                                                    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
-                                                    Behavior on color { ColorAnimation { duration: 180 } }
+                                                    Behavior on opacity { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                                                    Behavior on scale { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
+                                                    Behavior on color { ColorAnimation { duration: 110 } }
 
                                                     Text {
                                                         id: goIcon
@@ -1803,10 +1803,10 @@ Scope {
                                             scale: sleepMouse.pressed ? 0.92 : (sleepMouse.containsMouse ? 1.05 : 1.0)
                                             antialiasing: true
 
-                                            Behavior on width { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                                            Behavior on color { ColorAnimation { duration: 150 } }
-                                            Behavior on border.color { ColorAnimation { duration: 150 } }
-                                            Behavior on scale { NumberAnimation { duration: 100 } }
+                                            Behavior on width { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                                            Behavior on color { ColorAnimation { duration: 90 } }
+                                            Behavior on border.color { ColorAnimation { duration: 90 } }
+                                            Behavior on scale { NumberAnimation { duration: 60 } }
 
                                             RowLayout {
                                                 anchors.centerIn: parent
@@ -1873,10 +1873,10 @@ Scope {
                                             scale: rebootMouse.pressed ? 0.92 : (rebootMouse.containsMouse ? 1.05 : 1.0)
                                             antialiasing: true
 
-                                            Behavior on width { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                                            Behavior on color { ColorAnimation { duration: 150 } }
-                                            Behavior on border.color { ColorAnimation { duration: 150 } }
-                                            Behavior on scale { NumberAnimation { duration: 100 } }
+                                            Behavior on width { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                                            Behavior on color { ColorAnimation { duration: 90 } }
+                                            Behavior on border.color { ColorAnimation { duration: 90 } }
+                                            Behavior on scale { NumberAnimation { duration: 60 } }
 
                                             RowLayout {
                                                 anchors.centerIn: parent
@@ -1943,10 +1943,10 @@ Scope {
                                             scale: shutdownMouse.pressed ? 0.92 : (shutdownMouse.containsMouse ? 1.05 : 1.0)
                                             antialiasing: true
 
-                                            Behavior on width { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                                            Behavior on color { ColorAnimation { duration: 150 } }
-                                            Behavior on border.color { ColorAnimation { duration: 150 } }
-                                            Behavior on scale { NumberAnimation { duration: 100 } }
+                                            Behavior on width { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                                            Behavior on color { ColorAnimation { duration: 90 } }
+                                            Behavior on border.color { ColorAnimation { duration: 90 } }
+                                            Behavior on scale { NumberAnimation { duration: 60 } }
 
                                             RowLayout {
                                                 anchors.centerIn: parent

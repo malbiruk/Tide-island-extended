@@ -22,7 +22,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: root.active ? 180 : 220
+            duration: root.active ? 110 : 130
             easing.type: Easing.InOutQuad
         }
     }
@@ -42,7 +42,7 @@ Item {
         loops: Animation.Infinite
 
         PauseAnimation {
-            duration: 110
+            duration: 70
         }
 
         NumberAnimation {
@@ -54,7 +54,7 @@ Item {
         }
 
         PauseAnimation {
-            duration: 120
+            duration: 70
         }
 
         NumberAnimation {

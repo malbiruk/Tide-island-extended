@@ -153,35 +153,35 @@ PanelWindow {
         InsetBlurRegion {
             surface: wifiConnectivityDetailShell.surfaceItem
             active: wifiConnectivityDetailShell.visible && wifiConnectivityDetailShell.opacity > 0.01
-            surfaceRadius: 28
+            surfaceRadius: 10
             transformDependencies: [wifiConnectivityDetailShell.x, wifiConnectivityDetailShell.y,
                 wifiConnectivityDetailShell.panelScale, mainCapsule.height]
         }
         InsetBlurRegion {
             surface: bluetoothConnectivityDetailShell.surfaceItem
             active: bluetoothConnectivityDetailShell.visible && bluetoothConnectivityDetailShell.opacity > 0.01
-            surfaceRadius: 28
+            surfaceRadius: 10
             transformDependencies: [bluetoothConnectivityDetailShell.x, bluetoothConnectivityDetailShell.y,
                 bluetoothConnectivityDetailShell.panelScale, mainCapsule.height]
         }
         InsetBlurRegion {
             surface: powerConnectivityDetailShell.surfaceItem
             active: powerConnectivityDetailShell.visible && powerConnectivityDetailShell.opacity > 0.01
-            surfaceRadius: 28
+            surfaceRadius: 10
             transformDependencies: [powerConnectivityDetailShell.x, powerConnectivityDetailShell.y,
                 powerConnectivityDetailShell.panelScale, mainCapsule.height]
         }
         InsetBlurRegion {
             surface: audioConnectivityDetailShell.surfaceItem
             active: audioConnectivityDetailShell.visible && audioConnectivityDetailShell.opacity > 0.01
-            surfaceRadius: 28
+            surfaceRadius: 10
             transformDependencies: [audioConnectivityDetailShell.x, audioConnectivityDetailShell.y,
                 audioConnectivityDetailShell.panelScale, mainCapsule.height]
         }
         InsetBlurRegion {
             surface: calendarNoteShell.surfaceItem
             active: calendarNoteShell.visible && calendarNoteShell.opacity > 0.01
-            surfaceRadius: 28
+            surfaceRadius: 10
             transformDependencies: [calendarNoteShell.x, calendarNoteShell.y, calendarNoteShell.panelScale]
         }
         // Clip the completed union before sending it to the compositor. During
@@ -292,7 +292,25 @@ PanelWindow {
             width: calendarNoteShell.visible ? Math.ceil(calendarNoteShell.width) : 0
             height: calendarNoteShell.visible ? Math.ceil(calendarNoteShell.height) : 0
         }
+
+        // While a dismissible panel is open, take the whole surface so outside clicks reach us.
+        Region {
+            intersection: Intersection.Combine
+            width: root.outsideClickDismissActive ? Math.ceil(root.width) : 0
+            height: root.outsideClickDismissActive ? Math.ceil(root.height) : 0
+        }
     }
+    // Panels that close on a click outside them. While one is open the surface grows to the
+    // full output height and its input mask covers it (outsideClickDismissArea). The file
+    // shelf is excluded so drags out of it can still drop onto other windows.
+    readonly property bool outsideClickDismissActive: !root.overviewVisible
+        && !root.connectivityPromptActive
+        && ["control_center", "notification_center", "calendar", "weather", "glance",
+            "clipboard", "application_launcher", "wallpaper_picker", "privacy_hud"]
+            .indexOf(islandContainer.islandState) !== -1
+    readonly property real outsideClickDismissWindowHeight: root.outsideClickDismissActive && root.screen
+        ? root.screen.height
+        : 0
     readonly property real capsuleWindowHeight: Math.ceil(
         islandContainer.effectiveTopMargin + mainCapsule.targetHeight + 12
     )
@@ -307,6 +325,7 @@ PanelWindow {
         root.capsuleWindowHeight,
         root.connectivityDetailWindowHeight,
         root.overviewWindowHeight,
+        root.outsideClickDismissWindowHeight,
         Math.ceil(root.controlCenterWindowHeight)
     )
     // Grow the layer surface immediately, but keep the old extent while the
@@ -459,8 +478,8 @@ PanelWindow {
     readonly property real controlCenterActiveRecorderExtraHeight: controlCenterActiveRecording
         ? controlCenterActiveRecorderHeight + 10
         : 0
-    readonly property real defaultControlCenterExtraHeight: 32 + controlCenterActiveRecorderExtraHeight
-    readonly property real defaultControlCenterMaximumExtraHeight: 208 + controlCenterActiveRecorderExtraHeight
+    readonly property real defaultControlCenterExtraHeight: 92 + controlCenterActiveRecorderExtraHeight
+    readonly property real defaultControlCenterMaximumExtraHeight: 92 + controlCenterActiveRecorderExtraHeight
 
     readonly property real controlCenterMaximumExtraHeight: controlCenterLoader.item
         ? controlCenterLoader.item.controlCenterMaximumExtraHeight
@@ -473,20 +492,20 @@ PanelWindow {
         ? islandContainer.effectiveTopMargin + (notificationCenterLoader.item ? notificationCenterLoader.item.contentHeight : 400) + 6
         : 0
     readonly property real connectivityDetailGap: 16
-    readonly property int connectivityDetailAnimationDuration: 360
+    readonly property int connectivityDetailAnimationDuration: 220
     readonly property string overviewWallpaperSource: overviewWallpaperCache.effectiveSource
     property string wallpaperPickerActiveWallpaper: userConfig.wallpaperPath
 
     Behavior on autoHideProgress {
         NumberAnimation {
-            duration: root.autoHideTargetVisible ? 120 : 300
+            duration: root.autoHideTargetVisible ? 70 : 180
             easing.type: root.autoHideTargetVisible ? Easing.OutCubic : Easing.InCubic
         }
     }
 
     Behavior on exclusiveZoneProgress {
         NumberAnimation {
-            duration: root.exclusiveZoneTargetActive ? 120 : 300
+            duration: root.exclusiveZoneTargetActive ? 70 : 180
             easing.type: root.exclusiveZoneTargetActive ? Easing.OutCubic : Easing.InCubic
         }
     }
@@ -1053,7 +1072,7 @@ PanelWindow {
 
     Timer {
         id: windowShrinkTimer
-        interval: 1000
+        interval: 600
         repeat: false
         onTriggered: root.retainedWindowHeight = root.requestedWindowHeight
     }
@@ -1270,7 +1289,7 @@ PanelWindow {
         property bool fileShelfOpenedManually: false
         readonly property int defaultAutoHideInterval: 1250
         readonly property int notificationAutoHideInterval: 4200
-        readonly property int swipeAnimationDuration: 220
+        readonly property int swipeAnimationDuration: 130
         readonly property bool showsMediaInNormal: restingState === "lyrics"
             || (restingState === "normal" && !!currentTrack)
             || (restingState === "custom" && !hasCustomLeftItems && !!currentTrack)
@@ -1327,6 +1346,7 @@ PanelWindow {
             || islandState === "calendar"
             || islandState === "privacy_hud"
             || islandState === "glance"
+            || islandState === "notification_center"
         readonly property bool splitShowsProgress: islandState === "split" && osdProgress >= 0
         readonly property bool splitShowsText: islandState === "split" && osdProgress < 0 && osdCustomText !== ""
         readonly property bool splitShowsIconOnly: islandState === "split" && osdProgress < 0 && osdCustomText === ""
@@ -1486,7 +1506,7 @@ PanelWindow {
         Behavior on osdProgress {
             enabled: islandContainer.osdProgressAnimationEnabled
 
-            SmoothedAnimation { velocity: 1.2; duration: 180; easing.type: Easing.InOutQuad }
+            SmoothedAnimation { velocity: 2.0; duration: 110; easing.type: Easing.InOutQuad }
         }
         Behavior on swipeTransitionProgress {
             NumberAnimation {
@@ -2028,7 +2048,11 @@ PanelWindow {
             if (progress === undefined)    progress = -1.0;
             if (customText === undefined)  customText = "";
 
-            if (root.autoHideSuppressesTransientReveal) return;
+            // Volume/mute/brightness OSDs may reveal an auto-hidden island; other transients stay suppressed.
+            if (root.autoHideSuppressesTransientReveal
+                    && icon !== systemState.volumeStatusIcon
+                    && icon !== systemState.muteStatusIcon
+                    && icon !== systemState.brightnessStatusIcon(progress)) return;
             if (blocksTransientSplit) return;
 
             const nextProgress = progress >= 0 ? progress : -1.0;
@@ -2483,10 +2507,10 @@ PanelWindow {
         Rectangle {
             id: mainCapsule
             z: 5
-            property int morphDuration: 280
+            property int morphDuration: 170
             readonly property bool notificationHistorySurface: islandContainer.islandState === "notification_center"
             readonly property bool isCriticalNotification: islandContainer.islandState === "notification" && islandContainer.notificationUrgency === 2
-            property real outlineWidth: islandContainer.isNotchMode ? 0 : 1
+            property real outlineWidth: islandContainer.isNotchMode ? 0 : 2
             property color outlineColor: root.overviewContentVisible
                 ? root.overviewCapsuleBorderColor
                 : (isCriticalNotification ? StyleTokens.danger : StyleTokens.surfaceBorder)
@@ -2581,6 +2605,7 @@ PanelWindow {
             }
             readonly property real targetRadius: {
                 if (root.overviewVisible) return root.overviewCapsuleRadius;
+                if (!islandContainer.isNotchMode) return 10;
 
                 switch (islandContainer.islandState) {
                 case "control_center":
@@ -2660,9 +2685,9 @@ PanelWindow {
             Behavior on topRightRadius { NumberAnimation { duration: mainCapsule.morphDuration; easing.type: Easing.OutQuint } }
             Behavior on bottomLeftRadius { NumberAnimation { duration: mainCapsule.morphDuration; easing.type: Easing.OutQuint } }
             Behavior on bottomRightRadius { NumberAnimation { duration: mainCapsule.morphDuration; easing.type: Easing.OutQuint } }
-            Behavior on color { ColorAnimation { duration: 280; easing.type: Easing.InOutQuad } }
-            Behavior on outlineWidth { NumberAnimation { duration: 260; easing.type: Easing.InOutQuad } }
-            Behavior on outlineColor { ColorAnimation { duration: 260; easing.type: Easing.InOutQuad } }
+            Behavior on color { ColorAnimation { duration: 170; easing.type: Easing.InOutQuad } }
+            Behavior on outlineWidth { NumberAnimation { duration: 160; easing.type: Easing.InOutQuad } }
+            Behavior on outlineColor { ColorAnimation { duration: 160; easing.type: Easing.InOutQuad } }
             border.width: outlineWidth
             border.color: outlineColor
 
@@ -2670,18 +2695,68 @@ PanelWindow {
 
             Rectangle {
                 anchors.fill: parent
-                anchors.margins: 1
-                radius: Math.max(parent.radius - 1, 0)
-                topLeftRadius: islandContainer.isNotchMode ? 0 : Math.max(parent.topLeftRadius - 1, 0)
-                topRightRadius: islandContainer.isNotchMode ? 0 : Math.max(parent.topRightRadius - 1, 0)
-                bottomLeftRadius: Math.max(parent.bottomLeftRadius - 1, 0)
-                bottomRightRadius: Math.max(parent.bottomRightRadius - 1, 0)
+                anchors.margins: 2
+                radius: Math.max(parent.radius - 2, 0)
+                topLeftRadius: islandContainer.isNotchMode ? 0 : Math.max(parent.topLeftRadius - 2, 0)
+                topRightRadius: islandContainer.isNotchMode ? 0 : Math.max(parent.topRightRadius - 2, 0)
+                bottomLeftRadius: Math.max(parent.bottomLeftRadius - 2, 0)
+                bottomRightRadius: Math.max(parent.bottomRightRadius - 2, 0)
                 color: StyleTokens.transparent
                 border.width: islandContainer.isNotchMode ? 0 : 1
                 border.color: StyleTokens.overviewInnerBorder
                 antialiasing: true
             }
 
+            // Horizontal two-finger swipe flips between control center and glance (one flip per swipe).
+            // Vertical-dominant wheel events are passed through to the panel content.
+            MouseArea {
+                id: panelPageSwipeArea
+
+                property real accumulatedDelta: 0
+                property bool flipped: false
+
+                anchors.fill: parent
+                z: 9000
+                enabled: (islandContainer.islandState === "control_center" || islandContainer.islandState === "glance")
+                    && !root.connectivityPromptActive
+                acceptedButtons: Qt.NoButton
+
+                onWheel: (wheel) => {
+                    // touchpads report gesture phases; a new gesture may flip again right away
+                    if (wheel.phase === Qt.ScrollBegin) {
+                        accumulatedDelta = 0;
+                        flipped = false;
+                    }
+                    const deltaX = wheel.pixelDelta.x !== 0 ? wheel.pixelDelta.x : wheel.angleDelta.x / 4;
+                    const deltaY = wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y : wheel.angleDelta.y / 4;
+                    if (Math.abs(deltaX) <= Math.abs(deltaY)) {
+                        wheel.accepted = false;
+                        return;
+                    }
+
+                    pageSwipeSettleTimer.restart();
+                    if (flipped)
+                        return;
+                    accumulatedDelta += deltaX;
+                    if (Math.abs(accumulatedDelta) < 80)
+                        return;
+
+                    flipped = true;
+                    if (islandContainer.islandState === "glance")
+                        root.toggleControlCenterWindow();
+                    else
+                        root.toggleGlanceWindow();
+                }
+
+                Timer {
+                    id: pageSwipeSettleTimer
+                    interval: 400
+                    onTriggered: {
+                        panelPageSwipeArea.accumulatedDelta = 0;
+                        panelPageSwipeArea.flipped = false;
+                    }
+                }
+            }
 
             MouseArea {
                 id: capsuleMouseArea
@@ -3340,6 +3415,8 @@ PanelWindow {
                         weatherService: root.weatherService
                         onWeatherRequested: islandContainer.showWeather()
                         onCalendarRequested: islandContainer.showCalendar()
+                        onNotificationCenterRequested: islandContainer.showNotificationCenter()
+                        onPowerMenuRequested: root.togglePowerMenuWindow()
                         onCloseRequested: islandContainer.smartRestoreState()
                     }
                 }
@@ -3367,6 +3444,10 @@ PanelWindow {
 
                         onClearAllRequested: {
                             islandContainer.notificationHistoryModel.clear();
+                        }
+                        onFocusModeChanged: function(enabled) {
+                            if (root.shellRootController && root.shellRootController.focusEnabled !== undefined)
+                                root.shellRootController.focusEnabled = enabled;
                         }
                         onCloseRequested: islandContainer.smartRestoreState()
                     }
@@ -3706,7 +3787,7 @@ PanelWindow {
             x: mainCapsule.x - width - 8 - (bluetoothEarphoneBubble.mounted ? (bluetoothEarphoneBubble.bubbleSize + 6) : 0)
             Behavior on x {
                 NumberAnimation {
-                    duration: 320
+                    duration: 190
                     easing.type: Easing.OutQuint
                 }
             }
@@ -3718,14 +3799,14 @@ PanelWindow {
             transformOrigin: Item.Center
 
             Behavior on opacity {
-                NumberAnimation { duration: StyleTokens.durationFast }
+                NumberAnimation { duration: Math.round(StyleTokens.durationFast * 0.6) }
             }
 
             Rectangle {
                 anchors.fill: parent
                 radius: width / 2
-                color: Qt.rgba(StyleTokens.panel.r, StyleTokens.panel.g, StyleTokens.panel.b, 0.86)
-                border.width: 1
+                color: StyleTokens.panel
+                border.width: 2
                 border.color: StyleTokens.surfaceBorder
 
                 antialiasing: true
@@ -3749,13 +3830,13 @@ PanelWindow {
                     radius: height / 2
                     color: StyleTokens.accent
                     border.width: 2
-                    border.color: StyleTokens.black
+                    border.color: StyleTokens.panel
 
                     Text {
                         id: countText
                         anchors.centerIn: parent
                         text: FileShelf.count > 99 ? "99+" : String(FileShelf.count)
-                        color: StyleTokens.white
+                        color: StyleTokens.textOnAccent
                         font.family: root.textFontFamily
                         font.pixelSize: 9
                         font.weight: Font.DemiBold
@@ -3843,7 +3924,7 @@ PanelWindow {
             property real shownX: islandContainer.bubblesBaseX + islandContainer.privacyBubblesOffset
             Behavior on shownX {
                 NumberAnimation {
-                    duration: 320
+                    duration: 190
                     easing.type: Easing.OutQuint
                 }
             }
@@ -3902,7 +3983,7 @@ PanelWindow {
                 property: "reveal"
                 from: timerBubble.reveal
                 to: 1
-                duration: 360
+                duration: 220
                 easing.type: Easing.OutCubic
             }
 
@@ -3913,7 +3994,7 @@ PanelWindow {
                 property: "reveal"
                 from: timerBubble.reveal
                 to: 0
-                duration: 280
+                duration: 170
                 easing.type: Easing.InCubic
                 onStopped: {
                     if (!islandContainer.timerBubbleWanted && timerBubble.reveal <= 0.001)
@@ -3947,7 +4028,7 @@ PanelWindow {
                         property: "timerCompletionPulse"
                         from: 0
                         to: 1
-                        duration: 140
+                        duration: 80
                         easing.type: Easing.OutCubic
                     }
 
@@ -3956,7 +4037,7 @@ PanelWindow {
                         property: "timerCompletionFlash"
                         from: 0
                         to: 1
-                        duration: 140
+                        duration: 80
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -3967,7 +4048,7 @@ PanelWindow {
                         property: "timerCompletionPulse"
                         from: 1
                         to: 0
-                        duration: 380
+                        duration: 230
                         easing.type: Easing.OutCubic
                     }
 
@@ -3976,7 +4057,7 @@ PanelWindow {
                         property: "timerCompletionFlash"
                         from: 1
                         to: 0
-                        duration: 380
+                        duration: 230
                         easing.type: Easing.InOutQuad
                     }
                 }
@@ -3990,8 +4071,8 @@ PanelWindow {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: width / 2
-                color: Qt.rgba(StyleTokens.panel.r, StyleTokens.panel.g, StyleTokens.panel.b, 0.86)
-                border.width: 1
+                color: StyleTokens.panel
+                border.width: 2
                 border.color: StyleTokens.surfaceBorder
                 antialiasing: true
             }
@@ -4024,7 +4105,7 @@ PanelWindow {
                     ctx.lineWidth = lineWidth;
 
                     ctx.beginPath();
-                    ctx.strokeStyle = "#303036";
+                    ctx.strokeStyle = StyleTokens.track;
                     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
                     ctx.stroke();
 
@@ -4032,19 +4113,19 @@ PanelWindow {
                         if (flash > 0) {
                             ctx.beginPath();
                             ctx.lineWidth = lineWidth + 1.5;
-                            ctx.strokeStyle = "rgba(255, 204, 0, " + (0.18 * flash) + ")";
+                            ctx.strokeStyle = StyleTokens.withAlpha(StyleTokens.warning, 0.18 * flash);
                             ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
                             ctx.stroke();
                         }
 
                         ctx.beginPath();
                         ctx.lineWidth = lineWidth;
-                        ctx.strokeStyle = "rgba(255, 204, 0, " + (0.72 + 0.28 * flash) + ")";
+                        ctx.strokeStyle = StyleTokens.withAlpha(StyleTokens.warning, 0.72 + 0.28 * flash);
                         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
                         ctx.stroke();
                     } else if (progress > 0) {
                         ctx.beginPath();
-                        ctx.strokeStyle = "#ffcc00";
+                        ctx.strokeStyle = StyleTokens.warning;
                         ctx.arc(centerX, centerY, radius, startAngle, endAngle, true);
                         ctx.stroke();
                     }
@@ -4055,7 +4136,7 @@ PanelWindow {
                 anchors.centerIn: parent
                 anchors.horizontalCenterOffset: -1
                 text: "󰔛"
-                color: "white"
+                color: StyleTokens.textPrimary
                 font.pixelSize: root.iconFontSize - 1
                 font.family: root.iconFontFamily
                 font.weight: Font.DemiBold
@@ -4167,6 +4248,30 @@ PanelWindow {
             availableWidth: root.width
             textFontFamily: root.textFontFamily
             heroFontFamily: root.heroFontFamily
+        }
+    }
+
+    // Below all island content: presses that land outside every island surface close the panel.
+    MouseArea {
+        id: outsideClickDismissArea
+
+        anchors.fill: parent
+        z: -1
+        enabled: root.outsideClickDismissActive
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+
+        onPressed: (mouse) => {
+            const surfaces = [mainCapsule, fileShelfBubble, bluetoothEarphoneBubble, cameraBubble, micBubble,
+                timerBubble, wifiConnectivityDetailShell, bluetoothConnectivityDetailShell,
+                powerConnectivityDetailShell, audioConnectivityDetailShell, calendarNoteShell];
+            const onSurface = surfaces.some(s => s.visible
+                && mouse.x >= s.x && mouse.x < s.x + s.width
+                && mouse.y >= s.y && mouse.y < s.y + s.height);
+            if (onSurface) {
+                mouse.accepted = false;
+                return;
+            }
+            islandContainer.smartRestoreState();
         }
     }
 

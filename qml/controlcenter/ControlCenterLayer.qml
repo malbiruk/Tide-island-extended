@@ -15,6 +15,8 @@ Item {
     signal requestNotification(string appName, string summary, string body)
     signal weatherRequested()
     signal calendarRequested()
+    signal notificationCenterRequested()
+    signal powerMenuRequested()
     signal closeRequested()
 
     readonly property var userConfig: UserConfig
@@ -31,7 +33,7 @@ Item {
 
     Behavior on scale {
         NumberAnimation {
-            duration: showCondition ? 240 : 160
+            duration: showCondition ? 140 : 100
             easing.type: Easing.OutCubic
         }
     }
@@ -161,12 +163,10 @@ Item {
         ? activeScreenRecorderCard.height + mainContent.spacing
         : 0
 
-    readonly property real controlCenterExtraHeight: 12 + batteryDrawerHandleHeight
-        + batteryDrawerProgress * drawerOpenDistance
+    // The former drawer is now a fixed row (tray / recorder) with no handle.
+    readonly property real controlCenterExtraHeight: 12 + batteryModeCardHeight
         + activeRecorderExtraHeight
-    readonly property real controlCenterMaximumExtraHeight: 12 + batteryDrawerHandleHeight
-        + drawerOpenDistance
-        + activeRecorderExtraHeight
+    readonly property real controlCenterMaximumExtraHeight: controlCenterExtraHeight
     readonly property bool bluetoothAvailable: !!bluetoothAdapter
     readonly property var bluetoothAdapter: Bluetooth.defaultAdapter
     readonly property var bluetoothDeviceValues: bluetoothAdapter ? bluetoothAdapter.devices.values : []
@@ -1322,7 +1322,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: showCondition ? 240 : 100
+            duration: showCondition ? 140 : 60
             easing.type: Easing.InOutQuad
         }
     }
@@ -1331,7 +1331,7 @@ Item {
         enabled: controlCenter.showCondition && !controlCenter.sliderIntroPending && !brightnessCard.pressed
 
         NumberAnimation {
-            duration: 130
+            duration: 80
             easing.type: Easing.OutCubic
         }
     }
@@ -1340,7 +1340,7 @@ Item {
         enabled: controlCenter.showCondition && !controlCenter.sliderIntroPending && !volumeCard.pressed
 
         NumberAnimation {
-            duration: 130
+            duration: 80
             easing.type: Easing.OutCubic
         }
     }
@@ -1349,7 +1349,7 @@ Item {
         enabled: controlCenter.showCondition && !controlCenter.sliderIntroPending && !micCard.pressed
 
         NumberAnimation {
-            duration: 130
+            duration: 80
             easing.type: Easing.OutCubic
         }
     }
@@ -1359,7 +1359,7 @@ Item {
 
         NumberAnimation {
             id: batteryDrawerProgressAnimation
-            duration: 240
+            duration: 140
             easing.type: Easing.OutCubic
         }
     }
@@ -1698,7 +1698,7 @@ Item {
 
     Timer {
         id: batteryDrawerSettleTimer
-        interval: 300
+        interval: 180
         repeat: false
         onTriggered: controlCenter.batteryDrawerSettling = false
     }
@@ -1803,7 +1803,7 @@ Item {
         spacing: 12
 
         Behavior on opacity {
-            NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
         }
 
         Item {
@@ -1840,7 +1840,7 @@ Item {
                     font.family: textFontFamily
                     font.weight: Font.Medium
 
-                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Behavior on color { ColorAnimation { duration: 60 } }
 
                     MouseArea {
                         id: dateMouse
@@ -1896,6 +1896,47 @@ Item {
                 }
             }
 
+            Row {
+                anchors.right: headerBatteryPill.left
+                anchors.rightMargin: 6
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 4
+
+                Repeater {
+                    model: [
+                        { glyph: "\u{F009C}", action: "notifications" },
+                        { glyph: "\u{F0425}", action: "power" }
+                    ]
+
+                    delegate: Rectangle {
+                        id: headerButton
+                        required property var modelData
+                        width: 24
+                        height: 22
+                        radius: 11
+                        color: headerButtonMouse.containsMouse ? StyleTokens.moduleHover : StyleTokens.module
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: headerButton.modelData.glyph
+                            color: StyleTokens.textPrimary
+                            font.pixelSize: 13
+                            font.family: controlCenter.iconFontFamily
+                        }
+
+                        MouseArea {
+                            id: headerButtonMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: headerButton.modelData.action === "power"
+                                ? controlCenter.powerMenuRequested()
+                                : controlCenter.notificationCenterRequested()
+                        }
+                    }
+                }
+            }
+
             Rectangle {
                 id: headerBatteryPill
                 anchors.right: parent.right
@@ -1905,11 +1946,11 @@ Item {
                 width: headerBatteryRow.implicitWidth + 12
                 radius: 12
                 color: headerBatteryMouse.containsMouse
-                    ? StyleTokens.withAlpha(StyleTokens.white, 0.12)
+                    ? StyleTokens.withAlpha(StyleTokens.textPrimary, 0.12)
                     : (controlCenter.powerPanelOpen ? StyleTokens.withAlpha(cardAccent, 0.2) : StyleTokens.transparent)
 
                 Behavior on color {
-                    ColorAnimation { duration: 120 }
+                    ColorAnimation { duration: 70 }
                 }
 
                 Row {
@@ -1919,7 +1960,7 @@ Item {
 
                     Text {
                         text: controlCenter.chargingIconGlyph
-                        color: StyleTokens.white
+                        color: StyleTokens.textPrimary
                         font.pixelSize: 13
                         font.family: controlCenter.iconFontFamily
                         visible: controlCenter.effectiveCharging
@@ -1928,7 +1969,7 @@ Item {
 
                     Text {
                         text: controlCenter.effectiveBatteryCap + "%"
-                        color: StyleTokens.white
+                        color: StyleTokens.textPrimary
                         font.pixelSize: 13
                         font.family: controlCenter.textFontFamily
                         font.weight: Font.DemiBold
@@ -1963,7 +2004,7 @@ Item {
 
                                 Behavior on width {
                                     NumberAnimation {
-                                        duration: 300
+                                        duration: 180
                                         easing.type: Easing.OutCubic
                                     }
                                 }
@@ -2005,11 +2046,11 @@ Item {
                     scale: wifiCardMouse.pressed ? 0.98 : 1
 
                     Behavior on scale {
-                        NumberAnimation { duration: StyleTokens.durationFast; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: Math.round(StyleTokens.durationFast * 0.6); easing.type: Easing.OutCubic }
                     }
                     width: (connectivityCardsRow.width - connectivityCardsRow.spacing) / 2
                     height: connectivityCardsRow.height
-                    radius: StyleTokens.radiusModule
+                    radius: 10
                     color: StyleTokens.clearBlack
                     clip: true
 
@@ -2049,7 +2090,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: StyleTokens.durationFast
+                                duration: Math.round(StyleTokens.durationFast * 0.6)
                             }
                         }
 
@@ -2063,7 +2104,7 @@ Item {
 
                             Behavior on x {
                                 NumberAnimation {
-                                    duration: 140
+                                    duration: 80
                                     easing.type: Easing.OutCubic
                                 }
                             }
@@ -2136,11 +2177,11 @@ Item {
                     scale: bluetoothCardMouse.pressed ? 0.98 : 1
 
                     Behavior on scale {
-                        NumberAnimation { duration: StyleTokens.durationFast; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: Math.round(StyleTokens.durationFast * 0.6); easing.type: Easing.OutCubic }
                     }
                     width: (connectivityCardsRow.width - connectivityCardsRow.spacing) / 2
                     height: connectivityCardsRow.height
-                    radius: StyleTokens.radiusModule
+                    radius: 10
                     color: StyleTokens.clearBlack
                     clip: true
 
@@ -2180,7 +2221,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: StyleTokens.durationFast
+                                duration: Math.round(StyleTokens.durationFast * 0.6)
                             }
                         }
 
@@ -2194,7 +2235,7 @@ Item {
 
                             Behavior on x {
                                 NumberAnimation {
-                                    duration: 140
+                                    duration: 80
                                     easing.type: Easing.OutCubic
                                 }
                             }
@@ -2271,8 +2312,7 @@ Item {
             readonly property real openDistance: controlCenter.drawerOpenDistance
 
             width: parent.width
-            height: controlCenter.batteryDrawerHandleHeight
-                + controlCenter.batteryDrawerProgress * openDistance
+            height: controlCenter.batteryModeCardHeight
             clip: true
 
             Rectangle {
@@ -2281,9 +2321,9 @@ Item {
                 y: -height + controlCenter.batteryDrawerProgress * height
                 width: batteryDrawer.cardWidth
                 height: controlCenter.batteryModeCardHeight
-                radius: StyleTokens.radiusModule
+                radius: 10
                 color: StyleTokens.clearBlack
-                visible: controlCenter.tlpControlsEnabled
+                visible: false
                 opacity: controlCenter.tlpControlsEnabled ? Math.min(1, controlCenter.batteryDrawerProgress * 1.35) : 0
                 clip: true
 
@@ -2397,7 +2437,7 @@ Item {
                             enabled: !controlCenter.batteryModeSliderDragging
 
                             NumberAnimation {
-                                duration: 180
+                                duration: 110
                                 easing.type: Easing.OutCubic
                             }
                         }
@@ -2413,7 +2453,7 @@ Item {
 
                                 Behavior on opacity {
                                     NumberAnimation {
-                                        duration: 140
+                                        duration: 80
                                         easing.type: Easing.OutCubic
                                     }
                                 }
@@ -2427,21 +2467,21 @@ Item {
 
                                     Behavior on width {
                                         NumberAnimation {
-                                            duration: 140
+                                            duration: 80
                                             easing.type: Easing.OutCubic
                                         }
                                     }
 
                                     Behavior on height {
                                         NumberAnimation {
-                                            duration: 140
+                                            duration: 80
                                             easing.type: Easing.OutCubic
                                         }
                                     }
 
                                     Behavior on color {
                                         ColorAnimation {
-                                            duration: 140
+                                            duration: 80
                                         }
                                     }
 
@@ -2528,11 +2568,12 @@ Item {
 
             Rectangle {
                 id: quickTogglesCard
+                visible: false
                 x: controlCenter.tlpControlsEnabled ? batteryDrawer.cardWidth + connectivityCardsRow.spacing : 0
                 y: batteryModeCard.y
                 width: batteryDrawer.cardWidth
                 height: controlCenter.batteryModeCardHeight
-                radius: StyleTokens.radiusModule
+                radius: 10
                 color: StyleTokens.clearBlack
                 opacity: Math.min(1, controlCenter.batteryDrawerProgress * 1.35)
                 clip: true
@@ -2542,7 +2583,7 @@ Item {
 
                 Behavior on x {
                     NumberAnimation {
-                        duration: 180
+                        duration: 110
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -2574,7 +2615,7 @@ Item {
 
                     Behavior on slashProgress {
                         NumberAnimation {
-                            duration: 830
+                            duration: 500
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -2582,12 +2623,12 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: 4
-                        radius: 16
+                        radius: 10
                         color: focusButtonMouse.containsMouse ? StyleTokens.withAlpha(StyleTokens.track, 0.3) : StyleTokens.clearBlack
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: StyleTokens.durationFast
+                                duration: Math.round(StyleTokens.durationFast * 0.6)
                             }
                         }
                     }
@@ -2618,7 +2659,7 @@ Item {
 
                             Behavior on scale {
                                 NumberAnimation {
-                                    duration: 120
+                                    duration: 70
                                     easing.type: Easing.OutCubic
                                 }
                             }
@@ -2688,12 +2729,12 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: 4
-                        radius: 16
+                        radius: 10
                         color: nightLightButtonMouse.containsMouse ? StyleTokens.withAlpha(StyleTokens.track, 0.3) : StyleTokens.clearBlack
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: StyleTokens.durationFast
+                                duration: Math.round(StyleTokens.durationFast * 0.6)
                             }
                         }
                     }
@@ -2728,7 +2769,7 @@ Item {
 
                             Behavior on scale {
                                 NumberAnimation {
-                                    duration: 120
+                                    duration: 70
                                     easing.type: Easing.OutCubic
                                 }
                             }
@@ -2754,10 +2795,9 @@ Item {
             SystemTrayCard {
                 id: drawerSystemTrayCard
                 anchors.left: parent.left
-                width: batteryDrawer.cardWidth
+                width: drawerRecorderCard.visible ? batteryDrawer.cardWidth : batteryDrawer.width
                 height: controlCenter.batteryModeCardHeight
-                y: -height + controlCenter.batteryDrawerProgress * (controlCenter.batteryModeCardHeight + controlCenter.batteryDrawerContentGap + height)
-                opacity: Math.min(1, controlCenter.batteryDrawerProgress * 1.35)
+                y: 0
                 clip: true
             }
 
@@ -2767,12 +2807,12 @@ Item {
                 y: drawerSystemTrayCard.y
                 width: batteryDrawer.cardWidth
                 height: controlCenter.batteryModeCardHeight
-                opacity: Math.min(1, controlCenter.batteryDrawerProgress * 1.35)
                 clip: true
             }
 
             Rectangle {
                 id: batteryDrawerTunnelShade
+                visible: false
                 anchors.left: parent.left
                 anchors.top: parent.top
                 width: parent.width
@@ -2793,6 +2833,7 @@ Item {
 
             Item {
                 id: batteryDrawerHandle
+                visible: false
                 anchors.left: parent.left
                 anchors.right: parent.right
                 y: controlCenter.batteryDrawerProgress * batteryDrawer.openDistance
@@ -2878,7 +2919,7 @@ Item {
             Behavior on height {
                 enabled: controlCenter.readyForCardAnimations
                 NumberAnimation {
-                    duration: 220
+                    duration: 130
                     easing.type: Easing.OutCubic
                 }
             }
@@ -2886,7 +2927,7 @@ Item {
             Behavior on opacity {
                 enabled: controlCenter.readyForCardAnimations
                 NumberAnimation {
-                    duration: 180
+                    duration: 110
                     easing.type: Easing.OutCubic
                 }
             }
@@ -3014,7 +3055,7 @@ Item {
         visible: controlCenter.powerViewActive
 
         Behavior on opacity {
-            NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
         }
 
         Row {
@@ -3036,7 +3077,7 @@ Item {
 
                     Behavior on scale {
                         NumberAnimation {
-                            duration: 140
+                            duration: 80
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -3049,7 +3090,7 @@ Item {
                         font.family: controlCenter.iconFontFamily
 
                         Behavior on color {
-                            ColorAnimation { duration: 120 }
+                            ColorAnimation { duration: 70 }
                         }
                     }
 

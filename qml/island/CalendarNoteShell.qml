@@ -57,13 +57,13 @@ Item {
             mounted = true;
             syncDraft();
             revealAnimation.to = 1;
-            revealAnimation.duration = 240;
+            revealAnimation.duration = 140;
             revealAnimation.easing.type = Easing.OutCubic;
             revealAnimation.start();
             Qt.callLater(shell.focusEditor);
         } else {
             revealAnimation.to = 0;
-            revealAnimation.duration = 160;
+            revealAnimation.duration = 100;
             revealAnimation.easing.type = Easing.OutCubic;
             revealAnimation.start();
             hideTimer.restart();
@@ -89,7 +89,7 @@ Item {
 
     Timer {
         id: hideTimer
-        interval: 190
+        interval: 110
         repeat: false
         onTriggered: {
             if (!shell.open)
@@ -118,7 +118,7 @@ Item {
 
         GlassSurface {
             anchors.fill: parent
-            radius: 28
+            radius: 10
             clip: true
 
             Text {
