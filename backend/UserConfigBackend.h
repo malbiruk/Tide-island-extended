@@ -23,7 +23,6 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(QString tlpSudoPassword READ tlpSudoPassword NOTIFY tlpSudoPasswordChanged FINAL)
     Q_PROPERTY(QString tlpPermissionMode READ tlpPermissionMode NOTIFY tlpPermissionModeChanged FINAL)
     Q_PROPERTY(QString powerProfileDriver READ powerProfileDriver NOTIFY powerProfileDriverChanged FINAL)
-    Q_PROPERTY(QString terminalEmulator READ terminalEmulator NOTIFY terminalEmulatorChanged FINAL)
 
 
     Q_PROPERTY(int dynamicIslandPrimaryButton READ dynamicIslandPrimaryButton NOTIFY dynamicIslandPrimaryButtonChanged FINAL)
@@ -84,7 +83,6 @@ public:
     QString tlpSudoPassword() const;
     QString tlpPermissionMode() const;
     QString powerProfileDriver() const;
-    QString terminalEmulator() const;
     int dynamicIslandPrimaryButton() const;
     QString dynamicIslandPrimaryAction() const;
     int dynamicIslandSecondaryButton() const;
@@ -142,7 +140,6 @@ signals:
     void tlpSudoPasswordChanged();
     void tlpPermissionModeChanged();
     void powerProfileDriverChanged();
-    void terminalEmulatorChanged();
     void dynamicIslandPrimaryButtonChanged();
     void dynamicIslandPrimaryActionChanged();
     void dynamicIslandSecondaryButtonChanged();
@@ -200,7 +197,6 @@ private:
     QString m_tlpSudoPassword;
     QString m_tlpPermissionMode = QStringLiteral("skip");
     QString m_powerProfileDriver = QStringLiteral("auto");
-    QString m_terminalEmulator;
     int m_dynamicIslandPrimaryButton = 1;
     QString m_dynamicIslandPrimaryAction = QStringLiteral("none");
     int m_dynamicIslandSecondaryButton = 3;

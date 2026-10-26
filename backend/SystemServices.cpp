@@ -26,7 +26,6 @@
 #ifdef Q_OS_UNIX
 #include <unistd.h>
 #include <sys/stat.h>
-#include <sys/statvfs.h>
 #endif
 
 #include <algorithm>
@@ -2046,53 +2045,6 @@ void SystemServices::handleCavaLine(const QString &line) {
     emit cavaLevelsChanged();
 }
 
-double SystemServices::queryDiskUsagePercent(const QString &mountPath) const {
-#ifdef Q_OS_UNIX
-    struct statvfs st;
-    const QByteArray pathBytes = QFile::encodeName(mountPath.isEmpty() ? QStringLiteral("/") : mountPath);
-    if (::statvfs(pathBytes.constData(), &st) == 0) {
-        const quint64 totalBytes = static_cast<quint64>(st.f_blocks) * st.f_frsize;
-        const quint64 availBytes = static_cast<quint64>(st.f_bavail) * st.f_frsize;
-        const quint64 usedBytes = (totalBytes >= availBytes) ? (totalBytes - availBytes) : 0;
-        return totalBytes > 0 ? (static_cast<double>(usedBytes) / totalBytes) * 100.0 : 0.0;
-    }
-#else
-    Q_UNUSED(mountPath)
-#endif
-    return 0.0;
-}
-
-QString SystemServices::defaultTerminalEmulator() const {
-    const UserConfigBackend config;
-    const QString configured = config.terminalEmulator().trimmed();
-    if (!configured.isEmpty())
-        return configured;
-
-    const QString envTerm = qEnvironmentVariable("TERMINAL").trimmed();
-    if (!envTerm.isEmpty())
-        return envTerm;
-
-    static const QStringList candidates = {
-        QStringLiteral("xdg-terminal-exec"),
-        QStringLiteral("kitty"),
-        QStringLiteral("ghostty"),
-        QStringLiteral("foot"),
-        QStringLiteral("alacritty"),
-        QStringLiteral("wezterm"),
-        QStringLiteral("konsole"),
-        QStringLiteral("gnome-terminal"),
-        QStringLiteral("xfce4-terminal"),
-        QStringLiteral("xterm")
-    };
-
-    for (const QString &candidate : candidates) {
-        if (!findExecutable(candidate).isEmpty())
-            return candidate;
-    }
-
-    return QStringLiteral("xterm");
-}
-
 QStringList SystemServices::scopedCommand(const QStringList &argv) const {
     return ScopedLaunch::command(argv);
 }
@@ -2106,33 +2058,3 @@ bool SystemServices::isRegularFile(const QString &pathOrUrl) const {
     struct stat info {};
     return !path.isEmpty() && ::stat(QFile::encodeName(path).constData(), &info) == 0 && S_ISREG(info.st_mode);
 }
-
-QStringList SystemServices::wrapTerminalCommand(const QStringList &command) const {
-    if (command.isEmpty())
-        return {};
-
-    const QString terminal = defaultTerminalEmulator();
-    const QStringList parts = QProcess::splitCommand(terminal);
-    if (parts.isEmpty())
-        return QStringList{QStringLiteral("xterm"), QStringLiteral("-e")} + command;
-
-    if (parts.size() > 1) {
-        QStringList wrapped = parts;
-        wrapped.append(command);
-        return wrapped;
-    }
-
-    const QString binName = QFileInfo(parts.first()).fileName().toLower();
-    if (binName == QLatin1String("wezterm")) {
-        return QStringList{parts.first(), QStringLiteral("start"), QStringLiteral("--")} + command;
-    }
-    if (binName == QLatin1String("gnome-terminal")) {
-        return QStringList{parts.first(), QStringLiteral("--")} + command;
-    }
-    if (binName == QLatin1String("xdg-terminal-exec")) {
-        return QStringList{parts.first()} + command;
-    }
-
-    return QStringList{parts.first(), QStringLiteral("-e")} + command;
-}
-

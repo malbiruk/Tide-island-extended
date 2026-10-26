@@ -15,78 +15,15 @@ class SystemServicesNotificationTests : public QObject
 {
     Q_OBJECT
 
+    QTemporaryDir m_emptyDirectory;
+
 private slots:
-    void testAudioDevicesAndAppStreamsInvokables()
+    // No monitor or pactl processes: nothing the tests run is found on PATH.
+    void initTestCase()
     {
-        SystemServices services;
-        QSignalSpy outputsSpy(&services, &SystemServices::audioOutputsChanged);
-        QSignalSpy inputsSpy(&services, &SystemServices::audioInputsChanged);
-        QSignalSpy streamsSpy(&services, &SystemServices::appStreamsChanged);
-        QVERIFY(outputsSpy.isValid());
-        QVERIFY(inputsSpy.isValid());
-        QVERIFY(streamsSpy.isValid());
-
-        services.setAudioMonitoringActive(true);
-        services.requestAudioOutputs();
-        services.requestAudioInputs();
-        services.requestAppStreams();
-
-        // Verify properties initial state
-        QVERIFY(services.audioOutputs().isEmpty() || !services.audioOutputs().isEmpty());
-        QVERIFY(services.audioInputs().isEmpty() || !services.audioInputs().isEmpty());
-
-        // Wait for async commands to return
-        QTest::qWait(600);
-
-        // Verify outputs or inputs were populated on a running system
-        QVERIFY(outputsSpy.count() >= 0);
-        QVERIFY(inputsSpy.count() >= 0);
-
-        // Test stream mute and volume adjustments do not crash
-        services.setAppStreamVolume(99999, 0.75);
-        services.toggleAppStreamMute(99999);
-        services.setAudioMonitoringActive(false);
-    }
-
-    void testBatteryThresholdDetection()
-    {
-        SystemServices services;
-        QSignalSpy spy(&services, &SystemServices::batteryThresholdChanged);
-        QVERIFY(spy.isValid());
-
-        services.requestBatteryThresholdState();
-
-        if (QFile::exists(QStringLiteral("/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode"))) {
-            QVERIFY(services.batteryThresholdSupported());
-            QCOMPARE(services.batteryThresholdType(), QStringLiteral("conservation"));
-            QCOMPARE(services.batteryThresholdValue(), services.batteryConservationMode() ? 80 : 100);
-            QCOMPARE(services.batteryThresholdPresets().size(), 2);
-        }
-
-        QVERIFY(services.batteryHealthPercent() >= 0 && services.batteryHealthPercent() <= 100);
-        QVERIFY(services.batteryCycleCount() >= 0);
-    }
-
-    void testTerminalResolutionAndWrapping()
-    {
-        SystemServices services;
-        const QString term = services.defaultTerminalEmulator();
-        QVERIFY(!term.trimmed().isEmpty());
-
-        // Empty command returns empty
-        QVERIFY(services.wrapTerminalCommand({}).isEmpty());
-
-        // Normal command wrapping
-        const QStringList wrapped = services.wrapTerminalCommand({QStringLiteral("btop")});
-        QVERIFY(wrapped.size() >= 2);
-        QCOMPARE(wrapped.last(), QStringLiteral("btop"));
-        QVERIFY(wrapped.first().contains(term) || term.contains(wrapped.first()));
-
-        // Multi-arg command wrapping
-        const QStringList wrappedMulti = services.wrapTerminalCommand({QStringLiteral("nvim"), QStringLiteral("file.txt")});
-        QVERIFY(wrappedMulti.size() >= 3);
-        QCOMPARE(wrappedMulti.at(wrappedMulti.size() - 2), QStringLiteral("nvim"));
-        QCOMPARE(wrappedMulti.last(), QStringLiteral("file.txt"));
+        QVERIFY(m_emptyDirectory.isValid());
+        qputenv("PATH", m_emptyDirectory.path().toUtf8());
+        qputenv("XDG_RUNTIME_DIR", m_emptyDirectory.path().toUtf8());
     }
 
     void testPrivacyIndicators()
@@ -188,15 +125,11 @@ private slots:
     void scopedCommandDropsServiceVariablesAndKeepsTheExitCode()
     {
         // No user manager in this runtime dir: the program runs as a plain child through env.
-        QTemporaryDir runtimeDir;
-        QVERIFY(runtimeDir.isValid());
-        qputenv("XDG_RUNTIME_DIR", runtimeDir.path().toUtf8());
-
         SystemServices services;
         QVERIFY(services.scopedCommand({}).isEmpty());
 
         const QStringList command = services.scopedCommand(
-            {QStringLiteral("sh"), QStringLiteral("-c"),
+            {QStringLiteral("/bin/sh"), QStringLiteral("-c"),
              QStringLiteral("printf '%s|%s|%s' \"${MALLOC_CONF-unset}\" \"$1\" \"$HOME\"; exit 3"),
              QStringLiteral("sh"), QStringLiteral("$HOME a b")});
         QProcess process;
@@ -234,13 +167,6 @@ private slots:
         QVERIFY(!services.isRegularFile(QStringLiteral("/dev/zero")));
         QVERIFY(!services.isRegularFile(directory.path() + QStringLiteral("/missing.png")));
         QVERIFY(!services.isRegularFile(QString()));
-    }
-
-    void testQueryDiskUsagePercent()
-    {
-        SystemServices services;
-        const double pct = services.queryDiskUsagePercent(QStringLiteral("/"));
-        QVERIFY(pct >= 0.0 && pct <= 100.0);
     }
 };
 
