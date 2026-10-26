@@ -582,13 +582,9 @@ PagePanel {
             placeholderText: row.fallbackText
             inputMethodHints: row.numeric ? Qt.ImhDigitsOnly : Qt.ImhNone
             validator: row.numeric ? intValidator : null
+            savedText: String(root.intValue(row.keyName, Number(row.fallbackText)))
 
-            Component.onCompleted: {
-                text = root.intValue(row.keyName, Number(row.fallbackText))
-            }
-
-            onAccepted: row.commit()
-            onEditingFinished: row.commit()
+            onCommitted: row.commit()
         }
 
         IntValidator {
@@ -670,7 +666,6 @@ PagePanel {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            clockRow.selectedFormat = modelData
                             ConfigStore.setValue("clockFormat", modelData)
                             ConfigStore.save()
                         }
@@ -753,7 +748,6 @@ PagePanel {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            choiceRow.selectedId = modelData.id
                             ConfigStore.setValue(choiceRow.keyName, modelData.id)
                             ConfigStore.save()
                         }
@@ -825,13 +819,9 @@ PagePanel {
                 height: 36
                 placeholderText: commandRow.placeholderText
                 textPixelSize: 13
+                savedText: commandRow.savedText()
 
-                Component.onCompleted: {
-                    text = commandRow.savedText()
-                }
-
-                onAccepted: commandRow.commit()
-                onEditingFinished: commandRow.commit()
+                onCommitted: commandRow.commit()
             }
 
             ButtonLike {
@@ -1082,13 +1072,9 @@ PagePanel {
                 height: 36
                 placeholderText: "Auto-detect (~/.face, avatar.png)"
                 textPixelSize: 13
+                savedText: String(ConfigStore.value(row.keyName, ""))
 
-                Component.onCompleted: {
-                    text = String(ConfigStore.value(row.keyName, ""))
-                }
-
-                onAccepted: row.commit()
-                onEditingFinished: row.commit()
+                onCommitted: row.commit()
             }
 
             ButtonLike {

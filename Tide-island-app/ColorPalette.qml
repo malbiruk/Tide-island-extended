@@ -57,7 +57,6 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 checked: root.boolValue("colorPaletteEnabled", true)
                 onToggled: function(val) {
-                    checked = val;
                     ConfigStore.setValue("colorPaletteEnabled", val);
                     ConfigStore.save();
                 }
@@ -97,13 +96,9 @@ Rectangle {
                 width: 260
                 height: 36
                 placeholderText: "~/.config/tide-island/colors.json"
+                savedText: String(ConfigStore.value("colorsFilePath", ""))
 
-                Component.onCompleted: {
-                    text = String(ConfigStore.value("colorsFilePath", ""))
-                }
-
-                onAccepted: commit()
-                onEditingFinished: commit()
+                onCommitted: commit()
 
                 function commit() {
                     ConfigStore.setValue("colorsFilePath", text.trim())
@@ -166,8 +161,8 @@ Rectangle {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: {
-                control.checked = !control.checked;
-                control.toggled(control.checked);
+                // checked stays bound to the config; it follows once the change is saved.
+                control.toggled(!control.checked);
             }
         }
     }

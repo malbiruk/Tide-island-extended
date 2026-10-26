@@ -705,9 +705,8 @@ PagePanel {
                     notation: DoubleValidator.StandardNotation
                 }
 
-                Component.onCompleted: text = root.hideDelaySecondsText()
-                onAccepted: row.commitCustomDelay()
-                onEditingFinished: row.commitCustomDelay()
+                savedText: root.hideDelaySecondsText()
+                onCommitted: row.commitCustomDelay()
             }
 
             Text {
@@ -774,10 +773,8 @@ PagePanel {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
 
-            onClicked: {
-                control.checked = !control.checked
-                control.toggled(control.checked)
-            }
+            // checked stays bound to the config; it follows once the change is saved.
+            onClicked: control.toggled(!control.checked)
         }
     }
 

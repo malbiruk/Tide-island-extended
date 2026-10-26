@@ -68,7 +68,6 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 checked: root.boolValue("weatherEnabled", true)
                 onToggled: function(val) {
-                    checked = val;
                     ConfigStore.setValue("weatherEnabled", val);
                     ConfigStore.save();
                     root.revision += 1;
@@ -110,10 +109,9 @@ Rectangle {
                 width: 240
                 height: 36
                 placeholderText: "Auto-detect (IP location)"
-                text: root.textValue("weatherLocation", "")
+                savedText: root.textValue("weatherLocation", "")
 
-                onAccepted: commit()
-                onEditingFinished: commit()
+                onCommitted: commit()
 
                 function commit() {
                     ConfigStore.setValue("weatherLocation", text.trim());
@@ -195,7 +193,6 @@ Rectangle {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                unitsRow.selectedUnits = modelData.value;
                                 ConfigStore.setValue("weatherUnits", modelData.value);
                                 ConfigStore.save();
                                 root.revision += 1;
@@ -280,7 +277,6 @@ Rectangle {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                refreshRow.selectedInterval = modelData.value;
                                 ConfigStore.setValue("weatherRefreshInterval", modelData.value);
                                 ConfigStore.save();
                                 root.revision += 1;
@@ -345,8 +341,8 @@ Rectangle {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: {
-                control.checked = !control.checked;
-                control.toggled(control.checked);
+                // checked stays bound to the config; it follows once the change is saved.
+                control.toggled(!control.checked);
             }
         }
     }

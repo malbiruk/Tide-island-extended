@@ -235,15 +235,11 @@ PagePanel {
             placeholderText: row.fallbackText
             inputMethodHints: row.numeric ? Qt.ImhDigitsOnly : Qt.ImhNone
             validator: row.numeric ? intValidator : null
+            savedText: row.numeric
+                ? String(root.intValue(row.keyName, Number(row.fallbackText)))
+                : root.textValue(row.keyName, row.fallbackText)
 
-            Component.onCompleted: {
-                text = row.numeric
-                    ? root.intValue(row.keyName, Number(row.fallbackText))
-                    : root.textValue(row.keyName, row.fallbackText)
-            }
-
-            onAccepted: row.commit()
-            onEditingFinished: row.commit()
+            onCommitted: row.commit()
         }
 
         IntValidator {

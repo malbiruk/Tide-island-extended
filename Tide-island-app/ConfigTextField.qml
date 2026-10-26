@@ -15,6 +15,26 @@ Rectangle {
     signal accepted()
     signal editingFinished()
 
+    // The stored value. The field shows it whenever it is not being edited, so changes made
+    // elsewhere (the island, the file) appear. `committed` fires only after the user edited the
+    // text, so leaving the field or the window never writes back a value nobody changed here.
+    property string savedText: ""
+    property bool dirty: false
+    signal committed(string text)
+
+    onSavedTextChanged: {
+        if (!dirty)
+            field.text = savedText
+    }
+    Component.onCompleted: field.text = savedText
+
+    function commitIfEdited() {
+        if (!dirty)
+            return
+        dirty = false
+        committed(field.text)
+    }
+
     readonly property bool hovered: hoverHandler.hovered
 
     radius: 6
@@ -63,7 +83,14 @@ Rectangle {
         rightPadding: 10
         verticalAlignment: TextInput.AlignVCenter
 
-        onAccepted: control.accepted()
-        onEditingFinished: control.editingFinished()
+        onTextEdited: control.dirty = true
+        onAccepted: {
+            control.accepted()
+            control.commitIfEdited()
+        }
+        onEditingFinished: {
+            control.editingFinished()
+            control.commitIfEdited()
+        }
     }
 }
