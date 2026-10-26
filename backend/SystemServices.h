@@ -119,8 +119,7 @@ public:
     Q_INVOKABLE void focusSenderWindow(const QString &appName,
                                        qint64 pid = 0,
                                        const QString &summary = QString(),
-                                       const QString &body = QString(),
-                                       const QString &desktopEntry = QString());
+                                       const QString &body = QString());
     Q_INVOKABLE QList<qint64> processAncestorPids(qint64 pid) const;
     Q_INVOKABLE void requestBatteryThresholdState();
     Q_INVOKABLE void setBatteryConservationMode(bool enabled);
@@ -182,7 +181,6 @@ private:
     QString commandErrorText(const QString &program, const CommandResult &result) const;
     QString resolvePowerProfileDriver(const QString &requestedDriver) const;
 
-    void focusWithDriftwm(QStringList queries);
     void detectBatteryThresholdSupport();
     void updateBatteryMetrics();
     void applyBatteryThresholdValue(const QString &targetValue);

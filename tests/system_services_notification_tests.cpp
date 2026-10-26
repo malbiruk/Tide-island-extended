@@ -1,3 +1,4 @@
+#include "NotificationActivation.h"
 #include "SystemServices.h"
 
 #include <QtTest>
@@ -177,6 +178,29 @@ private slots:
         else qunsetenv("XDG_CURRENT_DESKTOP");
         if (!origComp.isEmpty()) qputenv("TIDE_ISLAND_COMPOSITOR", origComp.toLocal8Bit());
         else qunsetenv("TIDE_ISLAND_COMPOSITOR");
+    }
+
+    void activationTokenSignalFollowsTheNotificationSpec()
+    {
+        const QDBusMessage message = NotificationActivation::activationTokenSignal(42, QStringLiteral("token-1"));
+        QCOMPARE(message.type(), QDBusMessage::SignalMessage);
+        QCOMPARE(message.path(), QStringLiteral("/org/freedesktop/Notifications"));
+        QCOMPARE(message.interface(), QStringLiteral("org.freedesktop.Notifications"));
+        QCOMPARE(message.member(), QStringLiteral("ActivationToken"));
+        QCOMPARE(message.signature(), QStringLiteral("us"));
+        QCOMPARE(message.arguments().at(0).toUInt(), 42u);
+        QCOMPARE(message.arguments().at(1).toString(), QStringLiteral("token-1"));
+    }
+
+    void activationTokenRequestWithoutWaylandAnswersEmptyAndAsynchronously()
+    {
+        NotificationActivation activation;
+        QSignalSpy readySpy(&activation, &NotificationActivation::tokenReady);
+        activation.requestToken(nullptr, 7);
+        QCOMPARE(readySpy.count(), 0);
+        QVERIFY(readySpy.wait(1000));
+        QCOMPARE(readySpy.at(0).at(0).toUInt(), 7u);
+        QVERIFY(readySpy.at(0).at(1).toString().isEmpty());
     }
 
     void testQueryDiskUsagePercent()

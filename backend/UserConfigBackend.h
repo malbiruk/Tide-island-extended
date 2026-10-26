@@ -295,7 +295,7 @@ private:
     QString m_terminalEmulator;
     int m_workspaceOverviewWindowDragButton = 1;
     int m_dynamicIslandPrimaryButton = 1;
-    QString m_dynamicIslandPrimaryAction = QStringLiteral("toggleExpandedPlayer");
+    QString m_dynamicIslandPrimaryAction = QStringLiteral("none");
     int m_dynamicIslandSecondaryButton = 3;
     QString m_dynamicIslandSecondaryAction = QStringLiteral("toggleControlCenter");
     int m_dynamicIslandMiddleButton = 2;
@@ -306,7 +306,7 @@ private:
     bool m_islandAutoHideKeepActivities = true;
     QString m_idleInhibitCommand;
     QString m_islandStyle = QStringLiteral("island");
-    int m_hoverExpandAction = 1;
+    int m_hoverExpandAction = 0;
     bool m_islandAutoHideEnabled = true;
     int m_islandAutoHideDelayMs = 1000;
     int m_islandWidth = 140;

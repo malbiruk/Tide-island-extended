@@ -525,7 +525,15 @@ void SystemServices::logNotificationDaemonOwner() const {
 
     const uint ownerPid = pidReply.value();
     if (ownerPid == static_cast<uint>(QCoreApplication::applicationPid())) {
-        qInfo() << "[Notifications] tide-island owns" << name;
+        // ActivationToken signals are sent on QDBusConnection::sessionBus(); they only reach
+        // clients as the daemon's own if that connection is the one owning the name.
+        const QString owner = bus->serviceOwner(name).value();
+        const QString ours = QDBusConnection::sessionBus().baseService();
+        if (owner == ours)
+            qInfo() << "[Notifications] tide-island owns" << name << "on its session-bus connection" << ours;
+        else
+            qWarning() << "[Notifications] tide-island owns" << name << "as" << owner
+                       << "but signals go out as" << ours << "- activation tokens will not match the daemon";
         return;
     }
 
@@ -572,34 +580,16 @@ QList<qint64> SystemServices::processAncestorPids(qint64 pid) const {
     return list;
 }
 
-// driftwm: `driftwm msg focus <query>` focuses a window whose app_id contains the query
-// (case-insensitive) and exits non-zero when nothing matches, so candidates are tried in turn.
-void SystemServices::focusWithDriftwm(QStringList queries) {
-    while (!queries.isEmpty() && queries.first().trimmed().isEmpty())
-        queries.removeFirst();
-    if (queries.isEmpty())
-        return;
-
-    const QString query = queries.takeFirst().trimmed();
-    queries.removeAll(query);
-    startCommand(QStringLiteral("driftwm"), {QStringLiteral("msg"), QStringLiteral("focus"), query}, 2000,
-        [this, queries](const CommandResult &result) {
-            if (!result.errorString.isEmpty() || result.exitStatus != QProcess::NormalExit || result.exitCode != 0)
-                focusWithDriftwm(queries);
-        });
-}
-
-void SystemServices::focusSenderWindow(const QString &appName, qint64 pid, const QString &summary, const QString &body,
-                                       const QString &desktopEntry) {
+void SystemServices::focusSenderWindow(const QString &appName, qint64 pid, const QString &summary, const QString &body) {
     const QString compositorOverride = QString::fromLocal8Bit(qgetenv("TIDE_ISLAND_COMPOSITOR")).toLower();
     const bool isDriftwm = compositorOverride == QStringLiteral("driftwm")
         || (compositorOverride.isEmpty()
             && (QString::fromLocal8Bit(qgetenv("XDG_CURRENT_DESKTOP")).toLower().contains(QStringLiteral("driftwm"))
                 || !qgetenv("DRIFTWM_SOCKET").isEmpty()));
-    if (isDriftwm) {
-        focusWithDriftwm({desktopEntry, appName});
+    // driftwm raises the sender itself from the xdg-activation token that comes with the
+    // invoked action (NotificationActivation); there is nothing to do without an action.
+    if (isDriftwm)
         return;
-    }
 
     // 1. Resolve ancestor PIDs if PID is known (e.g. notify-send -> bash -> kitty)
     QList<qint64> ancestorPids;

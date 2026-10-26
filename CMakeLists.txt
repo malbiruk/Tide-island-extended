@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(TideIsland VERSION 1.1.1 LANGUAGES CXX)
+project(TideIsland VERSION 1.1.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,8 +10,28 @@ set(CMAKE_AUTOUIC ON)
 
 option(TIDE_ISLAND_WITH_NIRI "Build niri compositor integration" ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Network DBus Test Concurrent)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui GuiPrivate Qml Quick Network DBus Test Concurrent)
 find_library(UDEV_LIB NAMES udev REQUIRED)
+
+# xdg_activation_v1 client bindings (notification actions hand the sender an activation token).
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
+pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
+find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
+if(NOT WAYLAND_PROTOCOLS_DIR)
+    message(FATAL_ERROR "wayland-protocols not found (needed for xdg-activation-v1.xml)")
+endif()
+set(XDG_ACTIVATION_XML "${WAYLAND_PROTOCOLS_DIR}/staging/xdg-activation/xdg-activation-v1.xml")
+set(XDG_ACTIVATION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/wayland/xdg-activation-v1-client-protocol.h")
+set(XDG_ACTIVATION_CODE "${CMAKE_CURRENT_BINARY_DIR}/wayland/xdg-activation-v1-protocol.c")
+add_custom_command(
+    OUTPUT "${XDG_ACTIVATION_HEADER}" "${XDG_ACTIVATION_CODE}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/wayland"
+    COMMAND ${WAYLAND_SCANNER} client-header "${XDG_ACTIVATION_XML}" "${XDG_ACTIVATION_HEADER}"
+    COMMAND ${WAYLAND_SCANNER} private-code "${XDG_ACTIVATION_XML}" "${XDG_ACTIVATION_CODE}"
+    DEPENDS "${XDG_ACTIVATION_XML}"
+    VERBATIM
+)
 
 add_executable(lyricsmpris
     lyricsmpris/main.cpp
@@ -353,6 +373,10 @@ qt_add_qml_module(IslandBackend
         backend/ScreenRecorderController.cpp
         backend/SystemGlanceBackend.h
         backend/SystemGlanceBackend.cpp
+        backend/NotificationActivation.h
+        backend/NotificationActivation.cpp
+        "${XDG_ACTIVATION_HEADER}"
+        "${XDG_ACTIVATION_CODE}"
 )
 
 # The QML plugin is installed below lib/qt6/qml/IslandBackend while its backing
@@ -364,6 +388,7 @@ set_target_properties(IslandBackendplugin PROPERTIES
 
 target_include_directories(IslandBackend PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/backend
+    ${CMAKE_CURRENT_BINARY_DIR}/wayland
 )
 
 target_compile_definitions(IslandBackend PRIVATE
@@ -373,10 +398,12 @@ target_compile_definitions(IslandBackend PRIVATE
 target_link_libraries(IslandBackend PRIVATE
     Qt6::Core
     Qt6::Gui
+    Qt6::GuiPrivate
     Qt6::Qml
     Qt6::Network
     Qt6::DBus
     Qt6::Concurrent
+    PkgConfig::WAYLAND_CLIENT
     ${UDEV_LIB}
 )
 

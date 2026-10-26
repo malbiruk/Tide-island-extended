@@ -237,6 +237,29 @@ private slots:
         runtime.reload();
         QCOMPARE(runtime.islandBatteryMode(), QStringLiteral("low"));
     }
+
+    void expandedPlayerIsNeitherAClickNorAHoverAction() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{}"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.dynamicIslandPrimaryAction(), QStringLiteral("none"));
+        QCOMPARE(runtime.hoverExpandAction(), 0);
+
+        QVERIFY(writeConfig(directory.path(),
+            "{\"dynamicIslandPrimaryAction\": \"toggleExpandedPlayer\", \"hoverExpandAction\": 1}"));
+        runtime.reload();
+        QCOMPARE(runtime.dynamicIslandPrimaryAction(), QStringLiteral("none"));
+        QCOMPARE(runtime.hoverExpandAction(), 0);
+
+        QVERIFY(writeConfig(directory.path(),
+            "{\"dynamicIslandPrimaryAction\": \"toggleClipboard\", \"hoverExpandAction\": 2}"));
+        runtime.reload();
+        QCOMPARE(runtime.dynamicIslandPrimaryAction(), QStringLiteral("toggleClipboard"));
+        QCOMPARE(runtime.hoverExpandAction(), 2);
+    }
 };
 
 QTEST_GUILESS_MAIN(UserConfigBackendTests)

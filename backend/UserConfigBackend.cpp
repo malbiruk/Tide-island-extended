@@ -774,7 +774,11 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_terminalEmulator, jsonString(configObject, QLatin1String("terminalEmulator"), QString()), &UserConfigBackend::terminalEmulatorChanged);
     updateField(this, m_workspaceOverviewWindowDragButton, jsonInt(configObject, QLatin1String("workspaceOverviewWindowDragButton"), 1), &UserConfigBackend::workspaceOverviewWindowDragButtonChanged);
     updateField(this, m_dynamicIslandPrimaryButton, jsonInt(configObject, QLatin1String("dynamicIslandPrimaryButton"), 1), &UserConfigBackend::dynamicIslandPrimaryButtonChanged);
-    updateField(this, m_dynamicIslandPrimaryAction, jsonString(configObject, QLatin1String("dynamicIslandPrimaryAction"), QStringLiteral("toggleExpandedPlayer")), &UserConfigBackend::dynamicIslandPrimaryActionChanged);
+    // The expanded player is no longer a click action: missing or legacy values mean "none".
+    const QString primaryAction = jsonString(configObject, QLatin1String("dynamicIslandPrimaryAction"), QStringLiteral("none"));
+    updateField(this, m_dynamicIslandPrimaryAction,
+                primaryAction == QLatin1String("toggleExpandedPlayer") ? QStringLiteral("none") : primaryAction,
+                &UserConfigBackend::dynamicIslandPrimaryActionChanged);
     updateField(this, m_dynamicIslandSecondaryButton, jsonInt(configObject, QLatin1String("dynamicIslandSecondaryButton"), 3), &UserConfigBackend::dynamicIslandSecondaryButtonChanged);
     updateField(this, m_islandShowWorkspaceOnAutoHide, jsonBool(configObject, QLatin1String("islandShowWorkspaceOnAutoHide"), true), &UserConfigBackend::islandShowWorkspaceOnAutoHideChanged);
     const QString batteryMode = jsonString(configObject, QLatin1String("islandBatteryMode"), QStringLiteral("low")).trimmed().toLower();
@@ -790,7 +794,11 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_dynamicIslandMiddleButton, jsonInt(configObject, QLatin1String("dynamicIslandMiddleButton"), 2), &UserConfigBackend::dynamicIslandMiddleButtonChanged);
     updateField(this, m_dynamicIslandMiddleAction, jsonString(configObject, QLatin1String("dynamicIslandMiddleAction"), QStringLiteral("toggleClipboard")), &UserConfigBackend::dynamicIslandMiddleActionChanged);
     updateField(this, m_dynamicIslandLeftSwipeItems, jsonArray(configObject, QLatin1String("dynamicIslandLeftSwipeItems"), defaultDynamicIslandLeftSwipeItems()), &UserConfigBackend::dynamicIslandLeftSwipeItemsChanged);
-    updateField(this, m_hoverExpandAction, jsonInt(configObject, QLatin1String("hoverExpandAction"), 1), &UserConfigBackend::hoverExpandActionChanged);
+    // Hover opens only the control center (2); anything else, including the old 1 (expanded
+    // player), means off.
+    updateField(this, m_hoverExpandAction,
+                jsonInt(configObject, QLatin1String("hoverExpandAction"), 0) == 2 ? 2 : 0,
+                &UserConfigBackend::hoverExpandActionChanged);
     updateField(this, m_islandAutoHideEnabled, jsonBool(configObject, QLatin1String("islandAutoHideEnabled"), true), &UserConfigBackend::islandAutoHideEnabledChanged);
     updateField(this, m_islandAutoHideDelayMs, jsonBoundedInt(configObject, QLatin1String("islandAutoHideDelayMs"), 1000, 100, 10000), &UserConfigBackend::islandAutoHideDelayMsChanged);
     QString loadedIslandStyle = jsonString(configObject, QLatin1String("islandStyle"), QStringLiteral("island")).toLower();
