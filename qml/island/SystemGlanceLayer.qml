@@ -216,9 +216,9 @@ FocusScope {
                         }
 
                         Text {
-                            text: SystemGlance.osName || "Linux"
+                            text: "\uf17c " + (SystemGlance.kernelRelease || "Linux")
                             color: StyleTokens.textMuted
-                            font.family: root.textFontFamily
+                            font.family: root.iconFontFamily
                             font.pixelSize: 10
                             width: Math.max(0, parent.width - uptimeText.implicitWidth - uptimeDot.implicitWidth - 12)
                             elide: Text.ElideRight
@@ -725,141 +725,6 @@ FocusScope {
                         }
                     }
                 }
-            }
-        }
-
-        // ==========================================
-        // 3. Bottom Kernel & System Telemetry Pill
-        // ==========================================
-        Rectangle {
-            id: kernelPill
-            width: parent.width
-            height: 44
-            radius: 10
-            color: StyleTokens.clearBlack
-            border.width: 1
-            border.color: kernelHover.containsMouse ? StyleTokens.accent : StyleTokens.inputBorder
-
-            Behavior on border.color { ColorAnimation { duration: 90 } }
-
-            Row {
-                anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 12
-                spacing: 12
-
-                // Left Section: Linux Kernel & Architecture
-                Row {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 8
-                    width: Math.floor((parent.width - 25) * 0.52)
-
-                    // Linux Tux Icon
-                    Rectangle {
-                        width: 28
-                        height: 28
-                        radius: 8
-                        color: StyleTokens.cardFillActive
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "\uf17c" // Tux Linux penguin
-                            font.family: root.iconFontFamily
-                            font.pixelSize: 14
-                            color: StyleTokens.accent
-                        }
-                    }
-
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 2
-                        width: parent.width - 36
-
-                        Text {
-                            width: parent.width
-                            text: "Linux " + (SystemGlance.kernelRelease || SystemGlance.kernelVersion || "Kernel")
-                            font.family: root.textFontFamily
-                            font.pixelSize: 11
-                            font.weight: Font.DemiBold
-                            color: StyleTokens.textPrimaryBright
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            width: parent.width
-                            text: (SystemGlance.kernelArch || "x86_64") + " • " + (SystemGlance.cpuGovernor || "powersave") + ((SystemGlance.pendingUpdatesCount || 0) > 0 ? (" • " + SystemGlance.pendingUpdatesCount + " pkgs") : "")
-                            font.family: root.textFontFamily
-                            font.pixelSize: 10
-                            color: StyleTokens.textMuted
-                            elide: Text.ElideRight
-                        }
-                    }
-                }
-
-                // Vertical Divider
-                Rectangle {
-                    width: 1
-                    height: 22
-                    color: StyleTokens.inputBorder
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                // Right Section: Load Averages & Scheduling Entities (Tasks)
-                Row {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 8
-                    width: Math.floor((parent.width - 25) * 0.48)
-
-                    // Tachometer / Load Icon
-                    Rectangle {
-                        width: 28
-                        height: 28
-                        radius: 8
-                        color: StyleTokens.cardFillActive
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "\uf0e4" // Tachometer / Gauge
-                            font.family: root.iconFontFamily
-                            font.pixelSize: 13
-                            color: StyleTokens.textPrimaryBright
-                        }
-                    }
-
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 2
-                        width: parent.width - 36
-
-                        Text {
-                            width: parent.width
-                            text: "Load: " + (SystemGlance.loadAvgText || "0.00, 0.00, 0.00")
-                            font.family: root.textFontFamily
-                            font.pixelSize: 11
-                            font.weight: Font.DemiBold
-                            color: StyleTokens.textPrimaryBright
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            width: parent.width
-                            text: SystemGlance.tasksText || "Active tasks"
-                            font.family: root.textFontFamily
-                            font.pixelSize: 10
-                            color: StyleTokens.textMuted
-                            elide: Text.ElideRight
-                        }
-                    }
-                }
-            }
-
-            MouseArea {
-                id: kernelHover
-                anchors.fill: parent
-                hoverEnabled: true
-                acceptedButtons: Qt.NoButton
             }
         }
     }

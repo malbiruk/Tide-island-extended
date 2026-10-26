@@ -164,7 +164,6 @@ void SystemGlanceBackend::refreshNow()
     updateDisk();
     updateNetwork();
     updateUptime();
-    updateKernelStats();
     updateBatteryStats();
 
     emit statsUpdated();
@@ -205,21 +204,13 @@ void SystemGlanceBackend::initStaticInfo()
     if (m_hostName.isEmpty())
         m_hostName = QStringLiteral("localhost");
 
-    m_osName = QSysInfo::prettyProductName();
-    if (m_osName.isEmpty())
-        m_osName = QStringLiteral("Linux");
-
-    m_kernelVersion = QSysInfo::kernelVersion();
-    m_kernelRelease = m_kernelVersion;
+    m_kernelRelease = QSysInfo::kernelVersion();
     QFile osRelFile(QStringLiteral("/proc/sys/kernel/osrelease"));
     if (osRelFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         const QString rel = QString::fromUtf8(osRelFile.readAll()).trimmed();
         if (!rel.isEmpty())
             m_kernelRelease = rel;
     }
-    m_kernelArch = QSysInfo::currentCpuArchitecture();
-    if (m_kernelArch.isEmpty())
-        m_kernelArch = QStringLiteral("x86_64");
 
     // Resolve Avatar
     reloadAvatar();
@@ -587,38 +578,6 @@ void SystemGlanceBackend::openAvatarDirectory()
         }
     }
     ScopedLaunch::startDetached({QStringLiteral("xdg-open"), dir});
-}
-
-void SystemGlanceBackend::updateKernelStats()
-{
-    // Read /proc/loadavg
-    QFile loadFile(QStringLiteral("/proc/loadavg"));
-    if (loadFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        const QString line = QString::fromUtf8(loadFile.readLine()).trimmed();
-        const QStringList parts = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
-        if (parts.size() >= 4) {
-            bool ok1 = false, ok5 = false, ok15 = false;
-            m_loadAvg1 = parts[0].toDouble(&ok1);
-            m_loadAvg5 = parts[1].toDouble(&ok5);
-            m_loadAvg15 = parts[2].toDouble(&ok15);
-            m_loadAvgText = QStringLiteral("%1, %2, %3").arg(parts[0], parts[1], parts[2]);
-
-            const QStringList taskParts = parts[3].split(QLatin1Char('/'));
-            if (taskParts.size() >= 2) {
-                m_runningTasks = taskParts[0].toInt();
-                m_totalTasks = taskParts[1].toInt();
-                m_tasksText = QStringLiteral("%1 running • %2 tasks").arg(m_runningTasks).arg(m_totalTasks);
-            }
-        }
-    }
-
-    // Read CPU scaling governor
-    QFile govFile(QStringLiteral("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"));
-    if (govFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        m_cpuGovernor = QString::fromUtf8(govFile.readAll()).trimmed();
-    } else {
-        m_cpuGovernor = QStringLiteral("powersave");
-    }
 }
 
 void SystemGlanceBackend::updateBatteryStats()

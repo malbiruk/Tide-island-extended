@@ -63,21 +63,8 @@ class SystemGlanceBackend : public QObject {
     Q_PROPERTY(QString userName READ userName NOTIFY staticInfoReady FINAL)
     Q_PROPERTY(QString hostName READ hostName NOTIFY staticInfoReady FINAL)
     Q_PROPERTY(QString uptimeText READ uptimeText NOTIFY statsUpdated FINAL)
-    Q_PROPERTY(QString osName READ osName NOTIFY staticInfoReady FINAL)
-    Q_PROPERTY(QString kernelVersion READ kernelVersion NOTIFY staticInfoReady FINAL)
     Q_PROPERTY(QString kernelRelease READ kernelRelease NOTIFY staticInfoReady FINAL)
-    Q_PROPERTY(QString kernelArch READ kernelArch NOTIFY staticInfoReady FINAL)
     Q_PROPERTY(QString avatarPath READ avatarPath NOTIFY avatarPathChanged FINAL)
-
-    // Kernel & Load Telemetry
-    Q_PROPERTY(QString loadAvgText READ loadAvgText NOTIFY statsUpdated FINAL)
-    Q_PROPERTY(double loadAvg1 READ loadAvg1 NOTIFY statsUpdated FINAL)
-    Q_PROPERTY(double loadAvg5 READ loadAvg5 NOTIFY statsUpdated FINAL)
-    Q_PROPERTY(double loadAvg15 READ loadAvg15 NOTIFY statsUpdated FINAL)
-    Q_PROPERTY(int runningTasks READ runningTasks NOTIFY statsUpdated FINAL)
-    Q_PROPERTY(int totalTasks READ totalTasks NOTIFY statsUpdated FINAL)
-    Q_PROPERTY(QString tasksText READ tasksText NOTIFY statsUpdated FINAL)
-    Q_PROPERTY(QString cpuGovernor READ cpuGovernor NOTIFY statsUpdated FINAL)
 
     // Battery Telemetry
     Q_PROPERTY(bool hasBattery READ hasBattery NOTIFY statsUpdated FINAL)
@@ -140,20 +127,8 @@ public:
     QString userName() const { return m_userName; }
     QString hostName() const { return m_hostName; }
     QString uptimeText() const { return m_uptimeText; }
-    QString osName() const { return m_osName; }
-    QString kernelVersion() const { return m_kernelVersion; }
     QString kernelRelease() const { return m_kernelRelease; }
-    QString kernelArch() const { return m_kernelArch; }
     QString avatarPath() const { return m_avatarPath; }
-
-    QString loadAvgText() const { return m_loadAvgText; }
-    double loadAvg1() const { return m_loadAvg1; }
-    double loadAvg5() const { return m_loadAvg5; }
-    double loadAvg15() const { return m_loadAvg15; }
-    int runningTasks() const { return m_runningTasks; }
-    int totalTasks() const { return m_totalTasks; }
-    QString tasksText() const { return m_tasksText; }
-    QString cpuGovernor() const { return m_cpuGovernor; }
 
     bool hasBattery() const { return m_hasBattery; }
     int batteryCapacity() const {
@@ -202,7 +177,6 @@ private:
     void updateDisk();
     void updateNetwork();
     void updateUptime();
-    void updateKernelStats();
     void updateBatteryStats();
     int readCpuTemperature();
     void reloadAvatar();
@@ -270,21 +244,8 @@ private:
     QString m_userName;
     QString m_hostName;
     QString m_uptimeText;
-    QString m_osName;
-    QString m_kernelVersion;
     QString m_kernelRelease;
-    QString m_kernelArch;
     QString m_avatarPath;
-
-    // Kernel & Load state
-    QString m_cpuGovernor = QStringLiteral("powersave");
-    QString m_loadAvgText = QStringLiteral("0.00, 0.00, 0.00");
-    double m_loadAvg1 = 0.0;
-    double m_loadAvg5 = 0.0;
-    double m_loadAvg15 = 0.0;
-    int m_runningTasks = 0;
-    int m_totalTasks = 0;
-    QString m_tasksText = QStringLiteral("0 tasks");
 
     // Battery state
     bool m_hasBattery = false;

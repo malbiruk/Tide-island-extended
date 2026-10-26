@@ -66,7 +66,6 @@ private slots:
         QVERIFY(!glance.diskText().isEmpty());
         QVERIFY(!glance.userName().isEmpty());
         QVERIFY(!glance.hostName().isEmpty());
-        QVERIFY(!glance.osName().isEmpty());
 
         // Deactivating glance stops sampling
         glance.setActive(false);
@@ -105,14 +104,9 @@ private slots:
 
     void testKernelAndBatteryTelemetry() {
         SystemGlanceBackend glance;
-        QVERIFY(!glance.kernelVersion().isEmpty());
         QVERIFY(!glance.kernelRelease().isEmpty());
-        QVERIFY(!glance.kernelArch().isEmpty());
 
         glance.refreshNow();
-        QVERIFY(!glance.loadAvgText().isEmpty());
-        QVERIFY(glance.totalTasks() >= 0);
-        QVERIFY(!glance.cpuGovernor().isEmpty());
 
         if (glance.hasBattery()) {
             QVERIFY(glance.batteryCapacity() >= 0 && glance.batteryCapacity() <= 100);
