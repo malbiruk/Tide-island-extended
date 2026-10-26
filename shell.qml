@@ -127,15 +127,17 @@ Scope {
     }
 
     // Tide's own feedback (e.g. the recorder's): in every island's history, as a pop-up on one
-    // island only (popupWindow, else the first), and not at all as a pop-up during Do Not Disturb.
-    function showInternalNotice(appName, summary, body, popupWindow) {
-        const record = { id: nextInternalNotificationId(), appName: appName, summary: summary, body: body };
+    // island only (popupWindow, else the first), and not as a pop-up during Do Not Disturb unless
+    // urgent (shown as critical, like a failed screen lock).
+    function showInternalNotice(appName, summary, body, popupWindow, urgent) {
+        const record = { id: nextInternalNotificationId(), appName: appName, summary: summary, body: body,
+                         urgency: urgent ? NotificationUrgency.Critical : NotificationUrgency.Normal };
         let target = popupWindow || null;
         if (!target)
             shellRoot.forFocusedWindow((window) => target = window);
         shellRoot.forEachWindow((window) => {
             if (window.presentNotificationRecord)
-                window.presentNotificationRecord(record, window === target && !focusEnabled ? "popup" : "history");
+                window.presentNotificationRecord(record, window === target && (urgent || !focusEnabled) ? "popup" : "history");
         });
     }
 
@@ -151,8 +153,8 @@ Scope {
     Connections {
         target: SystemServices
 
-        function onNoticeRequested(appName, summary, body) {
-            shellRoot.showInternalNotice(appName, summary, body);
+        function onNoticeRequested(appName, summary, body, urgent) {
+            shellRoot.showInternalNotice(appName, summary, body, null, urgent);
         }
     }
 

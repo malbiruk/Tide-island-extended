@@ -244,14 +244,28 @@ private slots:
         QCOMPARE(notices.at(0).at(1).toString(), QStringLiteral("Lock failed"));
         QCOMPARE(notices.at(0).at(2).toString(), QStringLiteral("sh exited with code 3."));
 
+        QCOMPARE(notices.at(0).at(3).toBool(), false);
+
+        // Never reported from inside the call, so the caller always has the id first.
         services->runCommand({QStringLiteral("no-such-locker-xyz")}, QStringLiteral("Power"), QStringLiteral("Lock failed"),
-                             QStringLiteral("Install a locker."));
+                             QStringLiteral("Install a locker."), QString(), true);
+        QCOMPARE(notices.count(), 1);
         QTRY_COMPARE(notices.count(), 2);
         QCOMPARE(notices.at(1).at(2).toString(), QStringLiteral("Install a locker."));
+        QCOMPARE(notices.at(1).at(3).toBool(), true);
 
         services->runCommand({QStringLiteral("/bin/true")}, QStringLiteral("Power"), QStringLiteral("Lock failed"));
         QTRY_COMPARE(finished.count(), 3);
         QCOMPARE(notices.count(), 2);
+
+        // A keyed command runs once at a time; the key is listed while it runs.
+        const QStringList slow{QStringLiteral("/bin/sleep"), QStringLiteral("0.3")};
+        QVERIFY(services->runCommand(slow, QStringLiteral("Power"), QStringLiteral("Lock failed"), QString(), QStringLiteral("lock")) > 0);
+        QCOMPARE(services->pendingCommands(), QStringList{QStringLiteral("lock")});
+        QCOMPARE(services->runCommand(slow, QStringLiteral("Power"), QStringLiteral("Lock failed"), QString(), QStringLiteral("lock")), -1);
+        QTRY_VERIFY(services->pendingCommands().isEmpty());
+        QVERIFY(services->runCommand(slow, QStringLiteral("Power"), QStringLiteral("Lock failed"), QString(), QStringLiteral("lock")) > 0);
+        QTRY_VERIFY(services->pendingCommands().isEmpty());
 
         // A locker still running when its owner goes away keeps running.
         const QString marker = directory.path() + QStringLiteral("/still-running");

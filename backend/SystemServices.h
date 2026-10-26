@@ -43,6 +43,8 @@ class SystemServices final : public QObject {
     // Profiles the resolved power driver offers (power-saver / balanced / performance); empty
     // when there is no driver or it has not been queried yet.
     Q_PROPERTY(QStringList powerProfiles READ powerProfiles NOTIFY powerProfilesChanged FINAL)
+    // Keys of runCommand calls still running (shared by every instance, so it survives a reload).
+    Q_PROPERTY(QStringList pendingCommands READ pendingCommands NOTIFY pendingCommandsChanged FINAL)
 
 public:
     explicit SystemServices(QObject *parent = nullptr);
@@ -115,17 +117,22 @@ public:
     // User-facing programs run in their own systemd scope (common/ScopedLaunch.h).
     Q_INVOKABLE bool launchDetached(const QStringList &argv) const;
     // Runs argv outside the asking QML (an unloaded layer or a reload never kills it). A start
-    // failure or non-zero exit becomes noticeRequested(appName, failureSummary, …), with
-    // notFoundBody for exit code 127 when given. Returns the id commandFinished reports.
+    // failure or non-zero exit becomes noticeRequested(appName, failureSummary, …, urgent), with
+    // notFoundBody for exit code 127 when given; urgent notices also show during Do Not Disturb.
+    // While a command with the same non-empty key runs, the call is ignored and returns -1.
+    // Otherwise returns the id commandFinished reports, always later from the event loop.
     Q_INVOKABLE int runCommand(const QStringList &argv, const QString &appName,
-                               const QString &failureSummary, const QString &notFoundBody = QString());
+                               const QString &failureSummary, const QString &notFoundBody = QString(),
+                               const QString &key = QString(), bool urgent = false);
+    QStringList pendingCommands() const;
     // An existing regular file (symlinks followed), given as a path or file:// URL. Notification
     // images must not point the image loader at FIFOs, devices or directories.
     Q_INVOKABLE bool isRegularFile(const QString &pathOrUrl) const;
 
 signals:
     void commandFinished(int id, int exitCode);
-    void noticeRequested(const QString &appName, const QString &summary, const QString &body);
+    void noticeRequested(const QString &appName, const QString &summary, const QString &body, bool urgent);
+    void pendingCommandsChanged();
     void screenRecordingActiveChanged();
     void privacyIndicatorsChanged();
     void brightnessSnapshotReady(double value, const QString &errorString);

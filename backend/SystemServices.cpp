@@ -2070,25 +2070,51 @@ bool SystemServices::launchDetached(const QStringList &argv) const {
     return ScopedLaunch::startDetached(argv);
 }
 
+namespace {
+QSet<QString> &pendingCommandKeys() {
+    static QSet<QString> keys;
+    return keys;
+}
+} // namespace
+
+QStringList SystemServices::pendingCommands() const {
+    QStringList keys = pendingCommandKeys().values();
+    keys.sort();
+    return keys;
+}
+
 int SystemServices::runCommand(const QStringList &argv, const QString &appName,
-                               const QString &failureSummary, const QString &notFoundBody) {
+                               const QString &failureSummary, const QString &notFoundBody,
+                               const QString &key, bool urgent) {
+    if (!key.isEmpty() && pendingCommandKeys().contains(key))
+        return -1;
     const int id = ++m_lastCommandId;
     const QString program = argv.isEmpty() ? QString() : QFileInfo(argv.first()).fileName();
     const QString missingBody = notFoundBody.isEmpty() ? QStringLiteral("%1 was not found.").arg(program) : notFoundBody;
+    if (!key.isEmpty()) {
+        pendingCommandKeys().insert(key);
+        emit pendingCommandsChanged();
+    }
 
     // Reported by whichever SystemServices exists when it ends (the QML engine may have been
     // reloaded meanwhile); commandFinished only to the instance that asked.
     QPointer<SystemServices> self(this);
-    auto report = [self, id, appName, failureSummary, missingBody, program](int exitCode) {
-        if (exitCode != 0) {
+    auto report = [self, id, key, urgent, appName, failureSummary, missingBody, program](int exitCode) {
+        SystemServices *current = SystemServices::instance();
+        if (!key.isEmpty() && pendingCommandKeys().remove(key) && current)
+            emit current->pendingCommandsChanged();
+        if (exitCode != 0 && current) {
             const QString body = exitCode == 127 ? missingBody
                 : exitCode < 0 ? QStringLiteral("%1 could not be started or stopped unexpectedly.").arg(program)
                 : QStringLiteral("%1 exited with code %2.").arg(program).arg(exitCode);
-            if (SystemServices *services = SystemServices::instance())
-                emit services->noticeRequested(appName, failureSummary, body);
+            emit current->noticeRequested(appName, failureSummary, body, urgent);
         }
         if (self)
             emit self->commandFinished(id, exitCode);
+    };
+    // Always from the event loop: a start failure can be reported inside QProcess::start().
+    auto queuedReport = [report](int exitCode) {
+        QTimer::singleShot(0, [report, exitCode]() { report(exitCode); });
     };
 
     const QString pathValue = ScopedLaunch::environment().value(QStringLiteral("PATH"));
@@ -2096,10 +2122,10 @@ int SystemServices::runCommand(const QStringList &argv, const QString &appName,
         ? QFileInfo(argv.first()).isExecutable()
         : !QStandardPaths::findExecutable(argv.first(), pathValue.split(QLatin1Char(':'), Qt::SkipEmptyParts)).isEmpty());
     if (!found) {
-        QTimer::singleShot(0, this, [report]() { report(127); });
+        queuedReport(127);
         return id;
     }
-    ScopedLaunch::run(argv, report);
+    ScopedLaunch::run(argv, queuedReport);
     return id;
 }
 

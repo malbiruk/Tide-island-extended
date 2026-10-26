@@ -37,9 +37,14 @@ Item {
     readonly property var idleInhibitCommand: UserConfig.idleInhibitCommand
     readonly property bool idleInhibitConfigured: idleInhibitCommand.length > 0
     property bool idleInhibitOn: false
-    // The toggle runs outside this layer (it may start an inhibitor that must outlive it).
-    property int idleInhibitToggleId: -1
-    readonly property bool idleInhibitBusy: idleInhibitToggleId >= 0 || idleInhibitStatusProcess.running
+    // The toggle runs outside this layer (it may start an inhibitor that must outlive it); its
+    // busy state lives in SystemServices, so reloading this layer mid-toggle keeps it.
+    readonly property bool idleInhibitToggling: Array.from(SystemServices.pendingCommands).indexOf("caffeine") >= 0
+    readonly property bool idleInhibitBusy: idleInhibitToggling || idleInhibitStatusProcess.running
+    onIdleInhibitTogglingChanged: {
+        if (!idleInhibitToggling)
+            refreshIdleInhibit();
+    }
 
     function refreshIdleInhibit() {
         if (idleInhibitConfigured && !idleInhibitStatusProcess.running)
@@ -48,19 +53,8 @@ Item {
 
     function toggleIdleInhibit() {
         if (idleInhibitConfigured && !idleInhibitBusy)
-            idleInhibitToggleId = SystemServices.runCommand(Array.from(idleInhibitCommand).concat(["toggle"]),
-                                                            "Caffeine", "Caffeine toggle failed");
-    }
-
-    Connections {
-        target: SystemServices
-
-        function onCommandFinished(id, exitCode) {
-            if (id !== controlCenter.idleInhibitToggleId)
-                return;
-            controlCenter.idleInhibitToggleId = -1;
-            controlCenter.refreshIdleInhibit();
-        }
+            SystemServices.runCommand(Array.from(idleInhibitCommand).concat(["toggle"]),
+                                      "Caffeine", "Caffeine toggle failed", "", "caffeine");
     }
 
     Process {
@@ -661,7 +655,8 @@ Item {
             sleepProcess.running = true;
     }
     // The locker runs outside this layer: closing or unloading the control center while the
-    // screen is locked must not kill it. Failures arrive as notices through the shell.
+    // screen is locked must not kill it. A second Lock while one runs is ignored; failures arrive
+    // as urgent notices through the shell, shown even during Do Not Disturb.
     function triggerLock() {
         const configured = Array.from(UserConfig.lockCommand);
         SystemServices.runCommand(configured.length > 0 ? configured : [
@@ -671,7 +666,8 @@ Item {
                 + "elif command -v loginctl >/dev/null 2>&1; then loginctl lock-session; "
                 + "elif command -v swaylock >/dev/null 2>&1; then swaylock; "
                 + "else exit 127; fi"
-        ], "Power", "Lock failed", configured.length > 0 ? "" : "Set a lock command, or install gtklock or swaylock.");
+        ], "Power", "Lock failed", configured.length > 0 ? "" : "Set a lock command, or install gtklock or swaylock.",
+           "lock", true);
     }
 
     function closeConnectivityPanels(emitSignals) {
