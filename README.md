@@ -1,13 +1,13 @@
 <h1 align="center">Tide Island Extended</h1>
 
 <p align="center">
-  <b>A driftwm-only fork of Tide Island Extended.</b>
+  <b>A compositor-agnostic Wayland fork of Tide Island Extended.</b>
 </p>
 
 <p align="center">
   <a href="https://github.com/Bimbok/Tide-island-extended"><img alt="Upstream: Bimbok/Tide-island-extended" src="https://img.shields.io/badge/upstream-Bimbok%2FTide--island--extended-8aadf4?style=flat-square"></a>
   <a href="https://github.com/enhaoswen/Tide-island"><img alt="Upstream: enhaoswen/Tide-island" src="https://img.shields.io/badge/upstream-enhaoswen%2FTide--island-8aadf4?style=flat-square"></a>
-  <img alt="driftwm" src="https://img.shields.io/badge/driftwm-111111?style=flat-square&color=8aadf4">
+  <img alt="Wayland" src="https://img.shields.io/badge/Wayland-111111?style=flat-square&color=8aadf4">
   <img alt="C++ + Qt" src="https://img.shields.io/badge/C%2B%2B%20%2B%20Qt-111111?style=flat-square&color=8aadf4">
 </p>
 
@@ -17,6 +17,8 @@
 
 
 <p align="center">
+  <a href="#how-this-fork-differs">Fork differences</a>
+  ·
   <a href="#preview">Preview</a>
   ·
   <a href="#features">Features</a>
@@ -36,12 +38,12 @@
 
 ## About Tide Island Extended
 
-Tide Island Extended is a desktop widget for the driftwm compositor, styled like the Dynamic Island.
-This repository is a driftwm-only fork of [Tide Island Extended](https://github.com/Bimbok/Tide-island-extended)
+Tide Island Extended is a desktop widget for Wayland compositors, styled like the Dynamic Island.
+This repository is a fork of [Tide Island Extended](https://github.com/Bimbok/Tide-island-extended)
 by [@Bimbok](https://github.com/Bimbok), which is itself a fork of [Tide Island](https://github.com/enhaoswen/Tide-island)
-by [@enhaoswen](https://github.com/enhaoswen). Hyprland/niri support, the notch style, the app
-launcher, the wallpaper picker, the built-in lockscreen and the Matugen/pywal hooks have been
-removed here.
+by [@enhaoswen](https://github.com/enhaoswen). It has no compositor-specific code; see
+[Compositor support](#compositor-support) for what it needs and [How this fork differs](#how-this-fork-differs)
+for what changed.
 
 When nothing much is going on, it sits compactly at the top (or bottom) edge of the screen, staying out of the way: the clock, the playing track with its synced lyric, an unread-notification bell and, when wanted, the battery. When you need more, it expands into interactive panels to adjust system settings, check notifications, view weather or the calendar, and more.
 
@@ -57,6 +59,33 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 > **Tide Island Extended has its own development direction and codebase.** It is not intended to remain in direct sync with upstream. Selected ideas, features, fixes, or improvements from the original project may be incorporated when they are considered meaningful and suitable for this project, adapted and integrated into the codebase as needed.
 >
 > Beyond these upstream-inspired improvements, Tide Island Extended also introduces its own features, integrations, performance improvements, UI refinements, and other enhancements.
+
+## How this fork differs
+
+Compared with [Bimbok/Tide-island-extended](https://github.com/Bimbok/Tide-island-extended):
+
+**Removed**
+
+- Hyprland and niri integration: workspace capsule and overview, compositor focus tracking, generated shortcut files.
+- The notch style, the app launcher, the wallpaper picker and the Matugen/pywal hooks.
+- The built-in lockscreen; the power menu's Lock runs an external locker instead.
+
+**Added**
+
+- Tide Island is the notification daemon itself, so actions work and hand the app an xdg-activation token.
+- Its own Do Not Disturb, kept across restarts (upstream used swaync's), and per-urgency pop-up durations.
+- [`lockCommand`](#configuration) picks the screen locker; `idleInhibitCommand` adds a caffeine toggle.
+- Resting-island battery modes (`islandBatteryMode`, `islandBatteryThreshold`) and an optional bottom edge (`islandEdge`).
+- Turning Bluetooth on lifts an rfkill soft block first.
+
+**Changed**
+
+- Screen recording uses wf-recorder instead of gpu-screen-recorder (no replay buffer or pause).
+- The control center is always fully expanded, and a horizontal touchpad swipe flips between it and the Glance.
+- Panels close on a click outside them, and the side popups (Wi-Fi, Bluetooth, audio, battery) fit their content.
+- Faster animations and a colour pass that works with light palettes.
+- Lower idle memory: rarely used panels load on first open and the lyrics daemon runs only during playback ([details](#performance--resource-efficiency)).
+- The settings app writes only the keys you changed and refuses to overwrite an invalid file.
 
 
 <br>
@@ -175,12 +204,12 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 - **On-Demand System Glance Capsule & Dashboard**:
   - **Dynamic Island Mini Dashboard**: The island expands into a system glance dashboard displaying a circular avatar / profile picture (with auto-detection from ChillPill-Shell `displayPicture`, `userconfig.json` `"avatarPath"`, image drag-and-drop, or click-to-browse), hostname, system uptime, kernel release, rich multi-metric battery telemetry (`⚡ 71% • 80% Cap • 100% Health` with power wattage and full diagnostics tooltip), real-time network throughput (`↓ 5.2 MB/s`, `↑ 240 KB/s`), CPU load & core temperature, RAM utilization (`GB` and `%`), and GPU / Storage meters.
   - **100% On-Demand Sampling**: Sampling timers only run when the glance layer is visibly mounted; zero CPU overhead when hidden. No third-party monitor dependencies (e.g. `nusmon`), extracting metrics directly from standard Linux `/proc` and `/sys` interfaces.
-  - **Intuitive Triggers & Controls**: Sleek modern aesthetic without intrusive close buttons — open it by dragging the island toward the screen or with `quickshell ipc call tide toggleGlance` (bind it in driftwm), dismiss with `Escape`, a click outside, or the same toggle.
+  - **Intuitive Triggers & Controls**: Sleek modern aesthetic without intrusive close buttons — open it by swiping down on the resting island (a mouse drag, or two fingers on a touchscreen; swipe up when the island sits at the bottom edge), with a horizontal touchpad swipe from the Control Center, or with `quickshell ipc -p /usr/share/tide-island call tide toggleGlance` (bind it in your compositor); dismiss with `Escape`, a click outside, or the same toggle.
 
 ### Core Features
 
 - Clock
-- System Glance & Dashboard (drag the island toward the screen, or IPC)
+- System Glance & Dashboard (swipe down on the island, or IPC)
 - Music player
 - Control Center
 - Audio device switcher & per-app volume mixer
@@ -221,9 +250,18 @@ reload the re-sent notifications start read.
 
 ### Compositor support
 
-This fork targets driftwm only. Notification actions hand the app an xdg-activation token, so
-driftwm raises the sender's window; keybindings for the IPC commands below go in driftwm's own
-config.
+Tide Island has no compositor-specific code. What it uses from the compositor:
+
+- **wlr-layer-shell** (required): the island and its panels are layer surfaces on the top and overlay layers, with an exclusive zone. GNOME/Mutter doesn't offer it, so Tide Island doesn't run there.
+- **Keyboard interactivity on layer surfaces** (exclusive and on-demand): `Escape`, keyboard navigation and text fields such as Wi-Fi passwords and calendar notes.
+- **xdg-activation-v1**: a notification action hands the app an activation token tied to your click; whether the window is raised is up to the compositor, which must honour the token. Without the protocol, actions still run, just without a token.
+- **wlr-screencopy** for the screen recorder, which is what wf-recorder captures through.
+- **Data control** (`ext-data-control-v1` or `wlr-data-control`) for clipboard history, which `wl-paste --watch` needs.
+- **ext-background-effect-v1** (optional) for the blur behind the island (`islandBlurEnabled`).
+- **Shortcuts**: Tide Island binds no keys itself; bind the [IPC commands](#ipc-commands) in your compositor's keybinding config.
+
+Each output gets its own island, but the shell can't ask the compositor which output has focus, so a
+panel opened by IPC always appears on the first island.
 
 <br>
 
@@ -319,7 +357,9 @@ Enable and start it immediately (Recommended):
 systemctl --user enable --now tide-island.service
 ```
 
-If you want to manage startup manually, start `tide-island` from driftwm's autostart instead.
+The service starts with `graphical-session.target`, so your session must start that target and pass
+`WAYLAND_DISPLAY` to the systemd user manager. If it doesn't, or you want to manage startup
+manually, start `tide-island` from your compositor's autostart instead.
 
 <br>
 
@@ -333,7 +373,7 @@ tide-island-config-app
 
 - **Interaction**: Left, middle and right click actions for the clock area of the island (e.g. Control Center, Clipboard History, or None). The bell, battery and music sections always open the notification center, the battery popup and the player.
 - **Weather**: Configure auto-detection or custom city name, temperature units (°C or °F), and refresh interval.
-- **Calendar**: Quick month view with week numbers and relative date indicators. Click the date in the Control Center or use `quickshell ipc call tide toggleCalendar`; the scroll wheel / arrow keys browse months, `Home` returns to today and `Esc` closes.
+- **Calendar**: Quick month view with week numbers and relative date indicators. Click the date in the Control Center or use `quickshell ipc -p /usr/share/tide-island call tide toggleCalendar`; the scroll wheel / arrow keys browse months, `Home` returns to today and `Esc` closes.
 - **Screen Recorder**:
   - While recording, the active recording card appears in the Control Center with a live timer.
 - **System Tray (SNI)**:
@@ -382,45 +422,44 @@ journalctl --user -u tide-island -f
 
 #### IPC Commands
 
-You can control Tide Island remotely using `quickshell ipc call`:
+Tide Island runs from `/usr/share/tide-island`, so IPC calls need `-p /usr/share/tide-island`.
+`quickshell ipc -p /usr/share/tide-island show` lists every target and function.
 
 | Command | Action |
 | --- | --- |
-| `quickshell ipc call tide togglePlayer` | Open or close music player |
-| `quickshell ipc call tide toggleControlCenter` | Open or close control center |
-| `quickshell ipc call tide togglePowerMenu` | Open or close power menu |
-| `quickshell ipc call tide toggleFileShelf` | Open or close file shelf |
-| `quickshell ipc call tide toggleCalendar` | Open or close calendar view |
-| `quickshell ipc call tide openCalendar` | Open calendar view |
-| `quickshell ipc call tide closeCalendar` | Close calendar view |
-| `quickshell ipc call tide toggleWeather` | Open or close weather view |
-| `quickshell ipc call tide openWeather` | Open weather view |
-| `quickshell ipc call tide closeWeather` | Close weather view |
-| `quickshell ipc call weather refresh` | Refresh weather data immediately |
-| `quickshell ipc call tide toggleClipboard` | Open or close clipboard history |
-| `quickshell ipc call tide openClipboard` | Open clipboard history |
-| `quickshell ipc call tide closeClipboard` | Close clipboard history |
-| `quickshell ipc call tide toggleNotificationCenter` | Open or close notification center |
-| `quickshell ipc call notificationCenter open` | Open notification center |
-| `quickshell ipc call notificationCenter close` | Close notification center |
-| `quickshell ipc call tide toggleGlance` | Open or close the system glance |
-| `quickshell ipc call tide showTimer` | Open the timer |
-| `quickshell ipc call tide togglePrivacy` | Open or close Privacy & Media Activity HUD |
-| `quickshell ipc call tide openPrivacy` | Open Privacy & Media Activity HUD |
-| `quickshell ipc call tide closePrivacy` | Close Privacy & Media Activity HUD |
-| `quickshell ipc call privacy toggle` | Open or close Privacy & Media Activity HUD |
-| `quickshell ipc call privacy show` | Open Privacy & Media Activity HUD |
-| `quickshell ipc call privacy close` | Close Privacy & Media Activity HUD |
-| `quickshell ipc call island toggle` | Toggle dynamic island capsules |
-| `quickshell ipc call island show` | Show dynamic island capsules |
-| `quickshell ipc call island hide` | Hide dynamic island capsules |
-| `quickshell ipc call recorder toggle` | Start or stop screen recording |
-| `quickshell ipc call recorder start` | Start screen recording |
-| `quickshell ipc call recorder stop` | Stop screen recording |
-| `quickshell ipc call recorder toggleMic` | Toggle microphone audio capture |
-| `quickshell ipc call recorder openRecordings` | Open recordings folder in file manager |
-| `quickshell ipc call tide reloadColors` | Reload color palette from colors.json |
-| `quickshell ipc call theme reload` | Reload color palette from colors.json |
+| `quickshell ipc -p /usr/share/tide-island call tide togglePlayer` | Open or close music player |
+| `quickshell ipc -p /usr/share/tide-island call tide toggleControlCenter` | Open or close control center |
+| `quickshell ipc -p /usr/share/tide-island call tide togglePowerMenu` | Open or close power menu |
+| `quickshell ipc -p /usr/share/tide-island call tide toggleFileShelf` | Open or close file shelf |
+| `quickshell ipc -p /usr/share/tide-island call tide toggleCalendar` | Open or close calendar view |
+| `quickshell ipc -p /usr/share/tide-island call tide openCalendar` | Open calendar view |
+| `quickshell ipc -p /usr/share/tide-island call tide closeCalendar` | Close calendar view |
+| `quickshell ipc -p /usr/share/tide-island call tide toggleWeather` | Open or close weather view |
+| `quickshell ipc -p /usr/share/tide-island call tide openWeather` | Open weather view |
+| `quickshell ipc -p /usr/share/tide-island call tide closeWeather` | Close weather view |
+| `quickshell ipc -p /usr/share/tide-island call weather refresh` | Refresh weather data immediately |
+| `quickshell ipc -p /usr/share/tide-island call tide toggleClipboard` | Open or close clipboard history |
+| `quickshell ipc -p /usr/share/tide-island call tide openClipboard` | Open clipboard history |
+| `quickshell ipc -p /usr/share/tide-island call tide closeClipboard` | Close clipboard history |
+| `quickshell ipc -p /usr/share/tide-island call tide toggleNotificationCenter` | Open or close notification center |
+| `quickshell ipc -p /usr/share/tide-island call tide toggleGlance` | Open or close the system glance |
+| `quickshell ipc -p /usr/share/tide-island call tide showTimer` | Open the timer |
+| `quickshell ipc -p /usr/share/tide-island call tide togglePrivacy` | Open or close Privacy & Media Activity HUD |
+| `quickshell ipc -p /usr/share/tide-island call tide openPrivacy` | Open Privacy & Media Activity HUD |
+| `quickshell ipc -p /usr/share/tide-island call tide closePrivacy` | Close Privacy & Media Activity HUD |
+| `quickshell ipc -p /usr/share/tide-island call privacy toggle` | Open or close Privacy & Media Activity HUD |
+| `quickshell ipc -p /usr/share/tide-island call privacy show` | Open Privacy & Media Activity HUD |
+| `quickshell ipc -p /usr/share/tide-island call privacy close` | Close Privacy & Media Activity HUD |
+| `quickshell ipc -p /usr/share/tide-island call island toggle` | Toggle dynamic island capsules |
+| `quickshell ipc -p /usr/share/tide-island call island show` | Show dynamic island capsules |
+| `quickshell ipc -p /usr/share/tide-island call island hide` | Hide dynamic island capsules |
+| `quickshell ipc -p /usr/share/tide-island call recorder toggle` | Start or stop screen recording |
+| `quickshell ipc -p /usr/share/tide-island call recorder start` | Start screen recording |
+| `quickshell ipc -p /usr/share/tide-island call recorder stop` | Stop screen recording |
+| `quickshell ipc -p /usr/share/tide-island call recorder toggleMic` | Toggle microphone audio capture |
+| `quickshell ipc -p /usr/share/tide-island call recorder openRecordings` | Open recordings folder in file manager |
+| `quickshell ipc -p /usr/share/tide-island call tide reloadColors` | Reload color palette from colors.json |
+| `quickshell ipc -p /usr/share/tide-island call theme reload` | Reload color palette from colors.json |
 
 <br>
 
@@ -448,6 +487,6 @@ Heartfelt thanks and appreciation to:
 
 <p align="center">
   <sub>
-    A practical, beautiful, and highly customizable desktop experience for driftwm.
+    A practical, beautiful, and highly customizable desktop experience for Wayland.
   </sub>
 </p>
