@@ -265,6 +265,43 @@ private slots:
         QCOMPARE(runtime.hoverExpandAction(), 2);
     }
 
+    void emptyOrLegacyActionsOnAnyButtonMeanNone() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{}"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.dynamicIslandSecondaryAction(), QStringLiteral("toggleControlCenter"));
+        QCOMPARE(runtime.dynamicIslandMiddleAction(), QStringLiteral("toggleClipboard"));
+
+        QVERIFY(writeConfig(directory.path(),
+            "{\"dynamicIslandPrimaryAction\": \"\", \"dynamicIslandSecondaryAction\": \"toggleExpandedPlayer\","
+            " \"dynamicIslandMiddleAction\": \" \"}"));
+        runtime.reload();
+        QCOMPARE(runtime.dynamicIslandPrimaryAction(), QStringLiteral("none"));
+        QCOMPARE(runtime.dynamicIslandSecondaryAction(), QStringLiteral("none"));
+        QCOMPARE(runtime.dynamicIslandMiddleAction(), QStringLiteral("none"));
+    }
+
+    void islandGeometryIsClampedLikeTheSettingsApp() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(),
+            "{\"islandWidth\": 0, \"islandHeight\": 5000, \"islandPositionX\": 140}"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.islandWidth(), 1);
+        QCOMPARE(runtime.islandHeight(), 1000);
+        QCOMPARE(runtime.islandPositionX(), 100);
+
+        QVERIFY(writeConfig(directory.path(), "{\"islandPositionX\": -3}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandPositionX(), 0);
+        QCOMPARE(runtime.islandWidth(), 140);
+    }
+
     void notificationTimeoutsDefaultToEightAndFiveSeconds() {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());

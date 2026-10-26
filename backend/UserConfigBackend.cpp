@@ -50,6 +50,14 @@ int jsonBoundedInt(const QJsonObject &object, QLatin1String key, int fallback, i
     return std::clamp(jsonInt(object, key, fallback), minimum, maximum);
 }
 
+// A click action: missing uses the button's default; empty means none, and so does the old
+// toggleExpandedPlayer (the music section opens the player now).
+QString clickAction(const QJsonObject &object, QLatin1String key, const QString &fallback)
+{
+    const QString action = jsonString(object, key, fallback).trimmed();
+    return action.isEmpty() || action == QLatin1String("toggleExpandedPlayer") ? QStringLiteral("none") : action;
+}
+
 double jsonDouble(const QJsonObject &object, QLatin1String key, double fallback)
 {
     const QJsonValue value = object.value(key);
@@ -201,7 +209,7 @@ bool UserConfigBackend::islandAutoHideEnabled() const
 }
 
 
-// Island battery section: "low" (only below 40 % while discharging), "always" or "never".
+// Island battery section: "low" (only below 40 %, charging or not), "always" or "never".
 QString UserConfigBackend::islandBatteryMode() const
 {
     return m_islandBatteryMode;
@@ -530,9 +538,8 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_powerProfileDriver, jsonString(configObject, QLatin1String("powerProfileDriver"), QStringLiteral("auto")), &UserConfigBackend::powerProfileDriverChanged);
     updateField(this, m_dynamicIslandPrimaryButton, jsonInt(configObject, QLatin1String("dynamicIslandPrimaryButton"), 1), &UserConfigBackend::dynamicIslandPrimaryButtonChanged);
     // The expanded player is no longer a click action: missing or legacy values mean "none".
-    const QString primaryAction = jsonString(configObject, QLatin1String("dynamicIslandPrimaryAction"), QStringLiteral("none"));
     updateField(this, m_dynamicIslandPrimaryAction,
-                primaryAction == QLatin1String("toggleExpandedPlayer") ? QStringLiteral("none") : primaryAction,
+                clickAction(configObject, QLatin1String("dynamicIslandPrimaryAction"), QStringLiteral("none")),
                 &UserConfigBackend::dynamicIslandPrimaryActionChanged);
     updateField(this, m_dynamicIslandSecondaryButton, jsonInt(configObject, QLatin1String("dynamicIslandSecondaryButton"), 3), &UserConfigBackend::dynamicIslandSecondaryButtonChanged);
     const QString batteryMode = jsonString(configObject, QLatin1String("islandBatteryMode"), QStringLiteral("low")).trimmed().toLower();
@@ -553,9 +560,9 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_lockCommand,
                 commandArguments(jsonString(configObject, QLatin1String("lockCommand"), QString())),
                 &UserConfigBackend::lockCommandChanged);
-    updateField(this, m_dynamicIslandSecondaryAction, jsonString(configObject, QLatin1String("dynamicIslandSecondaryAction"), QStringLiteral("toggleControlCenter")), &UserConfigBackend::dynamicIslandSecondaryActionChanged);
+    updateField(this, m_dynamicIslandSecondaryAction, clickAction(configObject, QLatin1String("dynamicIslandSecondaryAction"), QStringLiteral("toggleControlCenter")), &UserConfigBackend::dynamicIslandSecondaryActionChanged);
     updateField(this, m_dynamicIslandMiddleButton, jsonInt(configObject, QLatin1String("dynamicIslandMiddleButton"), 2), &UserConfigBackend::dynamicIslandMiddleButtonChanged);
-    updateField(this, m_dynamicIslandMiddleAction, jsonString(configObject, QLatin1String("dynamicIslandMiddleAction"), QStringLiteral("toggleClipboard")), &UserConfigBackend::dynamicIslandMiddleActionChanged);
+    updateField(this, m_dynamicIslandMiddleAction, clickAction(configObject, QLatin1String("dynamicIslandMiddleAction"), QStringLiteral("toggleClipboard")), &UserConfigBackend::dynamicIslandMiddleActionChanged);
     // Hover opens only the control center (2); anything else, including the old 1 (expanded
     // player), means off.
     updateField(this, m_hoverExpandAction,
@@ -563,13 +570,13 @@ void UserConfigBackend::loadConfig()
                 &UserConfigBackend::hoverExpandActionChanged);
     updateField(this, m_islandAutoHideEnabled, jsonBool(configObject, QLatin1String("islandAutoHideEnabled"), true), &UserConfigBackend::islandAutoHideEnabledChanged);
     updateField(this, m_islandAutoHideDelayMs, jsonBoundedInt(configObject, QLatin1String("islandAutoHideDelayMs"), 1000, 100, 10000), &UserConfigBackend::islandAutoHideDelayMsChanged);
-    updateField(this, m_islandWidth, jsonInt(configObject, QLatin1String("islandWidth"), 140), &UserConfigBackend::islandWidthChanged);
+    updateField(this, m_islandWidth, jsonBoundedInt(configObject, QLatin1String("islandWidth"), 140, 1, 1000), &UserConfigBackend::islandWidthChanged);
     updateField(this, m_islandBackgroundOpacity, jsonBoundedInt(configObject, QLatin1String("islandBackgroundOpacity"), 60, 0, 100), &UserConfigBackend::islandBackgroundOpacityChanged);
     updateField(this, m_islandBlurEnabled, jsonBool(configObject, QLatin1String("islandBlurEnabled"), true), &UserConfigBackend::islandBlurEnabledChanged);
-    updateField(this, m_islandHeight, jsonInt(configObject, QLatin1String("islandHeight"), 38), &UserConfigBackend::islandHeightChanged);
+    updateField(this, m_islandHeight, jsonBoundedInt(configObject, QLatin1String("islandHeight"), 38, 1, 1000), &UserConfigBackend::islandHeightChanged);
     updateField(this, m_islandExclusiveZone, jsonBoundedInt(configObject, QLatin1String("islandExclusiveZone"), 45, 0, 1000), &UserConfigBackend::islandExclusiveZoneChanged);
     updateField(this, m_islandTopMargin, jsonBoundedInt(configObject, QLatin1String("islandTopMargin"), 4, 0, 1000), &UserConfigBackend::islandTopMarginChanged);
-    updateField(this, m_islandPositionX, jsonInt(configObject, QLatin1String("islandPositionX"), 50), &UserConfigBackend::islandPositionXChanged);
+    updateField(this, m_islandPositionX, jsonBoundedInt(configObject, QLatin1String("islandPositionX"), 50, 0, 100), &UserConfigBackend::islandPositionXChanged);
     updateField(this, m_bodyFontSize, jsonInt(configObject, QLatin1String("bodyFontSize"), 16), &UserConfigBackend::bodyFontSizeChanged);
     updateField(this, m_titleFontSize, jsonInt(configObject, QLatin1String("titleFontSize"), 20), &UserConfigBackend::titleFontSizeChanged);
     updateField(this, m_iconFontSize, jsonInt(configObject, QLatin1String("iconFontSize"), 18), &UserConfigBackend::iconFontSizeChanged);
