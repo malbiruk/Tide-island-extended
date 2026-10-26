@@ -678,14 +678,36 @@ void SystemGlanceBackend::updateKernelStats()
 void SystemGlanceBackend::updateBatteryStats()
 {
     QDir dir(QStringLiteral("/sys/class/power_supply"));
-    const QStringList batteries = dir.entryList({QStringLiteral("BAT*"), QStringLiteral("battery*")}, QDir::Dirs | QDir::NoDotAndDotDot);
-    if (batteries.isEmpty()) {
+
+    // Find the system battery by its sysfs type (e.g. Apple Silicon's "macsmc-battery"),
+    // skipping peripheral batteries (scope "Device"); fall back to the BAT*/battery* names.
+    QString batteryName;
+    const QStringList supplies = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const QString &name : supplies) {
+        const QString supplyPath = dir.absoluteFilePath(name);
+        QFile typeFile(supplyPath + QStringLiteral("/type"));
+        if (!typeFile.open(QIODevice::ReadOnly | QIODevice::Text)
+                || QString::fromUtf8(typeFile.readAll()).trimmed() != QStringLiteral("Battery"))
+            continue;
+        QFile scopeFile(supplyPath + QStringLiteral("/scope"));
+        if (scopeFile.open(QIODevice::ReadOnly | QIODevice::Text)
+                && QString::fromUtf8(scopeFile.readAll()).trimmed() == QStringLiteral("Device"))
+            continue;
+        batteryName = name;
+        break;
+    }
+    if (batteryName.isEmpty()) {
+        const QStringList batteries = dir.entryList({QStringLiteral("BAT*"), QStringLiteral("battery*")}, QDir::Dirs | QDir::NoDotAndDotDot);
+        if (!batteries.isEmpty())
+            batteryName = batteries.first();
+    }
+    if (batteryName.isEmpty()) {
         m_hasBattery = false;
         return;
     }
 
     m_hasBattery = true;
-    const QString batPath = dir.absoluteFilePath(batteries.first());
+    const QString batPath = dir.absoluteFilePath(batteryName);
 
     // Status
     QFile statusFile(batPath + QStringLiteral("/status"));
@@ -701,12 +723,12 @@ void SystemGlanceBackend::updateBatteryStats()
         if (ok) m_batteryCapacity = cap;
     }
 
-    // Power now / Watts
+    // Power now / Watts. Some drivers (e.g. macsmc) report negative values while discharging.
     double watts = 0.0;
     QFile powerFile(batPath + QStringLiteral("/power_now"));
     if (powerFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         bool ok = false;
-        qint64 uW = QString::fromUtf8(powerFile.readAll()).trimmed().toLongLong(&ok);
+        qint64 uW = qAbs(QString::fromUtf8(powerFile.readAll()).trimmed().toLongLong(&ok));
         if (ok && uW > 0) {
             watts = uW / 1000000.0;
         }
@@ -715,7 +737,7 @@ void SystemGlanceBackend::updateBatteryStats()
         QFile voltFile(batPath + QStringLiteral("/voltage_now"));
         if (currFile.open(QIODevice::ReadOnly | QIODevice::Text) && voltFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             bool okC = false, okV = false;
-            qint64 uA = QString::fromUtf8(currFile.readAll()).trimmed().toLongLong(&okC);
+            qint64 uA = qAbs(QString::fromUtf8(currFile.readAll()).trimmed().toLongLong(&okC));
             qint64 uV = QString::fromUtf8(voltFile.readAll()).trimmed().toLongLong(&okV);
             if (okC && okV && uA > 0 && uV > 0) {
                 watts = (static_cast<double>(uA) * static_cast<double>(uV)) / 1000000000000.0;
