@@ -421,12 +421,8 @@ PanelWindow {
     readonly property bool anyConnectivityDetailMounted: wifiConnectivityDetailMounted || bluetoothConnectivityDetailMounted || powerConnectivityDetailMounted || audioConnectivityDetailMounted
     readonly property real connectivityDetailWidth: 318
     readonly property real connectivityDetailHeight: 404
-    readonly property bool controlCenterActiveRecording: ScreenRecorder
-        ? (ScreenRecorder.isRecording || ScreenRecorder.isReplayActive)
-        : false
-    readonly property real controlCenterActiveRecorderHeight: controlCenterActiveRecording
-        ? (ScreenRecorder && ScreenRecorder.isReplayActive ? 116 : 98)
-        : 0
+    readonly property bool controlCenterActiveRecording: ScreenRecorder ? ScreenRecorder.isRecording : false
+    readonly property real controlCenterActiveRecorderHeight: controlCenterActiveRecording ? 98 : 0
     readonly property real controlCenterActiveRecorderExtraHeight: controlCenterActiveRecording
         ? controlCenterActiveRecorderHeight + 10
         : 0

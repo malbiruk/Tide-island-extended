@@ -9,8 +9,6 @@ Item {
     readonly property var recorder: ScreenRecorder
 
     readonly property bool isRecording: recorder ? recorder.isRecording : false
-    readonly property bool isPaused: recorder ? recorder.isPaused : false
-    readonly property bool isReplayActive: recorder ? recorder.isReplayActive : false
     readonly property bool isMicOn: recorder ? recorder.micEnabled : false
     readonly property string timerText: recorder ? recorder.recordingTimeFormatted : "00:00"
 

@@ -11,21 +11,17 @@ Item {
     readonly property color cardAccent: StyleTokens.accent
     readonly property color cardAccentSoft: StyleTokens.accentSoft
     readonly property color cardRed: StyleTokens.danger
-    readonly property color cardYellow: StyleTokens.warning
-    readonly property color cardCyan: StyleTokens.accent
 
     readonly property color buttonBg: StyleTokens.cardFill
     readonly property color buttonBgHover: StyleTokens.cardFillHover
     readonly property color buttonBgPressed: StyleTokens.cardFillActive
 
     readonly property bool isRecording: recorder ? recorder.isRecording : false
-    readonly property bool isPaused: recorder ? recorder.isPaused : false
-    readonly property bool isReplayActive: recorder ? recorder.isReplayActive : false
     readonly property bool isMicOn: recorder ? recorder.micEnabled : false
     readonly property string timerText: recorder ? recorder.recordingTimeFormatted : "00:00"
 
     width: parent ? parent.width : 380
-    height: isReplayActive ? 116 : (isRecording ? 98 : 74)
+    height: isRecording ? 98 : 74
 
     Rectangle {
         id: cardBg
@@ -45,9 +41,7 @@ Item {
             radius: parent.radius
             color: StyleTokens.transparent
             border.width: 1
-            border.color: root.isRecording
-                ? StyleTokens.withAlpha(root.cardRed, 0.3)
-                : (root.isReplayActive ? StyleTokens.withAlpha(root.cardAccent, 0.3) : StyleTokens.transparent)
+            border.color: root.isRecording ? StyleTokens.withAlpha(root.cardRed, 0.3) : StyleTokens.transparent
         }
 
         Column {
@@ -133,10 +127,10 @@ Item {
                             height: 6
                             radius: 3
                             anchors.verticalCenter: parent.verticalCenter
-                            color: root.isPaused ? root.cardYellow : root.cardRed
+                            color: root.cardRed
 
                             SequentialAnimation on opacity {
-                                running: root.isRecording && !root.isPaused
+                                running: root.isRecording
                                 loops: Animation.Infinite
                                 NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutQuad }
                                 NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutQuad }
@@ -145,18 +139,8 @@ Item {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: {
-                                if (root.isRecording) {
-                                    return root.isPaused ? ("Paused • " + root.timerText) : ("Recording • " + root.timerText);
-                                }
-                                if (root.isReplayActive) {
-                                    return "Replay Buffer Active (60s)";
-                                }
-                                return "60 FPS • GPU Accelerated";
-                            }
-                            color: root.isRecording
-                                ? (root.isPaused ? root.cardYellow : root.cardRed)
-                                : (root.isReplayActive ? root.cardCyan : StyleTokens.textMuted)
+                            text: root.isRecording ? ("Recording • " + root.timerText) : "60 FPS • wf-recorder"
+                            color: root.isRecording ? root.cardRed : StyleTokens.textMuted
                             font.pixelSize: 11
                             font.family: userConfig.textFontFamily
                             font.weight: Font.Medium
@@ -170,43 +154,6 @@ Item {
                     id: actionButtonsRow
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 8
-
-                    // Pause / Resume Button (Visible only when recording; gpu-screen-recorder only)
-                    Rectangle {
-                        visible: root.isRecording && !!root.recorder && root.recorder.canPause
-                        width: 34
-                        height: 34
-                        radius: 10
-                        scale: pauseMouse.pressed ? 0.92 : (pauseMouse.containsMouse ? 1.06 : 1.0)
-                        color: pauseMouse.pressed
-                            ? root.buttonBgPressed
-                            : (pauseMouse.containsMouse ? root.buttonBgHover : root.buttonBg)
-                        border.color: root.isPaused ? root.cardYellow : (pauseMouse.containsMouse ? StyleTokens.withAlpha(root.cardAccent, 0.35) : StyleTokens.withAlpha(StyleTokens.textPrimary, 0.08))
-                        border.width: 1
-
-                        Behavior on scale { NumberAnimation { duration: 70; easing.type: Easing.OutCubic } }
-                        Behavior on color { ColorAnimation { duration: 70 } }
-                        Behavior on border.color { ColorAnimation { duration: 70 } }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.isPaused ? "\uf04b" : "\uf04c"
-                            color: root.isPaused ? root.cardYellow : (pauseMouse.containsMouse ? StyleTokens.textPrimary : StyleTokens.textSecondary)
-                            font.pixelSize: 12
-                            font.family: userConfig.iconFontFamily
-                        }
-
-                        MouseArea {
-                            id: pauseMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (root.recorder)
-                                    root.recorder.pauseRecording();
-                            }
-                        }
-                    }
 
                     // Microphone Toggle Button
                     Rectangle {
@@ -246,45 +193,6 @@ Item {
                         }
                     }
 
-                    // Replay Buffer Toggle Button (gpu-screen-recorder only)
-                    Rectangle {
-                        visible: !!root.recorder && root.recorder.canReplay
-                        width: 34
-                        height: 34
-                        radius: 10
-                        scale: replayMouse.pressed ? 0.92 : (replayMouse.containsMouse ? 1.06 : 1.0)
-                        color: root.isReplayActive
-                            ? StyleTokens.withAlpha(root.cardAccent, 0.22)
-                            : (replayMouse.pressed
-                                ? root.buttonBgPressed
-                                : (replayMouse.containsMouse ? root.buttonBgHover : root.buttonBg))
-                        border.color: root.isReplayActive ? root.cardAccent : (replayMouse.containsMouse ? StyleTokens.withAlpha(root.cardAccent, 0.35) : StyleTokens.withAlpha(StyleTokens.textPrimary, 0.08))
-                        border.width: 1
-
-                        Behavior on scale { NumberAnimation { duration: 70; easing.type: Easing.OutCubic } }
-                        Behavior on color { ColorAnimation { duration: 70 } }
-                        Behavior on border.color { ColorAnimation { duration: 70 } }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "\uf0e7"
-                            color: root.isReplayActive ? root.cardAccent : (replayMouse.containsMouse ? StyleTokens.textPrimary : StyleTokens.textSecondary)
-                            font.pixelSize: 13
-                            font.family: userConfig.iconFontFamily
-                        }
-
-                        MouseArea {
-                            id: replayMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (root.recorder)
-                                    root.recorder.toggleReplay();
-                            }
-                        }
-                    }
-
                     // Open Recordings Folder Button
                     Rectangle {
                         width: 34
@@ -318,137 +226,6 @@ Item {
                                 if (root.recorder)
                                     root.recorder.openRecordingsFolder();
                             }
-                        }
-                    }
-                }
-            }
-
-            // Secondary Row: Save Replay Quick Actions (when replay buffer is active)
-            Row {
-                visible: root.isReplayActive
-                width: parent.width
-                height: 32
-                spacing: 8
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Save Clip:"
-                    color: StyleTokens.textSecondary
-                    font.pixelSize: 11
-                    font.family: userConfig.textFontFamily
-                    font.weight: Font.Medium
-                }
-
-                // Save 60s
-                Rectangle {
-                    width: 74
-                    height: 28
-                    radius: 8
-                    anchors.verticalCenter: parent.verticalCenter
-                    scale: clip60Mouse.pressed ? 0.94 : (clip60Mouse.containsMouse ? 1.03 : 1.0)
-                    color: clip60Mouse.pressed
-                        ? root.buttonBgPressed
-                        : (clip60Mouse.containsMouse ? root.buttonBgHover : root.buttonBg)
-                    border.color: clip60Mouse.containsMouse ? root.cardAccent : StyleTokens.withAlpha(root.cardAccent, 0.4)
-                    border.width: 1
-
-                    Behavior on scale { NumberAnimation { duration: 70; easing.type: Easing.OutCubic } }
-                    Behavior on color { ColorAnimation { duration: 70 } }
-                    Behavior on border.color { ColorAnimation { duration: 70 } }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Last 60s"
-                        color: clip60Mouse.containsMouse ? root.cardAccent : StyleTokens.textPrimary
-                        font.pixelSize: 11
-                        font.family: userConfig.textFontFamily
-                        font.weight: Font.Medium
-                    }
-
-                    MouseArea {
-                        id: clip60Mouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (root.recorder)
-                                root.recorder.saveReplay(60);
-                        }
-                    }
-                }
-
-                // Save 30s
-                Rectangle {
-                    width: 74
-                    height: 28
-                    radius: 8
-                    anchors.verticalCenter: parent.verticalCenter
-                    scale: clip30Mouse.pressed ? 0.94 : (clip30Mouse.containsMouse ? 1.03 : 1.0)
-                    color: clip30Mouse.pressed
-                        ? root.buttonBgPressed
-                        : (clip30Mouse.containsMouse ? root.buttonBgHover : root.buttonBg)
-                    border.color: clip30Mouse.containsMouse ? root.cardAccent : StyleTokens.withAlpha(root.cardAccent, 0.3)
-                    border.width: 1
-
-                    Behavior on scale { NumberAnimation { duration: 70; easing.type: Easing.OutCubic } }
-                    Behavior on color { ColorAnimation { duration: 70 } }
-                    Behavior on border.color { ColorAnimation { duration: 70 } }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Last 30s"
-                        color: clip30Mouse.containsMouse ? root.cardAccent : StyleTokens.textSecondary
-                        font.pixelSize: 11
-                        font.family: userConfig.textFontFamily
-                        font.weight: Font.Medium
-                    }
-
-                    MouseArea {
-                        id: clip30Mouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (root.recorder)
-                                root.recorder.saveReplay(30);
-                        }
-                    }
-                }
-
-                // Save 10s
-                Rectangle {
-                    width: 74
-                    height: 28
-                    radius: 8
-                    anchors.verticalCenter: parent.verticalCenter
-                    scale: clip10Mouse.pressed ? 0.94 : (clip10Mouse.containsMouse ? 1.03 : 1.0)
-                    color: clip10Mouse.pressed
-                        ? root.buttonBgPressed
-                        : (clip10Mouse.containsMouse ? root.buttonBgHover : root.buttonBg)
-                    border.color: clip10Mouse.containsMouse ? root.cardAccent : StyleTokens.withAlpha(StyleTokens.textPrimary, 0.1)
-                    border.width: 1
-
-                    Behavior on scale { NumberAnimation { duration: 70; easing.type: Easing.OutCubic } }
-                    Behavior on color { ColorAnimation { duration: 70 } }
-                    Behavior on border.color { ColorAnimation { duration: 70 } }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Last 10s"
-                        color: clip10Mouse.containsMouse ? root.cardAccent : StyleTokens.textSecondary
-                        font.pixelSize: 11
-                        font.family: userConfig.textFontFamily
-                        font.weight: Font.Medium
-                    }
-
-                    MouseArea {
-                        id: clip10Mouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (root.recorder)
-                                root.recorder.saveReplay(10);
                         }
                     }
                 }

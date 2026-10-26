@@ -143,11 +143,8 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
   - **Row 1**: Battery power profile selector + quick Silent and Night mode toggles.
   - **Row 2**: Sleek modern **System Tray** + compact **Screen Recorder** companion card side-by-side.
 - **Sleek Horizontal Scrolling System Tray (SNI)**: Embedded StatusNotifierItem tray widget with item count badge pill, smooth horizontal flick/wheel scrolling, 34×34 squircle icon tiles, edge fade gradient masks when overflowed, tooltips on hover, and full click/context menu interaction.
-- **Native GPU Screen Recorder & Instant Replay**: Dedicated screen recorder powered by `gpu-screen-recorder` with full Matugen color harmony:
-  - **Pull-Down Drawer Card**: Half-width companion card providing instant Record/Stop, mic audio capture toggle, and quick recordings folder access.
-  - **Dynamic Active Elevation**: When recording or when the instant replay buffer is active, a full-featured recorder banner automatically elevates into the main Control Center view with live timer, pause/resume, mic toggle, and instant clip saving (10s, 30s, 60s) without needing to open the drawer.
-  - **Dynamic Island Status**: Real-time pulsing indicator dot directly in the island clock capsule.
-  - **Bidirectional Sync**: Seamless PID and state tracking with external terminal scripts (`gsr`).
+- **Screen Recorder**: Records the screen with `wf-recorder` (H.264 MP4, desktop audio or the microphone):
+  - **Dynamic Active Elevation**: While recording, a recorder banner with a live timer appears in the Control Center.
 - **Dynamic Color Palette**: Live hot-reloads of `colors.json` on disk via `QFileSystemWatcher` without service restarts, with preserved capsule translucency (`islandBackgroundOpacity`).
 - **Dynamic Battery Color Progression**: Battery pill smoothly shifts colors based on charge level (critical, warning, nominal, charging) with palette color matching and an on/off toggle in settings.
 - **Marquee Track Title Scrolling**: Clean, smooth auto-scrolling for long song titles with an initial 1.8s reading pause and seamless looping, plus an instant toggle in the Config App to fall back to static ellipsis (`Title...`) for 0% CPU.
@@ -209,7 +206,7 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 - Notification Center
 - Power menu
 - System Tray (SNI)
-- Screen Recorder & Instant Replay
+- Screen Recorder
 
 Clipboard history requires `cliphist` and `wl-clipboard`. Tide Island starts the clipboard watcher automatically while it is running.
 Click a date in the calendar to write a note. Dates with notes show a small dot; notes are saved automatically.
@@ -358,10 +355,8 @@ tide-island-config-app
 - **Interaction**: Configure click actions for the dynamic island pill (Left, Middle, and Right mouse buttons for Player, Control Center, and Clipboard History).
 - **Weather**: Configure auto-detection or custom city name, temperature units (°C or °F), and refresh interval.
 - **Calendar**: Quick month view with week numbers and relative date indicators. Click the date in the Control Center, press `Super + K`, or use the scroll wheel / arrow keys to browse months. Press `Home` to return to today, and `Esc` to close.
-- **Screen Recorder & Instant Replay**:
-  - Pull down the Control Center drawer to quickly start/stop recordings, toggle microphone capture, or browse saved clips.
-  - While recording or buffering replay, the active recording card automatically elevates into the main Control Center view with a live timer and quick-save presets (60s, 30s, 10s).
-  - All button highlights and glowing border accents harmoniously blend with your colors.json palette.
+- **Screen Recorder**:
+  - While recording, the active recording card appears in the Control Center with a live timer.
 - **System Tray (SNI)**:
   - Tucked inside the Control Center drawer with an item count pill badge and smooth horizontal wheel/touch scrolling.
   - Supports left-click activate, right-click context menus, wheel scrolling, and tooltip previews on hover.
@@ -434,11 +429,7 @@ You can control Tide Island remotely using `quickshell ipc call`:
 | `quickshell ipc call recorder start` | Start screen recording |
 | `quickshell ipc call recorder stop` | Stop screen recording |
 | `quickshell ipc call recorder toggleMic` | Toggle microphone audio capture |
-| `quickshell ipc call recorder pause` | Pause or resume active recording |
-| `quickshell ipc call recorder toggleReplay` | Start or stop instant replay buffer |
-| `quickshell ipc call recorder saveReplay [sec]` | Save replay clip (e.g. 10, 30, 60 seconds) |
 | `quickshell ipc call recorder openRecordings` | Open recordings folder in file manager |
-| `quickshell ipc call recorder openReplays` | Open saved replays folder in file manager |
 | `quickshell ipc call tide reloadColors` | Reload color palette from colors.json |
 | `quickshell ipc call theme reload` | Reload color palette from colors.json |
 

@@ -185,7 +185,6 @@ Item {
     readonly property real roundToggleButtonGap: 18
 
     readonly property bool isRecording: ScreenRecorder ? ScreenRecorder.isRecording : false
-    readonly property bool isReplayActive: ScreenRecorder ? ScreenRecorder.isReplayActive : false
     readonly property real activeRecorderExtraHeight: (activeScreenRecorderCard && activeScreenRecorderCard.visible && activeScreenRecorderCard.height > 0)
         ? activeScreenRecorderCard.height + mainContent.spacing
         : 0
@@ -2127,9 +2126,9 @@ Item {
         ScreenRecorderCard {
             id: activeScreenRecorderCard
             width: parent.width
-            readonly property bool shouldBeVisible: controlCenter.isRecording || controlCenter.isReplayActive
+            readonly property bool shouldBeVisible: controlCenter.isRecording
             visible: shouldBeVisible || height > 0.5
-            height: shouldBeVisible ? (controlCenter.isReplayActive ? 116 : 98) : 0
+            height: shouldBeVisible ? 98 : 0
             opacity: shouldBeVisible ? 1 : 0
             clip: true
 

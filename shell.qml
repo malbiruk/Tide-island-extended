@@ -492,14 +492,6 @@ Scope {
             ScreenRecorder.toggleMic();
         }
 
-        function toggleReplay() {
-            ScreenRecorder.toggleReplay();
-        }
-
-        function saveReplay() {
-            ScreenRecorder.saveReplay(0);
-        }
-
         function toggleClipboard() {
             shellRoot.forFocusedWindow((window) => window.toggleClipboardWindow());
         }
@@ -753,28 +745,12 @@ Scope {
             ScreenRecorder.stopRecording();
         }
 
-        function pause() {
-            ScreenRecorder.pauseRecording();
-        }
-
         function toggleMic() {
             ScreenRecorder.toggleMic();
         }
 
-        function toggleReplay() {
-            ScreenRecorder.toggleReplay();
-        }
-
-        function saveReplay(seconds: int) {
-            ScreenRecorder.saveReplay(seconds);
-        }
-
         function openRecordings() {
             ScreenRecorder.openRecordingsFolder();
-        }
-
-        function openReplays() {
-            ScreenRecorder.openReplaysFolder();
         }
     }
 

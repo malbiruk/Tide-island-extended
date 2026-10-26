@@ -953,7 +953,7 @@ check_dependencies() {
   printf '\nFeature-Specific Dependencies (Optional):\n'
   check_feature "cava" "cava" "8-bar audio spectrum visualizer (Player)"
   check_feature "fuser" "psmisc" "Camera & video device privacy tracking (/dev/video*)"
-  check_feature "gpu-screen-recorder" "gpu-screen-recorder" "Hardware accelerated screen & replay recorder"
+  check_feature "wf-recorder" "wf-recorder" "Screen recorder"
   check_feature "brightnessctl" "brightnessctl" "Backlight brightness adjustment"
   check_power_profile
   check_feature "bluetoothctl" "bluez" "Bluetooth device pairing & control"

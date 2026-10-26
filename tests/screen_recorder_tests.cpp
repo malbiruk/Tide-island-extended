@@ -16,7 +16,7 @@ private slots:
     void testInitialState();
     void testTimeFormatting();
     void testPropertySetters();
-    void testBackendCapabilities();
+    void testAvailabilityFollowsWfRecorder();
     void testWfRecorderArgumentsAndStartFailure();
 
 private:
@@ -33,12 +33,9 @@ void ScreenRecorderTests::testInitialState() {
     ScreenRecorderController controller;
     QCOMPARE(ScreenRecorderController::instance(), &controller);
     QCOMPARE(controller.isRecording(), false);
-    QCOMPARE(controller.isPaused(), false);
-    QCOMPARE(controller.isReplayActive(), false);
     QCOMPARE(controller.recordingSeconds(), 0);
     QCOMPARE(controller.recordingTimeFormatted(), QStringLiteral("00:00"));
     QCOMPARE(controller.fps(), 60);
-    QCOMPARE(controller.replaySeconds(), 60);
 }
 
 void ScreenRecorderTests::testTimeFormatting() {
@@ -59,11 +56,6 @@ void ScreenRecorderTests::testPropertySetters() {
     QCOMPARE(controller.fps(), 120);
     QCOMPARE(fpsSpy.count(), 1);
 
-    QSignalSpy replaySpy(&controller, &ScreenRecorderController::replaySecondsChanged);
-    controller.setReplaySeconds(30);
-    QCOMPARE(controller.replaySeconds(), 30);
-    QCOMPARE(replaySpy.count(), 1);
-
     QSignalSpy screenSpy(&controller, &ScreenRecorderController::screenNameChanged);
     controller.setScreenName(QStringLiteral("DP-1"));
     QCOMPARE(controller.screenName(), QStringLiteral("DP-1"));
@@ -79,7 +71,7 @@ static bool writeFakeExecutable(const QString &path, const QByteArray &script = 
     return file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
 }
 
-void ScreenRecorderTests::testBackendCapabilities() {
+void ScreenRecorderTests::testAvailabilityFollowsWfRecorder() {
     const QByteArray originalPath = qgetenv("PATH");
     const auto restorePath = qScopeGuard([&originalPath] { qputenv("PATH", originalPath); });
     const QString binDir = m_tempDir->path() + QStringLiteral("/bin");
@@ -91,29 +83,10 @@ void ScreenRecorderTests::testBackendCapabilities() {
         QCOMPARE(controller.isAvailable(), false);
     }
 
-    // wf-recorder only: recording works, pause and the replay buffer do not.
     QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/wf-recorder")));
     {
         ScreenRecorderController controller;
         QCOMPARE(controller.isAvailable(), true);
-        QCOMPARE(controller.canPause(), false);
-        QCOMPARE(controller.canReplay(), false);
-
-        QSignalSpy notificationSpy(&controller, &ScreenRecorderController::notificationRequested);
-        controller.startReplay();
-        QCOMPARE(controller.isReplayActive(), false);
-        controller.pauseRecording();
-        QCOMPARE(controller.isPaused(), false);
-        QCOMPARE(notificationSpy.count(), 2);
-    }
-
-    // gpu-screen-recorder present: it is preferred and supports pause and replay.
-    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/gpu-screen-recorder")));
-    {
-        ScreenRecorderController controller;
-        QCOMPARE(controller.isAvailable(), true);
-        QCOMPARE(controller.canPause(), true);
-        QCOMPARE(controller.canReplay(), true);
     }
 }
 
