@@ -14,6 +14,8 @@
 #include <algorithm>
 #include <csignal>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 ScreenRecorderController *ScreenRecorderController::s_instance = nullptr;
@@ -139,9 +141,50 @@ QString ScreenRecorderController::lastSavedFile() const {
     return m_lastSavedFile;
 }
 
+// In the user's runtime directory only (never a shared /tmp); empty when there is none.
 QString ScreenRecorderController::stateDir() const {
-    const QString runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
-    return (runtimeDir.isEmpty() ? QStringLiteral("/tmp") : runtimeDir) + QStringLiteral("/tide-island-recorder");
+    const QString runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    return runtimeDir.isEmpty() ? QString() : runtimeDir + QStringLiteral("/tide-island-recorder");
+}
+
+// The state directory exists, is a real directory (not a symlink) and is ours.
+bool ScreenRecorderController::ensureStateDir() const {
+    const QString dir = stateDir();
+    if (dir.isEmpty())
+        return false;
+    const QByteArray path = QFile::encodeName(dir);
+    ::mkdir(path.constData(), 0700);
+    struct stat info {};
+    return ::lstat(path.constData(), &info) == 0 && S_ISDIR(info.st_mode) && info.st_uid == ::getuid();
+}
+
+// State files are never followed through symlinks.
+QByteArray ScreenRecorderController::readStateFile(const QString &path) const {
+    if (stateDir().isEmpty())
+        return QByteArray();
+    const int fd = ::open(QFile::encodeName(path).constData(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0)
+        return QByteArray();
+    QFile file;
+    if (!file.open(fd, QIODevice::ReadOnly, QFileDevice::AutoCloseHandle)) {
+        ::close(fd);
+        return QByteArray();
+    }
+    return file.read(4096);
+}
+
+bool ScreenRecorderController::writeStateFile(const QString &path, const QByteArray &contents) const {
+    if (!ensureStateDir())
+        return false;
+    const int fd = ::open(QFile::encodeName(path).constData(), O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0600);
+    if (fd < 0)
+        return false;
+    QFile file;
+    if (!file.open(fd, QIODevice::WriteOnly, QFileDevice::AutoCloseHandle)) {
+        ::close(fd);
+        return false;
+    }
+    return file.write(contents) == contents.size();
 }
 
 QString ScreenRecorderController::recordPidFilePath() const {
@@ -155,45 +198,28 @@ QString ScreenRecorderController::recordOutputFilePath() const {
 
 void ScreenRecorderController::ensureDirectories() {
     QDir().mkpath(m_recordingsDir);
-    QDir().mkpath(stateDir());
 }
 
 void ScreenRecorderController::writeRecordingState(qint64 pid, const QString &outputFile) const {
-    QDir().mkpath(stateDir());
-    writePidToFile(recordPidFilePath(), pid);
-    QFile file(recordOutputFilePath());
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text))
-        file.write(outputFile.toUtf8() + '\n');
+    writeStateFile(recordPidFilePath(), QByteArray::number(pid) + '\n');
+    writeStateFile(recordOutputFilePath(), outputFile.toUtf8() + '\n');
 }
 
 QString ScreenRecorderController::readRecordingOutput() const {
-    QFile file(recordOutputFilePath());
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-        return QString();
-    return QString::fromUtf8(file.readAll()).trimmed();
+    return QString::fromUtf8(readStateFile(recordOutputFilePath())).trimmed();
 }
 
 void ScreenRecorderController::clearRecordingState() const {
+    if (stateDir().isEmpty())
+        return;
     QFile::remove(recordPidFilePath());
     QFile::remove(recordOutputFilePath());
 }
 
 qint64 ScreenRecorderController::readPidFromFile(const QString &path) const {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-        return 0;
-    const QString content = QString::fromUtf8(file.readAll()).trimmed();
     bool ok = false;
-    const qint64 pid = content.toLongLong(&ok);
+    const qint64 pid = QString::fromUtf8(readStateFile(path)).trimmed().toLongLong(&ok);
     return ok ? pid : 0;
-}
-
-void ScreenRecorderController::writePidToFile(const QString &path, qint64 pid) const {
-    QFile file(path);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        file.write(QByteArray::number(pid) + '\n');
-        file.close();
-    }
 }
 
 // The process name, empty when there is no such process or it has already exited (zombie).
@@ -278,6 +304,11 @@ void ScreenRecorderController::startRecording(bool withMic) {
         return;
     }
 
+    if (!ensureStateDir()) {
+        emit notificationRequested(QStringLiteral("Screen Recorder"),
+                                   QStringLiteral("No private runtime directory to keep the recording state in."));
+        return;
+    }
     ensureDirectories();
 
     const bool useMic = withMic || m_micEnabled;

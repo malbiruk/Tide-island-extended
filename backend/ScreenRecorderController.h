@@ -70,7 +70,9 @@ private:
     QString recordPidFilePath() const;
     QString recordOutputFilePath() const;
     qint64 readPidFromFile(const QString &path) const;
-    void writePidToFile(const QString &path, qint64 pid) const;
+    bool ensureStateDir() const;
+    QByteArray readStateFile(const QString &path) const;
+    bool writeStateFile(const QString &path, const QByteArray &contents) const;
     void writeRecordingState(qint64 pid, const QString &outputFile) const;
     QString readRecordingOutput() const;
     void clearRecordingState() const;

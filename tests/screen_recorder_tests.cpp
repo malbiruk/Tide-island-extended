@@ -24,6 +24,7 @@ private slots:
     void staleStateFilesAreRemoved();
     void aRunningRecorderIsAdoptedAndSavesItsFile();
     void aRecorderExitingOnItsOwnEndsTheRecording();
+    void symlinkedStateFilesAreNotFollowed();
 
 private:
     QString stateDir() const { return m_tempDir->path() + QStringLiteral("/tide-island-recorder"); }
@@ -232,6 +233,34 @@ void ScreenRecorderTests::aRecorderExitingOnItsOwnEndsTheRecording() {
     QCOMPARE(notificationSpy.last().at(0).toString(), QStringLiteral("Recording Stopped"));
     QVERIFY(!QFileInfo::exists(stateDir() + QStringLiteral("/record.pid")));
     QVERIFY(!QFileInfo::exists(stateDir() + QStringLiteral("/record.output")));
+}
+
+void ScreenRecorderTests::symlinkedStateFilesAreNotFollowed() {
+    const QString binDir = m_tempDir->path() + QStringLiteral("/symlink-bin");
+    QVERIFY(QDir().mkpath(binDir));
+    const QString recorder = binDir + QStringLiteral("/wf-recorder");
+    QVERIFY(writeFakeExecutable(recorder, "#!/bin/sh\n/bin/sleep 30\n"));
+    QProcess process;
+    process.start(recorder, {});
+    QVERIFY(process.waitForStarted());
+    const auto cleanup = qScopeGuard([&process] { process.kill(); process.waitForFinished(); });
+
+    QVERIFY(QDir().mkpath(stateDir()));
+    const QString elsewhere = m_tempDir->path() + QStringLiteral("/elsewhere.pid");
+    QFile target(elsewhere);
+    QVERIFY(target.open(QIODevice::WriteOnly));
+    target.write(QByteArray::number(process.processId()) + '\n');
+    target.close();
+    QFile::remove(stateDir() + QStringLiteral("/record.pid"));
+    QVERIFY(QFile::link(elsewhere, stateDir() + QStringLiteral("/record.pid")));
+    QTRY_COMPARE(QString::fromUtf8([&process] {
+        QFile comm(QStringLiteral("/proc/%1/comm").arg(process.processId()));
+        return comm.open(QIODevice::ReadOnly) ? comm.readAll().trimmed() : QByteArray();
+    }()), QStringLiteral("wf-recorder"));
+
+    ScreenRecorderController controller;
+    QVERIFY(!controller.isRecording());
+    QFile::remove(stateDir() + QStringLiteral("/record.pid"));
 }
 
 QTEST_GUILESS_MAIN(ScreenRecorderTests)
