@@ -280,8 +280,8 @@ PagePanel {
                     SplitLine { width: parent.width }
 
                     ConfigRow {
-                        title: "Reserved Top Space"
-                        description: "Screen space reserved for the island (exclusive zone)"
+                        title: "Reserved Space"
+                        description: "Screen space reserved for the island at its edge (exclusive zone)"
                         keyName: "islandExclusiveZone"
                         fallbackText: "45"
                         numeric: true
@@ -292,8 +292,8 @@ PagePanel {
                     SplitLine { width: parent.width }
 
                     ConfigRow {
-                        title: "Top Margin"
-                        description: "Distance between the island and the top of the screen"
+                        title: "Edge Margin"
+                        description: "Distance between the island and its screen edge"
                         keyName: "islandTopMargin"
                         fallbackText: "4"
                         numeric: true
@@ -509,6 +509,32 @@ PagePanel {
                         description: "Silence notification pop-ups; the bell in the notification center toggles this too"
                         keyName: "doNotDisturb"
                         fallbackValue: false
+                        width: parent.width
+                    }
+
+                    SplitLine { width: parent.width }
+
+                    ConfigRow {
+                        title: "Pop-up Duration"
+                        description: "Seconds a notification stays up (critical ones stay until dismissed)"
+                        keyName: "notificationTimeout"
+                        fallbackText: "8"
+                        numeric: true
+                        minimumValue: 1
+                        maximumValue: 600
+                        width: parent.width
+                    }
+
+                    SplitLine { width: parent.width }
+
+                    ConfigRow {
+                        title: "Low-Priority Duration"
+                        description: "Seconds a low-urgency notification stays up"
+                        keyName: "notificationTimeoutLow"
+                        fallbackText: "5"
+                        numeric: true
+                        minimumValue: 1
+                        maximumValue: 600
                         width: parent.width
                     }
                 }
