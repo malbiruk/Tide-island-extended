@@ -1996,10 +1996,11 @@ void SystemServices::startCava() {
     m_cavaProcess->setArguments({QStringLiteral("-p"), QStringLiteral("/dev/stdin")});
     m_cavaProcess->setProcessChannelMode(QProcess::MergedChannels);
 
-    connect(m_cavaProcess, &QProcess::started, m_cavaProcess, [this]() {
-        if (!m_cavaProcess) return;
-        m_cavaProcess->write(config);
-        m_cavaProcess->closeWriteChannel();
+    // The config goes to this process: a quick stop and restart may have replaced m_cavaProcess.
+    QProcess *process = m_cavaProcess;
+    connect(process, &QProcess::started, process, [process]() {
+        process->write(config);
+        process->closeWriteChannel();
     });
     connect(m_cavaProcess, &QProcess::readyReadStandardOutput, this, &SystemServices::handleCavaOutput);
     connect(m_cavaProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
