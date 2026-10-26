@@ -38,8 +38,10 @@
 ## About Tide Island Extended
 
 Tide Island Extended is a desktop widget for the driftwm compositor, styled like the Dynamic Island.
+This is a driftwm-only fork: Hyprland/niri support, the notch style, the app launcher, the
+wallpaper picker, the built-in lockscreen and the Matugen/pywal hooks have been removed.
 
-When nothing much is going on, it sits compactly in your bar or corner, staying out of the way. When you need to check information, it expands into an interactive panel where you can view lyrics, adjust system settings, check notifications, view weather, or inspect custom system statistics.
+When nothing much is going on, it sits compactly at the top (or bottom) edge of the screen, staying out of the way: the clock, the playing track with its synced lyric, an unread-notification bell and, when wanted, the battery. When you need more, it expands into interactive panels to adjust system settings, check notifications, view weather or the calendar, and more.
 
 It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid and responsive while keeping resource usage minimal.
 
@@ -135,9 +137,6 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
   - **Instant Connection Pop-Out**: A sleek satellite circular bubble automatically emerges alongside the island whenever Bluetooth earphones, headphones, or audio headsets connect.
   - **Live Circular Battery Gauge**: Circular progress ring framing the centered device icon that smoothly depletes and dynamically shifts color based on battery level (`batteryHigh`, `batteryMedium`, `batteryLow` from your colors.json palette).
   - **Zero Clutter**: Automatically dismisses smoothly when the device disconnects.
-- **Redesigned Control Center 2×2 Drawer Grid**: Symmetrical 2-column drawer layout featuring:
-  - **Row 1**: Battery power profile selector + quick Silent and Night mode toggles.
-  - **Row 2**: Sleek modern **System Tray** + compact **Screen Recorder** companion card side-by-side.
 - **Sleek Horizontal Scrolling System Tray (SNI)**: Embedded StatusNotifierItem tray widget with item count badge pill, smooth horizontal flick/wheel scrolling, 34×34 squircle icon tiles, edge fade gradient masks when overflowed, tooltips on hover, and full click/context menu interaction.
 - **Screen Recorder**: Records the screen with `wf-recorder` (H.264 MP4, desktop audio or the microphone):
   - **Dynamic Active Elevation**: While recording, a recorder banner with a live timer appears in the Control Center.
@@ -161,16 +160,15 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 - **Battery Health, Charge Limit & Conservation Mode**: Direct hardware control for laptop battery lifespan preservation:
   - **Lenovo IdeaPad Conservation Mode**: Hardware-level 80% charge threshold integration via `ideapad_acpi` (`conservation_mode`), capping charge at 80% while plugged in to prevent battery wear.
   - **Generic Laptop Charge End Threshold**: Automatic support for standard Linux battery threshold interfaces (`charge_control_end_threshold`) with preset pills (`80%`, `85%`, `90%`, `100%`).
-  - **Dedicated Battery Flyout Panel**: Symmetrical 318×404 flyout opened by clicking the battery pill in the Control Center header or the chevron (`›`) on the drawer Battery card.
+  - **Dedicated Battery Flyout Panel**: Opened by clicking the battery pill in the Control Center header, or the battery section of the resting island (as a standalone popup under the capsule).
   - **Live Battery Telemetry**: Real-time display of battery charge status, health percentage (`batteryHealthPercent`), cycle count (`batteryCycleCount`), and an active `80% Cap` badge.
   - **Zero-Latency Non-Blocking Control**: Asynchronous C++ backend paired with automated `systemd-tmpfiles` permissions (`tide-island-battery.conf`) for instantaneous toggling without root password prompts or UI freezes.
 - **Symmetrical Flyout Architecture & Mutual Exclusivity**:
   - All side panels (Wi-Fi, Bluetooth, Audio, Battery) share identical 318×404 geometry and unified typography.
   - Clean mutual exclusivity automatically dismisses active sibling panels when a new flyout is opened, eliminating clutter.
-- **Dedicated Microphone & Audio Dynamic Island OSD Feedback**: Real-time PipeWire audio source/sink monitoring (`pactl subscribe`) that keeps sliders in sync and triggers matching Dynamic Island pills (`[   XX%  ◯ ]` and `[ 󰝟  XX%  ◯ ]`) whenever adjusted via hotkeys, CLI commands, or UI clicks.
+- **Dedicated Microphone & Audio Dynamic Island OSD Feedback**: Real-time PipeWire audio source/sink monitoring (`pactl subscribe`) that keeps sliders in sync and shows an `[icon] [bar] [percent]` OSD (the bar dims while muted) whenever levels change via hotkeys, CLI commands, or UI clicks.
 - **Throttled Slider Performance**: Event throttling on microphone, volume, and brightness slider drags to eliminate IPC and D-Bus lag, maintaining smooth 60fps+ responsiveness.
 - **Unified Icon Weight Harmony**: Clean, consistent icon line weights across volume, microphone, brightness, battery, and weather.
-- **Optimized State Management**: In-place reactive property updates for custom info layers, eliminating unnecessary delegate re-instantiations and flickers.
 - **Privacy & Media Activity Indicators & HUD**:
   - **Dynamic Island Activity Bubbles**: Independent circular satellite bubbles dynamically pop out on the right side of the island capsule when the camera (``) or microphone (`` / ``) are active, matching the File Shelf bubble aesthetic with pulsing status badges (green for camera, orange for active microphone, red when muted).
   - **Privacy & Media Activity HUD**: Interactive drop-down panel displaying applications currently capturing camera, microphone, or screen sharing with PID telemetry, quick one-click app mute/unmute or screen share stop controls, and a master hardware microphone mute toggle.
@@ -180,25 +178,24 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
   - **Dynamic Island Mini Dashboard**: The island expands into a system glance dashboard displaying a circular avatar / profile picture (with auto-detection from ChillPill-Shell `displayPicture`, `userconfig.json` `"avatarPath"`, image drag-and-drop, or click-to-browse), hostname, system uptime, rich multi-metric battery telemetry (`⚡ 71% • 80% Cap • 100% Health` with power wattage and full diagnostics tooltip), real-time network throughput (`↓ 5.2 MB/s`, `↑ 240 KB/s`), CPU load & core temperature, RAM utilization (`GB` and `%`), and GPU / Storage meters.
   - **Kernel & Scheduler Telemetry Pill**: The bottom capsule displays live kernel release and CPU architecture (e.g. `Linux 7.2.7-1-cachyos-bore (x86_64)`), active CPU scaling governor (`powersave`), 1m/5m/15m system load averages (`Load: 1.25, 0.90, 0.84`), and live running/total scheduling task entities.
   - **100% On-Demand Sampling**: Sampling timers only run when the glance layer is visibly mounted; zero CPU overhead when hidden. No third-party monitor dependencies (e.g. `nusmon`), extracting metrics directly from standard Linux `/proc` and `/sys` interfaces.
-  - **Intuitive Triggers & Controls**: Sleek modern aesthetic without intrusive close buttons — dismiss seamlessly with `Escape`, click outside, or shortcut toggle (`SUPER+G`).
+  - **Intuitive Triggers & Controls**: Sleek modern aesthetic without intrusive close buttons — open it by dragging the island toward the screen or with `quickshell ipc call tide toggleGlance` (bind it in driftwm), dismiss with `Escape`, a click outside, or the same toggle.
 
 ### Core Features
 
 - Clock
-- System Glance & Dashboard (Super + G, swipe down, or IPC)
+- System Glance & Dashboard (drag the island toward the screen, or IPC)
 - Bluetooth earphone connection bubble with dynamic battery gauge ring
 - Music player
 - Control Center
 - Audio device switcher & per-app volume mixer
 - Microphone control & mute toggle
 - Battery health & charge limit (conservation mode)
-- Timer
-- Lyrics displayer
+- Timer (click the clock in the Control Center header)
+- Synced lyrics in the resting island
 - File shelf
 - Clipboard history manager
 - Weather & Forecast
 - Calendar
-- Custom page
 - Notification Center
 - Power menu
 - System Tray (SNI)
@@ -208,6 +205,12 @@ Clipboard history requires `cliphist` and `wl-clipboard`. Tide Island starts the
 Click a date in the calendar to write a note. Dates with notes show a small dot; notes are saved automatically.
 Click the × button on a notification card to dismiss it, or use **Clear All** in the Notification Center to dismiss all notifications at once.
 
+Notification pop-ups stay 8 s (low urgency 5 s; `notificationTimeout` / `notificationTimeoutLow`
+in seconds), critical ones until dismissed, and an app's own expire timeout wins. Hovering a pop-up
+pauses it. Clicking its body closes it and marks it read; the **Open** pill runs the app's default
+action. The bell on the island counts unread notifications in the center; after a Quickshell
+reload the re-sent notifications start read.
+
 
 
 ### System Feedback
@@ -216,24 +219,9 @@ Click the × button on a notification card to dismiss it, or use **Clear All** i
 - Microphone intensity & mute changes
 - Brightness changes
 - Battery charging / discharging & conservation limit
-- Media playback (optional)
 - System notifications
 
 
-
-### Custom Page
-
-- Time
-- Date
-- Battery
-- Volume
-- CPU usage
-- Current workspace
-- Memory usage
-- Brightness
-- Cava
-- Storage usage
-- Weather
 
 ### Compositor support
 
@@ -247,17 +235,19 @@ config.
 
 Tide Island Extended is engineered to deliver fluid 60fps+ animations while maintaining a negligible CPU and memory footprint on your system:
 
-| Metric | Measured Value | Details |
-|---|---|---|
-| **Idle CPU Usage** | **~0.4% – 0.5%** | Measured over running daemon; 99.5% of time spent in deep kernel sleep |
-| **Unique Process RAM** | **~90 MB** | Private anonymous heap/object memory unique to Tide Island |
-| **Total RSS Footprint** | **~245 MB** | As reported by `btop` / `top` (includes ~103 MB shared Mesa GPU drivers & Qt6 libraries) |
-| **Active Daemon Processes** | **1 unified monitor** | Single `dbus-monitor` multiplexing all notification & screencast rules |
+Measured offscreen (software rendering, one screen), the shell process uses about 93 MB PSS at
+idle and about 108 MB after every panel has been opened once. Rarely used panels (notification
+center, file shelf, clipboard, weather, calendar, privacy HUD, glance) are compiled on first open.
+
+Background helpers: `dbus-monitor` (ScreenCast portal only; Tide Island is the notification
+server itself), `pw-mon` (privacy indicators), `pactl subscribe` (volume OSD) and the
+`cliphist` watcher. `cava` runs only while the resting music section is on screen, and the
+`lyricsmpris` lyrics daemon only while a player is playing (plus a minute after it pauses).
 
 ### Architectural Optimizations
-- **Zero-Subprocess Telemetry Engine**: System statistics (CPU ticks, RAM, swap, and disk capacity) are read directly from Linux `/proc/stat`, `/proc/meminfo`, and POSIX `statvfs()` system calls via a native C++ singleton without spawning shell commands (`free`, `df`, `top`).
+- **Direct Telemetry**: The glance reads `/proc` and `/sys` directly instead of spawning `free`, `df` or `top`.
 - **Retina Image Decode Bounding**: All dynamic image elements (MPRIS high-res album covers, user avatars, notifications, and clipboard previews) specify explicit `sourceSize` bounds. 4K/8K images are downsampled at decode time, preventing multi-megapixel raw bitmaps from inflating memory.
-- **Multiplexed D-Bus Event Loop**: Notification mirroring and portal screencast monitoring are consolidated into a single `dbus-monitor` process with combined match rules, eliminating process duplication.
+- **Apps outside the shell's cgroup**: Programs Tide Island starts for you (`xdg-open`, links, the screen recorder, the screen locker, terminals, the settings app) run in their own transient systemd scope, so restarting the shell never takes them down.
 - **Declarative Scene Graph Animation**: Audio visualizer waves and phase loops run directly on the Qt Quick Scene Graph hardware render thread, avoiding high-frequency JavaScript timer wakeups.
 
 <br>
@@ -348,17 +338,17 @@ Search `Tide Island Settings` in any application launcher, or run:
 tide-island-config-app
 ```
 
-- **Interaction**: Configure click actions for the dynamic island pill (Left, Middle, and Right mouse buttons for Player, Control Center, and Clipboard History).
+- **Interaction**: Left, middle and right click actions for the clock area of the island (e.g. Control Center, Clipboard History, or None). The bell, battery and music sections always open the notification center, the battery popup and the player.
 - **Weather**: Configure auto-detection or custom city name, temperature units (°C or °F), and refresh interval.
-- **Calendar**: Quick month view with week numbers and relative date indicators. Click the date in the Control Center, press `Super + K`, or use the scroll wheel / arrow keys to browse months. Press `Home` to return to today, and `Esc` to close.
+- **Calendar**: Quick month view with week numbers and relative date indicators. Click the date in the Control Center or use `quickshell ipc call tide toggleCalendar`; the scroll wheel / arrow keys browse months, `Home` returns to today and `Esc` closes.
 - **Screen Recorder**:
   - While recording, the active recording card appears in the Control Center with a live timer.
 - **System Tray (SNI)**:
-  - Tucked inside the Control Center drawer with an item count pill badge and smooth horizontal wheel/touch scrolling.
+  - A card in the Control Center with an item count pill badge and smooth horizontal wheel/touch scrolling.
   - Supports left-click activate, right-click context menus, wheel scrolling, and tooltip previews on hover.
 - **Battery Health & Charge Limit (Conservation Mode)**:
   - Protect laptop battery longevity when connected to AC power. On supported hardware (such as Lenovo IdeaPads with `ideapad_acpi` or generic laptops supporting `charge_control_end_threshold`), toggle between **80% Conservation** mode and **100% Full Charge** directly in the dedicated Battery flyout panel.
-  - Open the panel anytime by clicking the battery indicator pill in the Control Center header or clicking `›` on the drawer's Battery card.
+  - Open the panel anytime by clicking the battery indicator pill in the Control Center header or the battery section of the resting island.
   - The installer automatically configures `/usr/lib/tmpfiles.d/tide-island-battery.conf`, enabling instantaneous, passwordless switching without root prompts.
 - **Audio Device Switcher & Application Mixer**:
   - Click the `›` chevron on either the Sound or Microphone card in the Control Center to reveal the Audio flyout panel.
@@ -367,6 +357,14 @@ tide-island-config-app
 - **Color Palette**: Tide Island reads its palette from `~/.config/tide-island/colors.json` (any generator can write it).
   - **Live Auto-Reload**: Palette updates on disk are automatically detected and reloaded instantly via `QFileSystemWatcher` without restarting the service.
   - **Transparency Preserved**: Island capsule background transparency (`islandBackgroundOpacity`) continues to work seamlessly alongside dynamic palette tints.
+- **Commands** (`~/.config/tide-island/userconfig.json`, also in the settings app): a command line with arguments, `~` allowed in the program.
+  - `lockCommand`: the screen locker for the power menu's Lock (e.g. `gtklock -d`); empty tries gtklock, `loginctl lock-session`, then swaylock. Any failure is shown as a notice.
+  - `idleInhibitCommand`: adds the caffeine button; it is run as `<command> toggle` and `<command> status` (which prints `on` or `off`).
+- **Island edge**: `islandEdge` is `top` (default) or `bottom`.
+
+Saving from the island (e.g. Do Not Disturb, the avatar) or the settings app rewrites
+`userconfig.json` as plain JSON, so comments in it are not kept. When the file holds the TLP
+sudo password it is written readable by you only.
 
 
 ## Common Commands
@@ -410,8 +408,10 @@ You can control Tide Island remotely using `quickshell ipc call`:
 | `quickshell ipc call tide openClipboard` | Open clipboard history |
 | `quickshell ipc call tide closeClipboard` | Close clipboard history |
 | `quickshell ipc call tide toggleNotificationCenter` | Open or close notification center |
-| `quickshell ipc call tide openNotificationCenter` | Open notification center |
-| `quickshell ipc call tide closeNotificationCenter` | Close notification center |
+| `quickshell ipc call notificationCenter open` | Open notification center |
+| `quickshell ipc call notificationCenter close` | Close notification center |
+| `quickshell ipc call tide toggleGlance` | Open or close the system glance |
+| `quickshell ipc call tide showTimer` | Open the timer |
 | `quickshell ipc call tide togglePrivacy` | Open or close Privacy & Media Activity HUD |
 | `quickshell ipc call tide openPrivacy` | Open Privacy & Media Activity HUD |
 | `quickshell ipc call tide closePrivacy` | Close Privacy & Media Activity HUD |
@@ -451,6 +451,6 @@ Heartfelt thanks and appreciation to:
 
 <p align="center">
   <sub>
-    A practical, beautiful, and highly customizable desktop experience for Wayland.
+    A practical, beautiful, and highly customizable desktop experience for driftwm.
   </sub>
 </p>

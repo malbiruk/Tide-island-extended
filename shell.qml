@@ -210,7 +210,8 @@ Scope {
         notification.appIconChanged.connect(scheduleUpdate);
         notification.appNameChanged.connect(scheduleUpdate);
 
-        // Notifications re-emitted after a Quickshell reload go to the history only.
+        // Notifications re-emitted after a Quickshell reload go to the history only, read: the
+        // unread state is not kept across reloads.
         presentNotification(notification, notification.lastGeneration ? "history" : "popup");
         if (!notification.lastGeneration) {
             supersedeDuplicates(notification);
