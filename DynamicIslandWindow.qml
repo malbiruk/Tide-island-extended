@@ -3129,6 +3129,7 @@ PanelWindow {
             mounted: root.powerConnectivityDetailMounted
             rightSide: true
             below: root.powerDetailStandalone
+            belowCenterX: mainCapsule.x + restingLayer.batteryCenterX
             panelKind: "power"
             provider: controlCenterLoader.item
             mainCapsule: mainCapsule

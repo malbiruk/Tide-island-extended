@@ -8,6 +8,8 @@ Item {
     property bool rightSide: false
     // Centred under the capsule instead of beside it (the battery popup opened from the island).
     property bool below: false
+    // With `below`: the x to centre on instead of the capsule's centre (-1 = capsule centre).
+    property real belowCenterX: -1
     // Island on the bottom edge: side popups align with the capsule's bottom, and the "below"
     // popup sits above it.
     property bool atBottom: false
@@ -31,7 +33,8 @@ Item {
     readonly property real capsuleWidth: mainCapsule ? mainCapsule.width : 0
     readonly property real capsuleHeight: mainCapsule ? mainCapsule.height : 0
     readonly property real shownX: below
-        ? Math.max(16, Math.min(availableWidth - width - 16, capsuleX + capsuleWidth / 2 - width / 2))
+        ? Math.max(16, Math.min(availableWidth - width - 16,
+            (belowCenterX >= 0 ? belowCenterX : capsuleX + capsuleWidth / 2) - width / 2))
         : rightSide
             ? Math.min(availableWidth - width - 16, capsuleX + capsuleWidth + detailGap)
             : Math.max(16, capsuleX - width - detailGap)
