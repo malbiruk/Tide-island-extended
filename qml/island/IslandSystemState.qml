@@ -10,7 +10,7 @@ Item {
 
     signal transientRequested(string icon, real progress, string text)
 
-    // The resting music section shows the visualizer while it is on screen.
+    // The resting music section and the expanded player show the visualizer while on screen.
     property bool lyricsCavaActive: false
 
     readonly property string systemServicesClientId: "island-system-state-" + Math.random().toString(36).slice(2)

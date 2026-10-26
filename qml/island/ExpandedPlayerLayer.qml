@@ -38,7 +38,7 @@ Item {
     property int timerRemainingSeconds: 0
     property bool timerRunning: false
     property bool timerActive: false
-    property real visualizerPhase: 0
+    property var cavaLevels: []
     property int currentPage: 0
     property int pendingPage: -1
     readonly property int pageCount: 2
@@ -48,11 +48,9 @@ Item {
 
     readonly property bool isPlaying: activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing
 
-    function visualizerLevel(index) {
-        const phase = visualizerPhase + index * 0.78;
-        const primary = (Math.sin(phase) + 1) * 0.5;
-        const secondary = (Math.sin(phase * 2 + index * 0.95) + 1) * 0.5;
-        return 0.22 + primary * 0.42 + secondary * 0.24;
+    function cavaLevel(index) {
+        const level = Number(cavaLevels && cavaLevels[index]);
+        return isNaN(level) ? 0 : Math.max(0, Math.min(1, level));
     }
 
     function pausedVisualizerLevel(index) {
@@ -170,16 +168,6 @@ Item {
         ScriptAction {
             script: root.finishPageSettle()
         }
-    }
-
-    NumberAnimation {
-        target: root
-        property: "visualizerPhase"
-        from: 0
-        to: Math.PI * 2
-        duration: 2200
-        loops: Animation.Infinite
-        running: root.showCondition && root.isPlaying && root.currentPage === 0
     }
 
     Item {
@@ -354,7 +342,7 @@ Item {
                                     delegate: Rectangle {
                                         width: 4
                                         height: isPlaying
-                                            ? 6 + (parent.height - 6) * visualizerLevel(index)
+                                            ? 6 + (parent.height - 6) * cavaLevel(index)
                                             : 6 + (parent.height - 6) * pausedVisualizerLevel(index)
                                         radius: 2
                                         color: isPlaying ? StyleTokens.accent : StyleTokens.accentSoft
@@ -362,7 +350,7 @@ Item {
 
                                         Behavior on height {
                                             NumberAnimation {
-                                                duration: isPlaying ? 120 : 260
+                                                duration: isPlaying ? 90 : 260
                                                 easing.type: Easing.InOutQuad
                                             }
                                         }

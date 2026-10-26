@@ -1265,7 +1265,8 @@ PanelWindow {
         IslandSystemState {
             id: systemState
 
-            lyricsCavaActive: islandContainer.restingMusicVisible && restingLayer.visible
+            lyricsCavaActive: ((islandContainer.restingMusicVisible && restingLayer.visible)
+                    || (islandContainer.expandedLayerVisible && islandContainer.musicPlaying))
                 && root.autoHideProgress > 0.001
 
             onTransientRequested: function(icon, progress, text) {
@@ -2432,6 +2433,7 @@ PanelWindow {
                         timeTotal: islandContainer.timeTotal
                         trackProgress: islandContainer.trackProgress
                         activePlayer: islandContainer.activePlayer
+                        cavaLevels: islandContainer.cavaLevels
                         iconFontFamily: root.iconFontFamily
                         textFontFamily: root.textFontFamily
                         timerSelectedHours: islandContainer.timerSelectedHours
