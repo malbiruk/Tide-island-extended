@@ -128,17 +128,9 @@ Item {
             width: 11
             height: 11
             radius: width / 2
-            color: root.accentColor
-            border.width: 2
-            border.color: StyleTokens.panel
+            color: StyleTokens.surfaceBorder
+            border.width: 0
             antialiasing: true
-
-            SequentialAnimation on opacity {
-                running: root.active && root.mounted
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.45; duration: 900; easing.type: Easing.InOutSine }
-                NumberAnimation { to: 1.0; duration: 900; easing.type: Easing.InOutSine }
-            }
         }
     }
 

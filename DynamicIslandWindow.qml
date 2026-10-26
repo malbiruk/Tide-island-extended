@@ -491,7 +491,7 @@ PanelWindow {
     readonly property real notificationCenterWindowHeight: islandContainer.notificationCenterLayerVisible
         ? islandContainer.effectiveTopMargin + (notificationCenterLoader.item ? notificationCenterLoader.item.contentHeight : 400) + 6
         : 0
-    readonly property real connectivityDetailGap: 16
+    readonly property real connectivityDetailGap: 12
     readonly property int connectivityDetailAnimationDuration: 220
     readonly property string overviewWallpaperSource: overviewWallpaperCache.effectiveSource
     property string wallpaperPickerActiveWallpaper: userConfig.wallpaperPath
@@ -1275,6 +1275,28 @@ PanelWindow {
         property bool expandedByPlayerAutoOpen: false
         property bool sideSwipeSettling: false
         property bool hoverExpandedActive: false
+        onIslandStateChanged: {
+            if (islandState === "normal" || islandState === "custom" || islandState === "lyrics")
+                hoverExpandedActive = false;
+        }
+
+        // Pointer position over the whole layer surface. Hover-collapse uses it instead of
+        // capsuleMouseArea.containsMouse, which turns false whenever the pointer is over
+        // hover-enabled panel content and made a hover-opened control center close and reopen.
+        HoverHandler {
+            id: islandHoverTracker
+            onHoveredChanged: islandContainer.updateHoverCollapse()
+            onPointChanged: islandContainer.updateHoverCollapse()
+        }
+
+        function updateHoverCollapse() {
+            if (!hoverExpandedActive)
+                return;
+            if (root.pointerOverIsland())
+                hoverCollapseDelayTimer.stop();
+            else if (!hoverCollapseDelayTimer.running)
+                hoverCollapseDelayTimer.restart();
+        }
         property bool expandedPlayerKeyboardFocusRequested: false
         property bool openTimerPageWhenExpanded: false
         property int timerSelectedHours: 0
@@ -2472,7 +2494,7 @@ PanelWindow {
             interval: 250
             repeat: false
             onTriggered: {
-                if (capsuleMouseArea.containsMouse) return;
+                if (root.pointerOverIsland()) return;
                 if (!islandContainer.hoverExpandedActive) return;
                 islandContainer.hoverExpandedActive = false;
                 islandContainer.smartRestoreState();
@@ -4261,18 +4283,27 @@ PanelWindow {
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
 
         onPressed: (mouse) => {
-            const surfaces = [mainCapsule, fileShelfBubble, bluetoothEarphoneBubble, cameraBubble, micBubble,
-                timerBubble, wifiConnectivityDetailShell, bluetoothConnectivityDetailShell,
-                powerConnectivityDetailShell, audioConnectivityDetailShell, calendarNoteShell];
-            const onSurface = surfaces.some(s => s.visible
-                && mouse.x >= s.x && mouse.x < s.x + s.width
-                && mouse.y >= s.y && mouse.y < s.y + s.height);
-            if (onSurface) {
+            if (root.islandSurfaceAt(mouse.x, mouse.y)) {
                 mouse.accepted = false;
                 return;
             }
             islandContainer.smartRestoreState();
         }
+    }
+
+    // True if (x, y) in window coordinates lies on a visible island surface (capsule, bubbles, side panels).
+    function islandSurfaceAt(x, y) {
+        const surfaces = [mainCapsule, fileShelfBubble, bluetoothEarphoneBubble, cameraBubble, micBubble,
+            timerBubble, wifiConnectivityDetailShell, bluetoothConnectivityDetailShell,
+            powerConnectivityDetailShell, audioConnectivityDetailShell, calendarNoteShell];
+        return surfaces.some(s => s.visible
+            && x >= s.x && x < s.x + s.width
+            && y >= s.y && y < s.y + s.height);
+    }
+
+    function pointerOverIsland() {
+        return islandHoverTracker.hovered
+            && root.islandSurfaceAt(islandHoverTracker.point.position.x, islandHoverTracker.point.position.y);
     }
 
     MouseArea {

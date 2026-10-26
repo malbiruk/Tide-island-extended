@@ -12,7 +12,7 @@ Item {
     property real availableWidth: 0
     property real detailWidth: 318
     property real detailHeight: 404
-    property real detailGap: 16
+    property real detailGap: 12
     property string iconFontFamily: ""
     property string textFontFamily: ""
     property string heroFontFamily: ""
