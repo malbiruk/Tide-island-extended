@@ -45,6 +45,10 @@ Item {
     readonly property real rightSectionWidth: rightContentWidth > 0 ? rightContentWidth + edgePadding : 0
 
     readonly property real centerX: width / 2 + centerShift - centerSectionWidth / 2
+    // The title's room in the music section as the capsule currently draws it (centerX follows
+    // the capsule's animated width), so the row moves with the capsule's edge.
+    readonly property real musicTitleSlotWidth: Math.max(0,
+        centerX - edgePadding - coverSize - innerSpacing * 2 - cavaBars.implicitWidth)
 
     // The section under (x, y) in this item: "music", "bell", "battery", or "clock" for the
     // clock and any other capsule area.
@@ -80,7 +84,7 @@ Item {
 
     Row {
         id: musicRow
-        x: root.centerX - root.musicContentWidth
+        x: root.centerX - width
         anchors.verticalCenter: parent.verticalCenter
         spacing: root.innerSpacing
         opacity: root.musicVisible ? 1 : 0
@@ -121,18 +125,25 @@ Item {
             }
         }
 
-        MarqueeText {
-            id: musicTitle
+        Item {
+            width: root.musicTitleSlotWidth
+            height: musicTitle.height
             anchors.verticalCenter: parent.verticalCenter
-            text: root.musicText
-            pixelSize: root.textPixelSize
-            fontFamily: root.textFontFamily
-            fontWeight: Font.DemiBold
-            letterSpacing: -0.15
-            maxWidth: root.musicTextMaxWidth
-            // Fits each line up to the cap; the capsule animates the width as lyric lines change.
-            fixedWidth: false
-            active: root.musicVisible && root.showCondition
+            clip: true
+
+            MarqueeText {
+                id: musicTitle
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.musicText
+                pixelSize: root.textPixelSize
+                fontFamily: root.textFontFamily
+                fontWeight: Font.DemiBold
+                letterSpacing: -0.15
+                maxWidth: root.musicTextMaxWidth
+                // Fits each line up to the cap; the capsule animates the width as lyric lines change.
+                fixedWidth: false
+                active: root.musicVisible && root.showCondition
+            }
         }
 
         SwipeCavaBars {
