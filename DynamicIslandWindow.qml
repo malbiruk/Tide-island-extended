@@ -295,7 +295,7 @@ PanelWindow {
         ? 0
         : root.powerDetailStandalone
             ? Math.ceil(islandContainer.effectiveTopMargin + mainCapsule.targetHeight + root.connectivityDetailGap
-                + root.connectivityDetailHeight + 12)
+                + powerConnectivityDetailShell.height + 12)
             : Math.ceil(islandContainer.effectiveTopMargin + root.connectivityDetailHeight + 12)
     readonly property real requestedWindowHeight: Math.max(
         root.notificationCenterWindowHeight,

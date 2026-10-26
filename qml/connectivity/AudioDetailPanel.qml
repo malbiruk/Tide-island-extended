@@ -12,6 +12,11 @@ Item {
     property string textFontFamily: ""
     property string heroFontFamily: textFontFamily
     property real presentationProgress: 1
+    implicitHeight: contentRoot.anchors.margins * 2 + (activeTab === "outputs"
+        ? outputsList.y + outputsList.contentHeight
+        : activeTab === "inputs"
+            ? inputsList.y + inputsList.contentHeight
+            : appsView.y + (SystemServices.appStreams.length > 0 ? streamsList.contentHeight : appsEmptyState.height))
 
     property string activeTab: panelKind === "audio_input" ? "inputs" : "outputs"
 
@@ -468,6 +473,7 @@ Item {
 
             // Empty state
             Item {
+                id: appsEmptyState
                 anchors.centerIn: parent
                 width: parent.width - 32
                 height: 120

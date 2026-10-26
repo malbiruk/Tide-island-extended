@@ -16,6 +16,7 @@ Item {
     property var mainCapsule: null
     property real availableWidth: 0
     property real detailWidth: 318
+    // The cap: the shell fits its panel's content up to this height; beyond it the content scrolls.
     property real detailHeight: 404
     property real detailGap: 12
     property string iconFontFamily: ""
@@ -63,7 +64,7 @@ Item {
     x: hiddenX + (shownX - hiddenX) * revealProgress
     y: hiddenY + (shownY - hiddenY) * revealProgress
     width: detailWidth
-    height: detailHeight
+    height: panelLoader.item ? Math.min(detailHeight, Math.ceil((panelLoader.item as Item).implicitHeight)) : detailHeight
     opacity: revealProgress
     visible: mounted || opacity > 0.001
     z: 3
@@ -96,6 +97,7 @@ Item {
         }
 
         Loader {
+            id: panelLoader
             anchors.fill: parent
             active: shell.mounted
             asynchronous: false

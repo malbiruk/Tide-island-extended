@@ -166,7 +166,7 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
   - **Live Battery Telemetry**: Real-time display of battery charge status, health percentage (`batteryHealthPercent`), cycle count (`batteryCycleCount`), and an active `80% Cap` badge.
   - **Zero-Latency Non-Blocking Control**: Asynchronous C++ backend paired with automated `systemd-tmpfiles` permissions (`tide-island-battery.conf`) for instantaneous toggling without root password prompts or UI freezes.
 - **Symmetrical Flyout Architecture & Mutual Exclusivity**:
-  - All side panels (Wi-Fi, Bluetooth, Audio, Battery) share identical 318×404 geometry and unified typography.
+  - All side panels (Wi-Fi, Bluetooth, Audio, Battery) are 318 px wide and fit their content up to 404 px tall (longer lists scroll), with unified typography.
   - Clean mutual exclusivity automatically dismisses active sibling panels when a new flyout is opened, eliminating clutter.
 - **Dedicated Microphone & Audio Dynamic Island OSD Feedback**: Real-time PipeWire audio source/sink monitoring (`pactl subscribe`) that keeps sliders in sync and shows an `[icon] [bar] [percent]` OSD (the bar dims while muted) whenever levels change via hotkeys, CLI commands, or UI clicks.
 - **Throttled Slider Performance**: Event throttling on microphone, volume, and brightness slider drags to eliminate IPC and D-Bus lag, maintaining smooth 60fps+ responsiveness.

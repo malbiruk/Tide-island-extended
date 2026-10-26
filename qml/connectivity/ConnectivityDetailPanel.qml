@@ -11,6 +11,7 @@ Item {
     property string textFontFamily: ""
     property string heroFontFamily: textFontFamily
     property real presentationProgress: 1
+    implicitHeight: contentFlick.y + contentFlick.contentHeight + contentRoot.anchors.margins * 2
 
     readonly property bool isWifi: panelKind === "wifi"
     readonly property bool isBluetooth: panelKind === "bluetooth"
