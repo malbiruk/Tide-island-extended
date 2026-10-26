@@ -17,6 +17,26 @@ Item {
     property var playersList: Mpris.players.values !== undefined ? Mpris.players.values : Mpris.players
     property var activePlayer: resolveActivePlayer()
 
+    // The lyrics daemon runs while something plays and for a minute after it pauses or stops,
+    // so a short pause keeps the fetched lyrics.
+    readonly property bool activePlayerPlaying: !!activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing
+    property bool lyricsWanted: activePlayerPlaying
+    onActivePlayerPlayingChanged: {
+        if (activePlayerPlaying) {
+            lyricsIdleTimer.stop();
+            lyricsWanted = true;
+        } else {
+            lyricsIdleTimer.restart();
+        }
+    }
+    onLyricsWantedChanged: syncLyricsBackend()
+
+    Timer {
+        id: lyricsIdleTimer
+        interval: 60000
+        onTriggered: root.lyricsWanted = false
+    }
+
     readonly property string lyricsLookupTitle: activePlayer ? (activePlayer.trackTitle || activePlayer.title || "") : ""
     readonly property string lyricsLookupArtist: {
         if (!activePlayer) return "";
@@ -80,7 +100,7 @@ Item {
             SysBackend.setLyricsClientActive(registeredLyricsClientId, false);
 
         registeredLyricsClientId = nextClientId;
-        SysBackend.setLyricsClientActive(registeredLyricsClientId, activePlayer !== null);
+        SysBackend.setLyricsClientActive(registeredLyricsClientId, activePlayer !== null && lyricsWanted);
     }
 
     function formatTime(value) {
