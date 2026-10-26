@@ -35,6 +35,7 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(bool islandAutoHideEnabled READ islandAutoHideEnabled NOTIFY islandAutoHideEnabledChanged FINAL)
     Q_PROPERTY(int islandAutoHideDelayMs READ islandAutoHideDelayMs NOTIFY islandAutoHideDelayMsChanged FINAL)
     Q_PROPERTY(QString islandBatteryMode READ islandBatteryMode NOTIFY islandBatteryModeChanged FINAL)
+    Q_PROPERTY(int islandBatteryThreshold READ islandBatteryThreshold NOTIFY islandBatteryThresholdChanged FINAL)
     Q_PROPERTY(bool islandAutoHideKeepActivities READ islandAutoHideKeepActivities NOTIFY islandAutoHideKeepActivitiesChanged FINAL)
     // Popup timeouts in seconds for normal and low urgency (critical popups stay until dismissed).
     // Screen edge the island lives on: "top" or "bottom" (anything else is "top").
@@ -91,6 +92,7 @@ public:
     QString dynamicIslandMiddleAction() const;
     int hoverExpandAction() const;
     QString islandBatteryMode() const;
+    int islandBatteryThreshold() const;
     bool islandAutoHideKeepActivities() const;
     int notificationTimeout() const;
     QString islandEdge() const;
@@ -147,6 +149,7 @@ signals:
     void dynamicIslandMiddleButtonChanged();
     void dynamicIslandMiddleActionChanged();
     void islandBatteryModeChanged();
+    void islandBatteryThresholdChanged();
     void islandAutoHideKeepActivitiesChanged();
     void notificationTimeoutChanged();
     void islandEdgeChanged();
@@ -204,6 +207,7 @@ private:
     int m_dynamicIslandMiddleButton = 2;
     QString m_dynamicIslandMiddleAction = QStringLiteral("toggleClipboard");
     QString m_islandBatteryMode = QStringLiteral("low");
+    int m_islandBatteryThreshold = 40;
     bool m_islandAutoHideKeepActivities = true;
     int m_notificationTimeout = 8;
     QString m_islandEdge = QStringLiteral("top");

@@ -266,10 +266,16 @@ bool UserConfigBackend::islandAutoHideEnabled() const
 }
 
 
-// Island battery section: "low" (only below 40 %, charging or not), "always" or "never".
+// Island battery section: "low" (only below islandBatteryThreshold, charging or not), "always"
+// or "never".
 QString UserConfigBackend::islandBatteryMode() const
 {
     return m_islandBatteryMode;
+}
+
+int UserConfigBackend::islandBatteryThreshold() const
+{
+    return m_islandBatteryThreshold;
 }
 
 bool UserConfigBackend::islandAutoHideKeepActivities() const
@@ -604,6 +610,7 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_islandBatteryMode,
                 (batteryMode == QLatin1String("always") || batteryMode == QLatin1String("never")) ? batteryMode : QStringLiteral("low"),
                 &UserConfigBackend::islandBatteryModeChanged);
+    updateField(this, m_islandBatteryThreshold, jsonBoundedInt(configObject, QLatin1String("islandBatteryThreshold"), 40, 1, 100), &UserConfigBackend::islandBatteryThresholdChanged);
     updateField(this, m_islandAutoHideKeepActivities, jsonBool(configObject, QLatin1String("islandAutoHideKeepActivities"), true), &UserConfigBackend::islandAutoHideKeepActivitiesChanged);
     updateField(this, m_islandEdge,
                 jsonString(configObject, QLatin1String("islandEdge"), QString()).trimmed().toLower() == QLatin1String("bottom")

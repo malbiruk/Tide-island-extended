@@ -318,6 +318,32 @@ private slots:
         QCOMPARE(runtime.notificationTimeoutLow(), 1);
     }
 
+    void islandBatteryThresholdDefaultsToFortyAndIsClamped() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{}"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.islandBatteryThreshold(), 40);
+
+        QVERIFY(writeConfig(directory.path(), "{\"islandBatteryThreshold\": 25}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandBatteryThreshold(), 25);
+
+        QVERIFY(writeConfig(directory.path(), "{\"islandBatteryThreshold\": 0}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandBatteryThreshold(), 1);
+
+        QVERIFY(writeConfig(directory.path(), "{\"islandBatteryThreshold\": 150}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandBatteryThreshold(), 100);
+
+        QVERIFY(writeConfig(directory.path(), "{\"islandBatteryThreshold\": \"30\"}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandBatteryThreshold(), 40);
+    }
+
     void islandEdgeIsTopUnlessBottom() {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());

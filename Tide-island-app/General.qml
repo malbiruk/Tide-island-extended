@@ -244,8 +244,9 @@ PagePanel {
                     SplitLine { width: parent.width }
 
                     ChoiceRow {
+                        id: batteryModeRow
                         title: "Island Battery"
-                        description: "When the island shows the battery (Low: below 40%)"
+                        description: "When the island shows the battery (Low: below the threshold)"
                         keyName: "islandBatteryMode"
                         options: [
                             { id: "low", name: "Low" },
@@ -256,6 +257,24 @@ PagePanel {
                             const mode = String(ConfigStore.value("islandBatteryMode", "low")).trim().toLowerCase()
                             return mode === "always" || mode === "never" ? mode : "low"
                         }
+                        width: parent.width
+                    }
+
+                    SplitLine {
+                        width: parent.width
+                        visible: batteryThresholdRow.visible
+                    }
+
+                    ConfigRow {
+                        id: batteryThresholdRow
+                        title: "Battery Threshold"
+                        description: "Low shows the battery below this charge (%)"
+                        keyName: "islandBatteryThreshold"
+                        fallbackText: "40"
+                        numeric: true
+                        minimumValue: 1
+                        maximumValue: 100
+                        visible: batteryModeRow.selectedId === "low"
                         width: parent.width
                     }
 

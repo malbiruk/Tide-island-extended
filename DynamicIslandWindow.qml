@@ -1020,8 +1020,8 @@ PanelWindow {
         readonly property bool isCharging: systemState.isCharging
 
         // Unified resting island: music (while playing, with a short grace period so track
-        // changes don't flicker), clock, battery (islandBatteryMode: "low" = below 40 %,
-        // charging or not; "always"; "never").
+        // changes don't flicker), clock, battery (islandBatteryMode: "low" = below
+        // islandBatteryThreshold %, charging or not; "always"; "never").
         readonly property bool musicPlaying: !!mediaController.activePlayer
             && mediaController.activePlayer.playbackState === MprisPlaybackState.Playing
         property bool restingMusicVisible: false
@@ -1029,7 +1029,7 @@ PanelWindow {
             const mode = userConfig.islandBatteryMode;
             if (mode === "never" || batteryCapacity <= 0)
                 return false;
-            return mode === "always" || batteryCapacity < 40;
+            return mode === "always" || batteryCapacity < userConfig.islandBatteryThreshold;
         }
         readonly property real restingCapsuleWidth: restingLayer.leftSectionWidth
             + restingLayer.centerSectionWidth + restingLayer.rightSectionWidth
