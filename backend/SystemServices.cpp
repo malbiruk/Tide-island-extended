@@ -1,6 +1,7 @@
 #include "SystemServices.h"
 #include "UserConfigBackend.h"
 #include "ScreenRecorderController.h"
+#include "BatteryStatusUtils.h"
 
 #include <QDateTime>
 #include <QDebug>
@@ -2578,19 +2579,16 @@ void SystemServices::detectBatteryThresholdSupport() {
         return;
     }
 
-    // 2. Check standard Linux charge_control_end_threshold (ThinkPad, ASUS, Framework, etc.)
-    QDir powerSupplyDir(QStringLiteral("/sys/class/power_supply"));
-    if (powerSupplyDir.exists()) {
-        const QStringList entries = powerSupplyDir.entryList(QStringList() << QStringLiteral("BAT*"), QDir::Dirs | QDir::NoDotAndDotDot);
-        for (const QString &bat : entries) {
-            const QString candidate = powerSupplyDir.absoluteFilePath(bat + QStringLiteral("/charge_control_end_threshold"));
-            if (QFile::exists(candidate)) {
-                m_batteryThresholdSupported = true;
-                m_batteryThresholdType = QStringLiteral("threshold");
-                m_batteryThresholdSysfsPath = candidate;
-                m_batteryThresholdPresets = QVariantList{80, 85, 90, 100};
-                return;
-            }
+    // 2. Check standard Linux charge_control_end_threshold (ThinkPad, ASUS, Framework, Apple Silicon, etc.)
+    const QString systemBattery = BatteryStatusUtils::systemBatteryPath();
+    if (!systemBattery.isEmpty()) {
+        const QString candidate = systemBattery + QStringLiteral("/charge_control_end_threshold");
+        if (QFile::exists(candidate)) {
+            m_batteryThresholdSupported = true;
+            m_batteryThresholdType = QStringLiteral("threshold");
+            m_batteryThresholdSysfsPath = candidate;
+            m_batteryThresholdPresets = QVariantList{80, 85, 90, 100};
+            return;
         }
     }
 
@@ -2606,15 +2604,7 @@ void SystemServices::detectBatteryThresholdSupport() {
 }
 
 void SystemServices::updateBatteryMetrics() {
-    QString batDir;
-    QDir psDir(QStringLiteral("/sys/class/power_supply"));
-    if (psDir.exists()) {
-        const QStringList bats = psDir.entryList(QStringList() << QStringLiteral("BAT*"), QDir::Dirs | QDir::NoDotAndDotDot);
-        if (!bats.isEmpty()) {
-            batDir = psDir.absoluteFilePath(bats.first());
-        }
-    }
-
+    const QString batDir = BatteryStatusUtils::systemBatteryPath();
     if (batDir.isEmpty())
         return;
 

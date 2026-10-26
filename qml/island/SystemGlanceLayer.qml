@@ -309,7 +309,7 @@ FocusScope {
                 readonly property bool effectiveCharging: root.isCharging
                     || (SystemGlance && SystemGlance.batteryStatus === "Charging")
                     || (typeof SysBackend !== "undefined" && (SysBackend.batteryStatus === "Charging" || SysBackend.batteryStatus === "Full"))
-                // SystemGlance only reads BAT*/battery* supplies; fall back to SysBackend (e.g. macsmc-battery).
+                // Prefer SystemGlance's status; fall back to SysBackend when it has none.
                 readonly property string effectiveStatus: (SystemGlance && SystemGlance.batteryStatus)
                     || ((typeof SysBackend !== "undefined" && SysBackend.batteryStatus !== "Unknown") ? SysBackend.batteryStatus : "")
                 readonly property bool isConservation: SystemGlance.batteryConservationActive || (SystemServices.batteryConservationMode ?? false)

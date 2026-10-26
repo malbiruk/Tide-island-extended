@@ -131,7 +131,7 @@ void SysBackend::setupBattery() {
 }
 
 void SysBackend::detectPowerSupplyPaths() {
-    m_batteryPath.clear();
+    m_batteryPath = BatteryStatusUtils::systemBatteryPath();
     m_acPath.clear();
 
     const QDir dir("/sys/class/power_supply");
@@ -142,10 +142,8 @@ void SysBackend::detectPowerSupplyPaths() {
         const QString supplyPath = supplyInfo.absoluteFilePath();
         const QString supplyType = readSysfsTextFile(supplyPath + "/type");
 
-        if (m_batteryPath.isEmpty() && (supplyType == "Battery" || supplyName.startsWith("BAT"))) {
-            m_batteryPath = supplyPath;
+        if (supplyPath == m_batteryPath)
             continue;
-        }
 
         if (m_acPath.isEmpty() &&
             (supplyType == "Mains" || supplyType == "USB" || supplyName.startsWith("AC") || supplyName.startsWith("ADP"))) {

@@ -1,4 +1,5 @@
 #include "SystemGlanceBackend.h"
+#include "BatteryStatusUtils.h"
 
 #include <QDir>
 #include <QFile>
@@ -677,37 +678,13 @@ void SystemGlanceBackend::updateKernelStats()
 
 void SystemGlanceBackend::updateBatteryStats()
 {
-    QDir dir(QStringLiteral("/sys/class/power_supply"));
-
-    // Find the system battery by its sysfs type (e.g. Apple Silicon's "macsmc-battery"),
-    // skipping peripheral batteries (scope "Device"); fall back to the BAT*/battery* names.
-    QString batteryName;
-    const QStringList supplies = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
-    for (const QString &name : supplies) {
-        const QString supplyPath = dir.absoluteFilePath(name);
-        QFile typeFile(supplyPath + QStringLiteral("/type"));
-        if (!typeFile.open(QIODevice::ReadOnly | QIODevice::Text)
-                || QString::fromUtf8(typeFile.readAll()).trimmed() != QStringLiteral("Battery"))
-            continue;
-        QFile scopeFile(supplyPath + QStringLiteral("/scope"));
-        if (scopeFile.open(QIODevice::ReadOnly | QIODevice::Text)
-                && QString::fromUtf8(scopeFile.readAll()).trimmed() == QStringLiteral("Device"))
-            continue;
-        batteryName = name;
-        break;
-    }
-    if (batteryName.isEmpty()) {
-        const QStringList batteries = dir.entryList({QStringLiteral("BAT*"), QStringLiteral("battery*")}, QDir::Dirs | QDir::NoDotAndDotDot);
-        if (!batteries.isEmpty())
-            batteryName = batteries.first();
-    }
-    if (batteryName.isEmpty()) {
+    const QString batPath = BatteryStatusUtils::systemBatteryPath();
+    if (batPath.isEmpty()) {
         m_hasBattery = false;
         return;
     }
 
     m_hasBattery = true;
-    const QString batPath = dir.absoluteFilePath(batteryName);
 
     // Status
     QFile statusFile(batPath + QStringLiteral("/status"));
