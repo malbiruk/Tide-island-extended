@@ -275,14 +275,15 @@ center, file shelf, clipboard, weather, calendar, privacy HUD, glance) are compi
 
 Background helpers: `dbus-monitor` (ScreenCast portal only; Tide Island is the notification
 server itself), `pw-mon` (privacy indicators), `pactl subscribe` (volume OSD) and the
-`cliphist` watcher. `cava` runs only while the resting music section is on screen, and the
-`lyricsmpris` lyrics daemon only while a player is playing (plus a minute after it pauses).
+`cliphist` watcher. `cava` runs only while the resting music section, or the expanded player's
+music page during playback, is on screen, and the `lyricsmpris` lyrics daemon only while a player
+is playing (plus a minute after it pauses).
 
 ### Architectural Optimizations
 - **Direct Telemetry**: The glance reads `/proc` and `/sys` directly instead of spawning `free`, `df` or `top`.
 - **Retina Image Decode Bounding**: All dynamic image elements (MPRIS high-res album covers, user avatars, notifications, and clipboard previews) specify explicit `sourceSize` bounds. 4K/8K images are downsampled at decode time, preventing multi-megapixel raw bitmaps from inflating memory.
 - **Apps outside the shell's cgroup**: Programs Tide Island starts for you (`xdg-open`, links, the screen recorder, the screen locker, terminals, the settings app) run in their own transient systemd scope, so restarting the shell never takes them down.
-- **Declarative Scene Graph Animation**: Audio visualizer waves and phase loops run directly on the Qt Quick Scene Graph hardware render thread, avoiding high-frequency JavaScript timer wakeups.
+- **Declarative Animation**: Motion uses Qt Quick's declarative animations rather than JavaScript timers. The audio visualizer bars follow cava's levels through short height animations, with no free-running phase loop.
 
 <br>
 
