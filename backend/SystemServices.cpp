@@ -2,6 +2,7 @@
 #include "UserConfigBackend.h"
 #include "ScreenRecorderController.h"
 #include "BatteryStatusUtils.h"
+#include "../common/ScopedLaunch.h"
 
 #include <QDebug>
 #include <QDir>
@@ -818,7 +819,7 @@ void SystemServices::ensureUserConfigAvailable() {
     }
 
     m_configAppLaunchRequested = true;
-    if (!QProcess::startDetached(configAppPath, {})) {
+    if (!ScopedLaunch::startDetached({configAppPath})) {
         m_configAppLaunchRequested = false;
         qWarning() << "[SystemServices] Failed to launch config app:" << configAppPath;
     }
@@ -2097,6 +2098,14 @@ QString SystemServices::defaultTerminalEmulator() const {
     }
 
     return QStringLiteral("xterm");
+}
+
+QStringList SystemServices::scopedCommand(const QStringList &argv) const {
+    return ScopedLaunch::command(argv);
+}
+
+bool SystemServices::launchDetached(const QStringList &argv) const {
+    return ScopedLaunch::startDetached(argv);
 }
 
 QStringList SystemServices::wrapTerminalCommand(const QStringList &command) const {

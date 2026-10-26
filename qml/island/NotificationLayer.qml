@@ -1010,7 +1010,7 @@ Item {
                         linkColor: StyleTokens.accent
                         onLinkActivated: function(link) {
                             if (/^https?:\/\//i.test(link))
-                                Qt.openUrlExternally(link);
+                                SystemServices.launchDetached(["xdg-open", link]);
                         }
                         color: StyleTokens.textSecondary
                         font.pixelSize: 12

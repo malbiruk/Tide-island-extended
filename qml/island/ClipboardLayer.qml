@@ -211,7 +211,7 @@ FocusScope {
             return;
         // The layer is unloaded on close; a child Process could be killed
         // before cliphist finishes restoring the selected item.
-        Quickshell.execDetached(["bash", root.helperScriptPath, "copy", String(entry.id)]);
+        SystemServices.launchDetached(["bash", root.helperScriptPath, "copy", String(entry.id)]);
         root.closeRequested();
     }
 

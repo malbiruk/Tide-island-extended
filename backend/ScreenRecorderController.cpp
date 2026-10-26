@@ -1,5 +1,6 @@
 #include "ScreenRecorderController.h"
 #include "SystemServices.h"
+#include "../common/ScopedLaunch.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -266,7 +267,8 @@ void ScreenRecorderController::startRecording(bool withMic) {
     }
 
     qint64 pid = 0;
-    const bool started = QProcess::startDetached(m_wfRecorderPath, args, QString(), &pid);
+    // The scope execs wf-recorder in place, so pid is wf-recorder's own (signals, /proc/comm).
+    const bool started = ScopedLaunch::startDetached(QStringList{m_wfRecorderPath} + args, &pid);
     if (!started || pid <= 0) {
         emit notificationRequested(QStringLiteral("Screen Recorder"), QStringLiteral("Failed to start wf-recorder."));
         return;
@@ -421,7 +423,7 @@ void ScreenRecorderController::toggleMic() {
 
 void ScreenRecorderController::openRecordingsFolder() {
     ensureDirectories();
-    QProcess::startDetached(QStringLiteral("xdg-open"), {m_recordingsDir});
+    ScopedLaunch::startDetached({QStringLiteral("xdg-open"), m_recordingsDir});
 }
 
 void ScreenRecorderController::onTick() {

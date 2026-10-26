@@ -2,7 +2,9 @@
 #include "SystemServices.h"
 
 #include <QtTest>
+#include <QProcess>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QVariantList>
 #include <QVariantMap>
 
@@ -178,6 +180,32 @@ private slots:
         QVERIFY(readySpy.wait(1000));
         QCOMPARE(readySpy.at(0).at(0).toUInt(), 7u);
         QVERIFY(readySpy.at(0).at(1).toString().isEmpty());
+    }
+
+    void scopedCommandDropsServiceVariablesAndKeepsTheExitCode()
+    {
+        // No user manager in this runtime dir: the program runs as a plain child through env.
+        QTemporaryDir runtimeDir;
+        QVERIFY(runtimeDir.isValid());
+        qputenv("XDG_RUNTIME_DIR", runtimeDir.path().toUtf8());
+
+        SystemServices services;
+        QVERIFY(services.scopedCommand({}).isEmpty());
+
+        const QStringList command = services.scopedCommand(
+            {QStringLiteral("sh"), QStringLiteral("-c"),
+             QStringLiteral("printf '%s|%s|%s' \"${MALLOC_CONF-unset}\" \"$1\" \"$HOME\"; exit 3"),
+             QStringLiteral("sh"), QStringLiteral("$HOME a b")});
+        QProcess process;
+        QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+        environment.insert(QStringLiteral("MALLOC_CONF"), QStringLiteral("narenas:1"));
+        environment.insert(QStringLiteral("HOME"), QStringLiteral("/home/someone"));
+        process.setProcessEnvironment(environment);
+        process.start(command.first(), command.mid(1));
+        QVERIFY(process.waitForFinished(5000));
+        QCOMPARE(QString::fromUtf8(process.readAllStandardOutput()),
+                 QStringLiteral("unset|$HOME a b|/home/someone"));
+        QCOMPARE(process.exitCode(), 3);
     }
 
     void testQueryDiskUsagePercent()

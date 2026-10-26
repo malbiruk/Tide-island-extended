@@ -1,5 +1,6 @@
 #include "SystemGlanceBackend.h"
 #include "BatteryStatusUtils.h"
+#include "../common/ScopedLaunch.h"
 
 #include <QDir>
 #include <QFile>
@@ -626,7 +627,7 @@ void SystemGlanceBackend::openAvatarDirectory()
             dir = fi.isDir() ? fi.absoluteFilePath() : fi.absolutePath();
         }
     }
-    QProcess::startDetached(QStringLiteral("xdg-open"), {dir});
+    ScopedLaunch::startDetached({QStringLiteral("xdg-open"), dir});
 }
 
 void SystemGlanceBackend::updateKernelStats()
@@ -1123,5 +1124,5 @@ void SystemGlanceBackend::launchUpdateTerminal()
         args = {QStringLiteral("-e"), QStringLiteral("sh"), QStringLiteral("-c"), updateCmd};
     }
 
-    QProcess::startDetached(term, args);
+    ScopedLaunch::startDetached(QStringList{term} + args);
 }

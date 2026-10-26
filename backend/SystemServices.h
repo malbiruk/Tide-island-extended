@@ -115,6 +115,9 @@ public:
     Q_INVOKABLE double queryDiskUsagePercent(const QString &mountPath = QStringLiteral("/")) const;
     Q_INVOKABLE QString defaultTerminalEmulator() const;
     Q_INVOKABLE QStringList wrapTerminalCommand(const QStringList &command) const;
+    // User-facing programs run in their own systemd scope (common/ScopedLaunch.h).
+    Q_INVOKABLE QStringList scopedCommand(const QStringList &argv) const;
+    Q_INVOKABLE bool launchDetached(const QStringList &argv) const;
 
 signals:
     void screenRecordingActiveChanged();

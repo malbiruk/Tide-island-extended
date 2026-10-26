@@ -88,7 +88,7 @@ FocusScope {
 
         const entry = FileShelf.get(selectedIndex);
         if (entry && entry.filePath)
-            Quickshell.execDetached(["xdg-open", String(entry.filePath)]);
+            SystemServices.launchDetached(["xdg-open", String(entry.filePath)]);
     }
 
     function removeCurrent() {
@@ -473,7 +473,7 @@ FocusScope {
                     onClicked: root.selectedIndex = fileDelegate.index
                     onDoubleClicked: {
                         if (root.suppressedOpenUri !== fileDelegate.uri)
-                            Quickshell.execDetached(["xdg-open", fileDelegate.filePath]);
+                            SystemServices.launchDetached(["xdg-open", fileDelegate.filePath]);
                     }
                 }
 
