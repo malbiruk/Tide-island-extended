@@ -620,8 +620,10 @@ PanelWindow {
         }
 
         if (kind === "audio_output" || kind === "audio_input" || kind.startsWith("audio")) {
-            root.audioConnectivityDetailKind = kind;
             if (nextOpen) {
+                // Only on open: closeAllConnectivityDetails() closes both kinds in turn, and the
+                // closing popup must keep its tab and height while it fades.
+                root.audioConnectivityDetailKind = kind;
                 audioConnectivityDetailCleanupTimer.stop();
                 root.audioConnectivityDetailMounted = true;
                 root.audioConnectivityDetailOpen = true;
