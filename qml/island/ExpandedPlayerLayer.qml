@@ -45,6 +45,10 @@ Item {
     property real pageProgress: 0
     readonly property real clampedPageProgress: Math.max(0, Math.min(1, pageProgress))
     readonly property real pageSlideDistance: Math.max(1, viewport.width + 24)
+    // The card's height: the music controls' glyphs end as far above its bottom edge as the
+    // cover starts below its top. The timer page (its 104 px ring) fits in the same height.
+    readonly property real contentHeight: musicColumn.implicitHeight + musicColumn.anchors.margins * 2
+        - (musicControls.height - musicControls.glyphHeight) / 2
 
     readonly property bool isPlaying: activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing
 
@@ -256,6 +260,8 @@ Item {
                 enabled: opacity > 0.001
 
                 Column {
+                    id: musicColumn
+
                     anchors.fill: parent
                     anchors.margins: 20
                     spacing: 14
@@ -417,6 +423,11 @@ Item {
                     }
 
                     Item {
+                        id: musicControls
+
+                        // The previous, play/pause and next glyphs are drawn 20 px tall, centred.
+                        readonly property real glyphHeight: 20
+
                         width: parent.width
                         height: 36
 

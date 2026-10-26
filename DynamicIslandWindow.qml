@@ -2047,7 +2047,7 @@ PanelWindow {
                 case "glance":
                     return glanceLoader.item ? glanceLoader.item.contentHeight : 292;
                 case "expanded":
-                    return 165;
+                    return expandedPlayerLoader.item ? expandedPlayerLoader.item.contentHeight : 165;
                 case "notification":
                     return notificationLoader.item
                         ? Math.max(56, notificationLoader.item.preferredHeight)
