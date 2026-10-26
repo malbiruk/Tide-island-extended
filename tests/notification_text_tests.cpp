@@ -1,3 +1,4 @@
+#include <QElapsedTimer>
 #include <QFile>
 #include <QJSEngine>
 #include <QJSValue>
@@ -81,6 +82,26 @@ private slots:
         QCOMPARE(styled(plain), QStringLiteral("line 1<br>line 2<br>line 3<br><br>end"));
         QCOMPARE(call(QStringLiteral("oneLine"), {plain}), QStringLiteral("line 1 line 2 line 3 end"));
         QCOMPARE(call(QStringLiteral("fromMarkup"), {QStringLiteral("a\nb"), false}), QStringLiteral("a b"));
+    }
+
+    // Hostile bodies must stay linear: each case finishes well under a second.
+    void pathologicalInputStaysFast_data()
+    {
+        QTest::addColumn<QString>("markup");
+        QTest::newRow("closing-paren tail") << QStringLiteral("https://x.com/") + QString(40000, QLatin1Char(')'));
+        QTest::newRow("dot tail") << QStringLiteral("see https://x.com/a") + QString(40000, QLatin1Char('.'));
+        QTest::newRow("unclosed anchors") << QStringLiteral("<a href=\"https://x.com\">x ").repeated(20000);
+        QTest::newRow("unclosed brackets") << QStringLiteral("[a").repeated(100000);
+    }
+
+    void pathologicalInputStaysFast()
+    {
+        QFETCH(QString, markup);
+        QElapsedTimer timer;
+        timer.start();
+        const QString styled = this->styled(fromMarkup(markup));
+        QVERIFY(!styled.isEmpty());
+        QVERIFY2(timer.elapsed() < 1000, qPrintable(QStringLiteral("%1 ms").arg(timer.elapsed())));
     }
 };
 

@@ -7,7 +7,7 @@
 
 const formattingTags = /<\/?(?:a|b|i|u|s|em|strong|big|small|sub|sup|tt|code|pre|span|font|div|p|br|hr|img|ul|ol|li|h[1-6]|blockquote|q|del|ins|mark)\b(?:\s[^<>]*)?\/?>/gi;
 const lineBreakTags = /<(?:br|hr)\b[^<>]*>|<\/(?:p|div|li|h[1-6]|blockquote|pre)\s*>/gi;
-const anchorElement = /<a\b([^<>]*)>([\s\S]*?)<\/a\s*>/gi;
+const anchorOpenTag = /<a\b([^<>]*)>/gi;
 const hrefAttribute = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'<>]+))/i;
 const anchorToken = /\u0001([^\u0001\u0002\u0003]*)\u0002([^\u0001\u0002\u0003]*)\u0003/g;
 const linkPattern = /\[([^\[\]\n]+)\]\((https?:\/\/[^\s()<>"]+)\)|(https?:\/\/[^\s<>"]+)/gi;
@@ -53,21 +53,59 @@ function escapeHtml(value) {
 }
 
 // A bare URL ends before trailing punctuation, quotes and closing brackets it does not open.
+// One backward pass over bracket balances counted once.
 function trimBareUrl(url) {
-    const pairs = { ")": "(", "]": "[", "}": "{" };
-    while (url.length > 0) {
-        const last = url[url.length - 1];
-        if (".,;:!?'*_~’”»›".indexOf(last) >= 0) {
-            url = url.slice(0, -1);
-            continue;
-        }
-        if (pairs[last] !== undefined && url.split(last).length > url.split(pairs[last]).length) {
-            url = url.slice(0, -1);
-            continue;
-        }
-        break;
+    const opening = { ")": "(", "]": "[", "}": "{" };
+    const unmatched = { ")": 0, "]": 0, "}": 0 };
+    for (let i = 0; i < url.length; i++) {
+        const c = url[i];
+        if (unmatched[c] !== undefined)
+            unmatched[c]++;
+        else if (c === "(")
+            unmatched[")"]--;
+        else if (c === "[")
+            unmatched["]"]--;
+        else if (c === "{")
+            unmatched["}"]--;
     }
-    return url;
+    let end = url.length;
+    while (end > 0) {
+        const last = url[end - 1];
+        if (".,;:!?'*_~’”»›".indexOf(last) >= 0) {
+            end--;
+        } else if (opening[last] !== undefined && unmatched[last] > 0) {
+            unmatched[last]--;
+            end--;
+        } else {
+            break;
+        }
+    }
+    return url.slice(0, end);
+}
+
+// <a …>label</a> → token(attributes, label). Linear: once no closing tag is left, the rest of
+// the text is not searched again for each remaining opening tag.
+function replaceAnchors(value, token) {
+    const lower = value.toLowerCase();
+    let result = "";
+    let position = 0;
+    anchorOpenTag.lastIndex = 0;
+    let open;
+    while ((open = anchorOpenTag.exec(value)) !== null) {
+        const labelStart = open.index + open[0].length;
+        let close = lower.indexOf("</a", labelStart);
+        while (close >= 0 && !/[\s>]/.test(lower.charAt(close + 3)))
+            close = lower.indexOf("</a", close + 3);
+        if (close < 0)
+            break;
+        const closeEnd = lower.indexOf(">", close);
+        if (closeEnd < 0)
+            break;
+        result += value.slice(position, open.index) + token(open[1], value.slice(labelStart, close));
+        position = closeEnd + 1;
+        anchorOpenTag.lastIndex = position;
+    }
+    return result + value.slice(position);
 }
 
 function collapseWhitespace(value, multiline) {
@@ -86,7 +124,7 @@ function collapseWhitespace(value, multiline) {
 // false; http(s) anchors keep their target as [label](url), others keep just their label.
 function fromMarkup(markup, multiline) {
     let value = text(markup).replace(/[\u0001-\u0003]/g, "");
-    value = value.replace(anchorElement, (match, attributes, label) => {
+    value = replaceAnchors(value, (attributes, label) => {
         const href = attributes.match(hrefAttribute);
         const target = href ? (href[1] !== undefined ? href[1] : href[2] !== undefined ? href[2] : href[3]) : "";
         return "\u0001" + label + "\u0002" + target + "\u0003";

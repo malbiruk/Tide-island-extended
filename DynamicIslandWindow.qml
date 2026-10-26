@@ -1637,10 +1637,15 @@ PanelWindow {
             for (let i = 0; i < rawActions.length; i++)
                 actions.push(rawActions[i]);
 
-            // Markup becomes plain text; the body keeps its line breaks and http(s) links.
-            const cleanedAppName = NotificationText.oneLine(NotificationText.fromMarkup(raw.appName, false));
-            const cleanedSummary = NotificationText.oneLine(NotificationText.fromMarkup(raw.summary, false));
-            const cleanedBody = NotificationText.fromMarkup(raw.body, true);
+            // Markup becomes plain text; the body keeps its line breaks and http(s) links. Senders
+            // control these strings, so they are cut to 16 KB before any formatting.
+            const limited = value => {
+                const text = value === undefined || value === null ? "" : String(value);
+                return text.length > 16384 ? text.slice(0, 16384) : text;
+            };
+            const cleanedAppName = NotificationText.oneLine(NotificationText.fromMarkup(limited(raw.appName), false));
+            const cleanedSummary = NotificationText.oneLine(NotificationText.fromMarkup(limited(raw.summary), false));
+            const cleanedBody = NotificationText.fromMarkup(limited(raw.body), true);
             return {
                 id: typeof raw.id === "number" ? raw.id : 0,
                 appName: cleanedAppName !== "" ? cleanedAppName : "Notification",
