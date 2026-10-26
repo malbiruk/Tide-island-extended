@@ -1,7 +1,9 @@
 #pragma once
 
+#include <QJsonObject>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QVariantMap>
 #include <QVariantList>
 
@@ -18,7 +20,7 @@ class Backend final : public QObject {
     Q_PROPERTY(QString userConfigPath READ userConfigPath CONSTANT)
     Q_PROPERTY(QString homeDirectory READ homeDirectory CONSTANT)
     Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged)
-    Q_PROPERTY(QVariantMap userConfig READ userConfig CONSTANT)
+    Q_PROPERTY(QVariantMap userConfig READ userConfig NOTIFY userConfigChanged)
     Q_PROPERTY(QString colorScheme READ colorScheme WRITE setColorScheme NOTIFY colorSchemeChanged)
 
 public:
@@ -30,7 +32,7 @@ public:
     QVariantMap userConfig() const;
     QString colorScheme() const;
 
-    Q_INVOKABLE bool save(const QVariantMap &userConfig);
+    Q_INVOKABLE bool save(const QVariantMap &changes, const QStringList &removedKeys = QStringList());
     Q_INVOKABLE void setColorScheme(const QString &colorScheme);
     Q_INVOKABLE bool copyToClipboard(const QString &text);
     Q_INVOKABLE QVariantList shortcutBindings() const;
@@ -61,6 +63,7 @@ public:
 signals:
     void errorStringChanged();
     void colorSchemeChanged();
+    void userConfigChanged();
 
 private:
     QString hyprlandConfigPath() const;
@@ -76,6 +79,7 @@ private:
     bool reloadHyprland();
     bool validateNiriConfig(const QString &configText);
     void load();
+    bool readUserConfigObject(QJsonObject &object);
     void setErrorString(const QString &errorString);
     QVariantMap toVariantMap() const;
     void setUserConfig(const QVariantMap &userConfig);

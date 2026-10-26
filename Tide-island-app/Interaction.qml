@@ -5,17 +5,21 @@ import TideIsland 1.0
 PagePanel {
     id: root
 
-    readonly property string playerAction: "toggleExpandedPlayer"
-    readonly property string controlAction: "toggleControlCenter"
-    readonly property string clipboardAction: "toggleClipboard"
-    readonly property var mouseButtonOptions: [
-        { "label": "Left", "value": 1 },
-        { "label": "Middle", "value": 2 },
-        { "label": "Right", "value": 3 }
+    // The shell matches a click against the primary, secondary and middle slots
+    // in that order, so the app always gives each slot its own mouse button;
+    // a "none" slot sharing a button would swallow another slot's action.
+    readonly property var clickSlots: [
+        { "prefix": "dynamicIslandPrimary", "button": 1, "action": "none" },
+        { "prefix": "dynamicIslandSecondary", "button": 3, "action": "toggleControlCenter" },
+        { "prefix": "dynamicIslandMiddle", "button": 2, "action": "toggleClipboard" }
+    ]
+    readonly property var clickActionOptions: [
+        { "label": "None", "value": 0, "action": "none" },
+        { "label": "Control Center", "value": 1, "action": "toggleControlCenter" },
+        { "label": "Clipboard", "value": 2, "action": "toggleClipboard" }
     ]
     readonly property var hoverActionOptions: [
         { "label": "Disabled", "value": 0 },
-        { "label": "Music Player", "value": 1 },
         { "label": "Control Center", "value": 2 }
     ]
 
@@ -29,10 +33,8 @@ PagePanel {
     }
 
     function normalizedHoverAction(value) {
-        const parsedValue = Number(value)
-        if (parsedValue === 0 || parsedValue === 1 || parsedValue === 2)
-            return parsedValue
-        return 1
+        // 1 was the removed music player.
+        return Number(value) === 2 ? 2 : 0
     }
 
     function normalizedAutoHideDelay(value) {
@@ -47,69 +49,53 @@ PagePanel {
         return value === true || value === "true"
     }
 
-    function buttonForAction(actionName, fallback) {
-        revision
-
-        const primaryAction = String(ConfigStore.value("dynamicIslandPrimaryAction", root.playerAction))
-        const secondaryAction = String(ConfigStore.value("dynamicIslandSecondaryAction", root.controlAction))
-        const middleAction = String(ConfigStore.value("dynamicIslandMiddleAction", root.clipboardAction))
-
-        if (primaryAction === actionName)
-            return normalizedButton(ConfigStore.value("dynamicIslandPrimaryButton", fallback), fallback)
-        if (secondaryAction === actionName)
-            return normalizedButton(ConfigStore.value("dynamicIslandSecondaryButton", fallback), fallback)
-        if (middleAction === actionName)
-            return normalizedButton(ConfigStore.value("dynamicIslandMiddleButton", fallback), fallback)
-
-        return fallback
+    function normalizedAction(value) {
+        const action = String(value === undefined || value === null ? "" : value).trim()
+        // toggleExpandedPlayer was the removed music player.
+        return action === "" || action === "toggleExpandedPlayer" ? "none" : action
     }
 
-    function saveClickMappings(playerButton, controlButton, clipboardButton) {
-        ConfigStore.setValue("dynamicIslandPrimaryAction", root.playerAction)
-        ConfigStore.setValue("dynamicIslandPrimaryButton", playerButton)
-        ConfigStore.setValue("dynamicIslandSecondaryAction", root.controlAction)
-        ConfigStore.setValue("dynamicIslandSecondaryButton", controlButton)
-        ConfigStore.setValue("dynamicIslandMiddleAction", root.clipboardAction)
-        ConfigStore.setValue("dynamicIslandMiddleButton", clipboardButton)
+    function actionForButton(button) {
+        revision
+
+        for (let index = 0; index < clickSlots.length; index++) {
+            const slot = clickSlots[index]
+            if (normalizedButton(ConfigStore.value(slot.prefix + "Button", slot.button), slot.button) === button)
+                return normalizedAction(ConfigStore.value(slot.prefix + "Action", slot.action))
+        }
+        return "none"
+    }
+
+    function actionOptionValue(button) {
+        const action = actionForButton(button)
+        for (let index = 0; index < clickActionOptions.length; index++) {
+            if (clickActionOptions[index].action === action)
+                return clickActionOptions[index].value
+        }
+        return -1
+    }
+
+    function setActionForButton(button, optionValue) {
+        const actions = {}
+        for (let index = 0; index < clickSlots.length; index++)
+            actions[clickSlots[index].button] = actionForButton(clickSlots[index].button)
+        for (let index = 0; index < clickActionOptions.length; index++) {
+            if (clickActionOptions[index].value === optionValue)
+                actions[button] = clickActionOptions[index].action
+        }
+
+        for (let index = 0; index < clickSlots.length; index++) {
+            const slot = clickSlots[index]
+            ConfigStore.setValue(slot.prefix + "Button", slot.button)
+            ConfigStore.setValue(slot.prefix + "Action", actions[slot.button])
+        }
         ConfigStore.save()
         revision += 1
     }
 
-    function setButtonForAction(actionName, button) {
-        let playerButton = buttonForAction(root.playerAction, 1)
-        let controlButton = buttonForAction(root.controlAction, 3)
-        let clipboardButton = buttonForAction(root.clipboardAction, 2)
-
-        const oldButton = (actionName === root.playerAction) ? playerButton
-                        : (actionName === root.controlAction) ? controlButton
-                        : clipboardButton
-
-        if (actionName === root.playerAction) {
-            playerButton = button
-            if (controlButton === button)
-                controlButton = oldButton
-            else if (clipboardButton === button)
-                clipboardButton = oldButton
-        } else if (actionName === root.controlAction) {
-            controlButton = button
-            if (playerButton === button)
-                playerButton = oldButton
-            else if (clipboardButton === button)
-                clipboardButton = oldButton
-        } else if (actionName === root.clipboardAction) {
-            clipboardButton = button
-            if (playerButton === button)
-                playerButton = oldButton
-            else if (controlButton === button)
-                controlButton = oldButton
-        }
-
-        saveClickMappings(playerButton, controlButton, clipboardButton)
-    }
-
     function hoverActionValue() {
         revision
-        return normalizedHoverAction(ConfigStore.value("hoverExpandAction", 1))
+        return normalizedHoverAction(ConfigStore.value("hoverExpandAction", 0))
     }
 
     function setHoverAction(value) {
@@ -125,6 +111,17 @@ PagePanel {
 
     function setIslandAutoHideEnabled(enabled) {
         ConfigStore.setValue("islandAutoHideEnabled", enabled)
+        ConfigStore.save()
+        revision += 1
+    }
+
+    function islandAutoHideKeepActivities() {
+        revision
+        return boolValue("islandAutoHideKeepActivities", true)
+    }
+
+    function setIslandAutoHideKeepActivities(enabled) {
+        ConfigStore.setValue("islandAutoHideKeepActivities", enabled)
         ConfigStore.save()
         revision += 1
     }
@@ -159,17 +156,6 @@ PagePanel {
         ConfigStore.save()
         revision += 1
         return delayMs / 1000
-    }
-
-    function autoExpandOnTrackChange() {
-        revision
-        return !boolValue("disableAutoExpandOnTrackChange", false)
-    }
-
-    function setAutoExpandOnTrackChange(enabled) {
-        ConfigStore.setValue("disableAutoExpandOnTrackChange", !enabled)
-        ConfigStore.save()
-        revision += 1
     }
 
     function privacyCameraBubbleEnabled() {
@@ -275,31 +261,28 @@ PagePanel {
                     anchors.rightMargin: 18
                     spacing: 15
 
-                    ActionButtonRow {
-                        title: "Music Player"
-                        description: "Mouse button that toggles the player"
-                        actionName: root.playerAction
-                        fallbackButton: 1
+                    ClickActionRow {
+                        title: "Left Click"
+                        description: "Action for a left click on the island"
+                        button: 1
                         width: parent.width
                     }
 
                     SplitLine { width: parent.width }
 
-                    ActionButtonRow {
-                        title: "Control Center"
-                        description: "Mouse button that toggles the control center"
-                        actionName: root.controlAction
-                        fallbackButton: 3
+                    ClickActionRow {
+                        title: "Middle Click"
+                        description: "Action for a middle click on the island"
+                        button: 2
                         width: parent.width
                     }
 
                     SplitLine { width: parent.width }
 
-                    ActionButtonRow {
-                        title: "Clipboard History"
-                        description: "Mouse button that toggles clipboard history"
-                        actionName: root.clipboardAction
-                        fallbackButton: 2
+                    ClickActionRow {
+                        title: "Right Click"
+                        description: "Action for a right click on the island"
+                        button: 3
                         width: parent.width
                     }
                 }
@@ -360,6 +343,10 @@ PagePanel {
                         width: parent.width
                     }
 
+                    KeepActivitiesAutoHideRow {
+                        width: parent.width
+                    }
+
                     SplitLine { width: parent.width }
 
                     HideDelayRow {
@@ -369,56 +356,10 @@ PagePanel {
             }
 
             Text {
-                id: playerTitle
-
-                text: "Player"
-                anchors.top: hoverPanel.bottom
-                anchors.topMargin: 34
-                anchors.left: parent.left
-                anchors.leftMargin: 32
-                anchors.right: parent.right
-                anchors.rightMargin: 40
-                color: Theme.textColor
-                font.family: Theme.titleFontFamily
-                font.pixelSize: 23
-            }
-
-            Rectangle {
-                id: playerPanel
-
-                color: Theme.cardBgColor
-                radius: 16
-                border.width: 1
-                border.color: Theme.splitLineColor
-                anchors.top: playerTitle.bottom
-                anchors.topMargin: 15
-                anchors.left: parent.left
-                anchors.leftMargin: 30
-                anchors.right: parent.right
-                anchors.rightMargin: 40
-                height: playerColumn.implicitHeight + 30
-
-                Column {
-                    id: playerColumn
-
-                    anchors.top: parent.top
-                    anchors.topMargin: 15
-                    anchors.left: parent.left
-                    anchors.leftMargin: 18
-                    anchors.right: parent.right
-                    anchors.rightMargin: 18
-
-                    AutoExpandTrackRow {
-                        width: parent.width
-                    }
-                }
-            }
-
-            Text {
                 id: privacyTitle
 
                 text: "Privacy Indicators"
-                anchors.top: playerPanel.bottom
+                anchors.top: hoverPanel.bottom
                 anchors.topMargin: 34
                 anchors.left: parent.left
                 anchors.leftMargin: 32
@@ -474,13 +415,12 @@ PagePanel {
         color: Theme.splitLineColor
     }
 
-    component ActionButtonRow: Item {
+    component ClickActionRow: Item {
         id: row
 
         property string title: ""
         property string description: ""
-        property string actionName: ""
-        property int fallbackButton: 1
+        property int button: 1
 
         height: 49
 
@@ -512,11 +452,11 @@ PagePanel {
 
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            options: root.mouseButtonOptions
-            selectedValue: root.buttonForAction(row.actionName, row.fallbackButton)
+            options: root.clickActionOptions
+            selectedValue: root.actionOptionValue(row.button)
 
             onSelected: function(value) {
-                root.setButtonForAction(row.actionName, value)
+                root.setActionForButton(row.button, value)
             }
         }
     }
@@ -559,47 +499,6 @@ PagePanel {
 
             onSelected: function(value) {
                 root.setHoverAction(value)
-            }
-        }
-    }
-
-    component AutoExpandTrackRow: Item {
-        id: row
-
-        height: 49
-
-        Text {
-            id: rowTitle
-
-            text: "Auto Expand Player"
-            anchors.left: parent.left
-            anchors.top: parent.top
-            color: Theme.textColor
-            font.family: Theme.textFontFamily
-            font.pixelSize: 18
-        }
-
-        Text {
-            text: "Open the music player when the current track changes"
-            anchors.left: rowTitle.left
-            anchors.top: rowTitle.bottom
-            anchors.topMargin: 5
-            width: Math.max(80, parent.width - autoExpandSwitch.width - 28)
-            color: Theme.subtleTextColor
-            elide: Text.ElideRight
-            font.family: Theme.textFontFamily
-            font.pixelSize: 14
-        }
-
-        StyledSwitch {
-            id: autoExpandSwitch
-
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            checked: root.autoExpandOnTrackChange()
-
-            onToggled: function(checked) {
-                root.setAutoExpandOnTrackChange(checked)
             }
         }
     }
@@ -703,7 +602,7 @@ PagePanel {
         }
 
         Text {
-            text: "Hide the island until the pointer reaches the top edge"
+            text: "Hide the island until the pointer reaches its screen edge"
             anchors.left: rowTitle.left
             anchors.top: rowTitle.bottom
             anchors.topMargin: 5
@@ -767,6 +666,48 @@ component ShowWorkspaceAutoHideRow: Item {
             onToggled: function(checkedValue) {
                 root.setIslandShowWorkspaceOnAutoHide(checkedValue)
                 checked = checkedValue 
+            }
+        }
+    }
+
+    component KeepActivitiesAutoHideRow: Item {
+        id: row
+        height: 49
+
+        enabled: root.islandAutoHideEnabled()
+        opacity: enabled ? 1.0 : 0.4
+
+        Text {
+            id: rowTitle
+            text: "Keep Activities Visible"
+            anchors.left: parent.left
+            anchors.leftMargin: 24
+            anchors.top: parent.top
+            color: Theme.textColor
+            font.family: Theme.textFontFamily
+            font.pixelSize: 16
+        }
+
+        Text {
+            text: "Stay revealed while music or the battery is showing"
+            anchors.left: rowTitle.left
+            anchors.top: rowTitle.bottom
+            anchors.topMargin: 5
+            width: Math.max(80, parent.width - keepActivitiesSwitch.width - 52)
+            color: Theme.subtleTextColor
+            elide: Text.ElideRight
+            font.family: Theme.textFontFamily
+            font.pixelSize: 13
+        }
+
+        StyledSwitch {
+            id: keepActivitiesSwitch
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            checked: root.islandAutoHideKeepActivities()
+
+            onToggled: function(checked) {
+                root.setIslandAutoHideKeepActivities(checked)
             }
         }
     }

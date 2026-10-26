@@ -3,6 +3,8 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -65,6 +67,8 @@ private slots:
     void niriValidationFailureDoesNotIncludeManagedFile();
     void configAppColorSchemePersists();
     void powerProfileDetectionResolvesCorrectly();
+    void saveWritesOnlyChangedKeysOverCurrentFile();
+    void saveRefusesToOverwriteInvalidConfig();
 };
 
 void ShortcutConfigTests::hyprlandDefaultsIncludeWorkspaceOverview()
@@ -840,6 +844,56 @@ void ShortcutConfigTests::powerProfileDetectionResolvesCorrectly()
     }
 
     qputenv("PATH", originalPath);
+}
+
+void ShortcutConfigTests::saveWritesOnlyChangedKeysOverCurrentFile()
+{
+    QTemporaryDir configHome;
+    QVERIFY(configHome.isValid());
+    qputenv("XDG_CONFIG_HOME", configHome.path().toLocal8Bit());
+
+    const QString configPath = configHome.path() + QStringLiteral("/tide-island/userconfig.json");
+    QVERIFY(writeTextFile(configPath,
+        "{ \"doNotDisturb\": false, \"islandWidth\": 140, \"avatarPath\": \"/a.png\" }\n"));
+
+    Backend backend;
+    QCOMPARE(backend.userConfig().value(QStringLiteral("doNotDisturb")).toBool(), false);
+
+    // The shell changes the file after the app has loaded it.
+    QVERIFY(writeTextFile(configPath,
+        "// toggled from the island\n"
+        "{ \"doNotDisturb\": true, \"islandWidth\": 140, \"avatarPath\": \"/a.png\" }\n"));
+
+    QVariantMap changes;
+    changes.insert(QStringLiteral("islandWidth"), 200);
+    QVERIFY(backend.save(changes, {QStringLiteral("avatarPath")}));
+
+    const QJsonObject saved = QJsonDocument::fromJson(readTextFile(configPath).toUtf8()).object();
+    QCOMPARE(saved.value(QStringLiteral("doNotDisturb")).toBool(), true);
+    QCOMPARE(saved.value(QStringLiteral("islandWidth")).toInt(), 200);
+    QVERIFY(!saved.contains(QStringLiteral("avatarPath")));
+    QCOMPARE(backend.userConfig().value(QStringLiteral("doNotDisturb")).toBool(), true);
+    QVERIFY(backend.errorString().isEmpty());
+}
+
+void ShortcutConfigTests::saveRefusesToOverwriteInvalidConfig()
+{
+    QTemporaryDir configHome;
+    QVERIFY(configHome.isValid());
+    qputenv("XDG_CONFIG_HOME", configHome.path().toLocal8Bit());
+
+    const QString configPath = configHome.path() + QStringLiteral("/tide-island/userconfig.json");
+    const QByteArray broken = "{ \"doNotDisturb\": true,\n";
+    QVERIFY(writeTextFile(configPath, broken));
+
+    Backend backend;
+    QVERIFY(!backend.errorString().isEmpty());
+
+    QVariantMap changes;
+    changes.insert(QStringLiteral("islandWidth"), 200);
+    QVERIFY(!backend.save(changes));
+    QCOMPARE(readTextFile(configPath), QString::fromUtf8(broken));
+    QVERIFY(!backend.errorString().isEmpty());
 }
 
 QTEST_GUILESS_MAIN(ShortcutConfigTests)
