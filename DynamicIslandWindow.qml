@@ -2308,6 +2308,11 @@ PanelWindow {
                         return;
                     }
 
+                    // Open panels have their own controls; the configured actions belong to the
+                    // compact island only.
+                    if (islandContainer.islandState !== "normal" && islandContainer.islandState !== "split")
+                        return;
+
                     // Resting island: a left click on the bell, battery or music opens that directly;
                     // the clock and the rest of the capsule follow the configured mapping.
                     if (mouse.button === Qt.LeftButton && islandContainer.islandState === "normal") {
