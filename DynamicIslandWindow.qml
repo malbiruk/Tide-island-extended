@@ -282,7 +282,7 @@ PanelWindow {
     // shelf is excluded so drags out of it can still drop onto other windows.
     readonly property bool outsideClickDismissActive: !root.connectivityPromptActive
         && (["control_center", "notification_center", "calendar", "weather", "glance",
-            "clipboard", "privacy_hud"]
+            "clipboard", "privacy_hud", "expanded"]
             .indexOf(islandContainer.islandState) !== -1
             || (root.powerDetailStandalone && root.powerConnectivityDetailMounted))
     readonly property real outsideClickDismissWindowHeight: root.outsideClickDismissActive && root.screen
