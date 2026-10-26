@@ -86,6 +86,7 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(QString lockscreenPamService READ lockscreenPamService WRITE setLockscreenPamService NOTIFY lockscreenPamServiceChanged FINAL)
     Q_PROPERTY(QString lockscreenWallpaperPath READ lockscreenWallpaperPath WRITE setLockscreenWallpaperPath NOTIFY lockscreenWallpaperPathChanged FINAL)
     Q_PROPERTY(bool lockscreenBlur READ lockscreenBlur WRITE setLockscreenBlur NOTIFY lockscreenBlurChanged FINAL)
+    Q_PROPERTY(bool doNotDisturb READ doNotDisturb WRITE setDoNotDisturb NOTIFY doNotDisturbChanged FINAL)
 
 public:
     explicit UserConfigBackend(QObject *parent = nullptr);
@@ -167,6 +168,8 @@ public:
     void setLockscreenWallpaperPath(const QString &path);
     bool lockscreenBlur() const;
     void setLockscreenBlur(bool enabled);
+    bool doNotDisturb() const;
+    void setDoNotDisturb(bool enabled);
     void setDefaultWallpaperPath(const QString &path);
     void setDefaultTlpSudoPassword(const QString &password);
 
@@ -244,6 +247,7 @@ signals:
     void lockscreenShowBatteryChanged();
     void lockscreenPamServiceChanged();
     void lockscreenWallpaperPathChanged();
+    void doNotDisturbChanged();
     void lockscreenBlurChanged();
 
 private:
@@ -323,6 +327,7 @@ private:
     QString m_lockscreenPamService = QStringLiteral("login");
     QString m_lockscreenWallpaperPath;
     bool m_lockscreenBlur = true;
+    bool m_doNotDisturb = false;
 
     QFileSystemWatcher m_watcher;
     QTimer m_reloadTimer;

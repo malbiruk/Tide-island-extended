@@ -808,6 +808,27 @@ PanelWindow {
         islandContainer.showNotificationCapsule(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid);
     }
 
+    function recordNotification(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid) {
+        islandContainer.recordNotification(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid);
+    }
+
+    function removeNotification(id) {
+        islandContainer.removeNotificationById(id);
+    }
+
+    // The daemon lives in shell.qml (shellRootController); it owns the Notification objects.
+    function dismissNotification(id) {
+        if (shellRootController && shellRootController.dismissNotification)
+            shellRootController.dismissNotification(id);
+        else
+            islandContainer.removeNotificationById(id);
+    }
+
+    function invokeNotificationAction(id, actionKey) {
+        return !!(shellRootController && shellRootController.invokeNotificationAction
+            && shellRootController.invokeNotificationAction(id, actionKey));
+    }
+
     function showClockWindow() {
         islandContainer.showTimeCapsule();
         showAutoHiddenIsland("manual");
@@ -1251,6 +1272,7 @@ PanelWindow {
         readonly property real currentCpuUsage: systemState.currentCpuUsage
         readonly property real currentRamUsage: systemState.currentRamUsage
         property int notificationId: 0
+        property int internalNotificationSerial: 0
         property string notificationAppName: ""
         property string notificationAppIcon: ""
         property string notificationSummary: ""
@@ -2091,10 +2113,8 @@ PanelWindow {
             restartAutoHideTimer();
         }
 
-        function showNotificationCapsule(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid) {
-            if (root.overviewVisible || islandState === "control_center"
-                    || islandState === "expanded" || islandState === "file_shelf") return;
-
+        // Normalizes the (daemon or legacy 3-argument) notification arguments into one record.
+        function normalizeNotification(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid) {
             let resolvedId = 0;
             let rawAppName = "";
             let rawAppIcon = "";
@@ -2106,7 +2126,9 @@ PanelWindow {
             let rawSenderPid = 0;
 
             if (typeof id === "string" && actions === undefined) {
-                // Legacy 3-arg call: (appName, summary, body)
+                // Legacy 3-arg call: (appName, summary, body). Tide-internal, so give it a
+                // unique negative id that never collides with daemon ids.
+                resolvedId = -(++internalNotificationSerial);
                 rawAppName = id;
                 rawSummary = appName || "";
                 rawBody = appIcon || "";
@@ -2132,87 +2154,105 @@ PanelWindow {
             const cleanedAppName = cleanNotificationText(rawAppName);
             const cleanedSummary = cleanNotificationText(rawSummary);
             const cleanedBody = cleanNotificationText(rawBody);
-            const resolvedSummary = cleanedSummary !== ""
-                ? cleanedSummary
-                : (cleanedBody !== "" ? cleanedBody : "New notification");
+            return {
+                id: resolvedId,
+                appName: cleanedAppName !== "" ? cleanedAppName : "Notification",
+                appIcon: rawAppIcon,
+                summary: cleanedSummary !== "" ? cleanedSummary : (cleanedBody !== "" ? cleanedBody : "New notification"),
+                body: cleanedSummary !== "" ? cleanedBody : "",
+                actions: rawActions,
+                imagePath: rawImagePath,
+                urgency: rawUrgency,
+                senderPid: rawSenderPid
+            };
+        }
+
+        function showNotificationCapsule(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid) {
+            const record = normalizeNotification(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid);
+            const popupBlocked = root.overviewVisible || islandState === "control_center"
+                || islandState === "expanded" || islandState === "file_shelf";
+            // Real notifications always reach the history; tide's own feedback (negative ids)
+            // is dropped when it can't be shown, as before.
+            if (!popupBlocked || record.id >= 0)
+                addNotificationToHistory(record);
+            if (popupBlocked)
+                return;
 
             abortSideTransientMode();
             clearTransientCapsule();
-            notificationId = resolvedId;
-            notificationAppName = cleanedAppName !== "" ? cleanedAppName : "Notification";
-            notificationAppIcon = rawAppIcon;
-            notificationSummary = resolvedSummary;
-            notificationBody = cleanedSummary !== "" ? cleanedBody : "";
-            notificationActions = rawActions;
-            notificationImagePath = rawImagePath;
-            notificationUrgency = rawUrgency;
-            notificationSenderPid = rawSenderPid;
+            notificationId = record.id;
+            notificationAppName = record.appName;
+            notificationAppIcon = record.appIcon;
+            notificationSummary = record.summary;
+            notificationBody = record.body;
+            notificationActions = record.actions;
+            notificationImagePath = record.imagePath;
+            notificationUrgency = record.urgency;
+            notificationSenderPid = record.senderPid;
             notificationExpanded = false;
             islandState = "notification";
 
-            const timeout = (rawUrgency === 2) ? 10000 : ((rawUrgency === 0) ? 3000 : notificationAutoHideInterval);
+            const timeout = (record.urgency === 2) ? 10000 : ((record.urgency === 0) ? 3000 : notificationAutoHideInterval);
             restartAutoHideTimer(timeout);
-
-            // Store in notification history (with duplicate aggregation inspired by ChillPill)
-            if (notificationHistoryModel) {
-                let existingIndex = -1;
-                for (let i = 0; i < notificationHistoryModel.count; i++) {
-                    const item = notificationHistoryModel.get(i);
-                    if (item && item.appName === (cleanedAppName !== "" ? cleanedAppName : "Notification")
-                        && item.summary === resolvedSummary
-                        && item.body === (cleanedSummary !== "" ? cleanedBody : "")) {
-                        existingIndex = i;
-                        break;
-                    }
-                }
-
-                if (existingIndex !== -1) {
-                    const existing = notificationHistoryModel.get(existingIndex);
-                    const newCount = (existing.count || 1) + 1;
-                    notificationHistoryModel.remove(existingIndex);
-                    notificationHistoryModel.insert(0, {
-                        id: resolvedId,
-                        appName: cleanedAppName !== "" ? cleanedAppName : "Notification",
-                        appIcon: rawAppIcon,
-                        summary: resolvedSummary,
-                        body: cleanedSummary !== "" ? cleanedBody : "",
-                        actions: rawActions,
-                        imagePath: rawImagePath,
-                        urgency: rawUrgency,
-                        senderPid: rawSenderPid,
-                        timestamp: new Date(),
-                        count: newCount
-                    });
-                } else {
-                    notificationHistoryModel.insert(0, {
-                        id: resolvedId,
-                        appName: cleanedAppName !== "" ? cleanedAppName : "Notification",
-                        appIcon: rawAppIcon,
-                        summary: resolvedSummary,
-                        body: cleanedSummary !== "" ? cleanedBody : "",
-                        actions: rawActions,
-                        imagePath: rawImagePath,
-                        urgency: rawUrgency,
-                        senderPid: rawSenderPid,
-                        timestamp: new Date(),
-                        count: 1
-                    });
-                }
-
-                if (notificationHistoryModel.count > 50)
-                    notificationHistoryModel.remove(50, notificationHistoryModel.count - 50);
-            }
         }
 
-        function removeNotificationFromHistory(notifId) {
-            if (!notificationHistoryModel) return;
+        function recordNotification(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid) {
+            addNotificationToHistory(normalizeNotification(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid));
+        }
+
+        // Store in notification history: an update of the same id (replaces_id) replaces its
+        // entry; identical content is aggregated with a count (inspired by ChillPill).
+        function addNotificationToHistory(record) {
+            if (!notificationHistoryModel)
+                return;
+
+            let existingIndex = -1;
+            let count = 1;
             for (let i = 0; i < notificationHistoryModel.count; i++) {
                 const item = notificationHistoryModel.get(i);
-                if (item && (item.id === notifId || (item.summary === notificationSummary && item.appName === notificationAppName))) {
-                    notificationHistoryModel.remove(i);
+                if (item && record.id !== 0 && item.id === record.id) {
+                    existingIndex = i;
+                    count = item.count || 1;
                     break;
                 }
+                if (existingIndex === -1 && item && item.appName === record.appName
+                        && item.summary === record.summary && item.body === record.body) {
+                    existingIndex = i;
+                    count = (item.count || 1) + 1;
+                }
             }
+            if (existingIndex !== -1)
+                notificationHistoryModel.remove(existingIndex);
+
+            notificationHistoryModel.insert(0, {
+                id: record.id,
+                appName: record.appName,
+                appIcon: record.appIcon,
+                summary: record.summary,
+                body: record.body,
+                actions: record.actions,
+                imagePath: record.imagePath,
+                urgency: record.urgency,
+                senderPid: record.senderPid,
+                timestamp: new Date(),
+                count: count
+            });
+
+            if (notificationHistoryModel.count > 50)
+                notificationHistoryModel.remove(50, notificationHistoryModel.count - 50);
+        }
+
+        // The notification was dismissed or closed by its sender: drop it everywhere.
+        function removeNotificationById(notifId) {
+            if (notificationHistoryModel) {
+                for (let i = notificationHistoryModel.count - 1; i >= 0; i--) {
+                    const item = notificationHistoryModel.get(i);
+                    if (item && item.id === notifId)
+                        notificationHistoryModel.remove(i);
+                }
+            }
+            if (islandState === "notification" && notificationId === notifId)
+                smartRestoreState();
         }
 
         function toggleNotificationExpansionIfNeeded() {
@@ -2813,7 +2853,8 @@ PanelWindow {
                         root.autoHidePointerInside = true;
                         root.showAutoHiddenIsland();
                     }
-                    if (root.hoverExpandEnabled) {
+                    // Hovering a notification popup never expands the island.
+                    if (root.hoverExpandEnabled && islandContainer.islandState !== "notification") {
                         hoverCollapseDelayTimer.stop();
                         hoverExpandDelayTimer.restart();
                     }
@@ -2998,23 +3039,27 @@ PanelWindow {
                         return;
                     }
 
-                    if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandPrimaryButton)) {
-                        if (islandContainer.islandState === "notification") {
-                            if (islandContainer.toggleNotificationExpansionIfNeeded()) {
-                                if (preparedOverviewOnPress)
-                                    root.cancelPreparedOverviewEverywhere();
-                                preparedOverviewOnPress = false;
-                                return;
-                            }
+                    // A notification popup handles every click itself; never fall through to the
+                    // configured island click actions (e.g. toggling the control center).
+                    if (islandContainer.islandState === "notification") {
+                        if (preparedOverviewOnPress)
+                            root.cancelPreparedOverviewEverywhere();
+                        preparedOverviewOnPress = false;
 
-                            if (preparedOverviewOnPress)
-                                root.cancelPreparedOverviewEverywhere();
-                            preparedOverviewOnPress = false;
-
-                            SystemServices.focusSenderWindow(islandContainer.notificationAppName, islandContainer.notificationSenderPid, islandContainer.notificationSummary, islandContainer.notificationBody);
-                            islandContainer.smartRestoreState();
+                        if (mouse.button !== userConfig.mouseButton(userConfig.dynamicIslandPrimaryButton))
                             return;
-                        }
+                        if (islandContainer.toggleNotificationExpansionIfNeeded())
+                            return;
+
+                        // Body click: the app's "default" action if it has one, else focus the sender.
+                        if (!root.invokeNotificationAction(islandContainer.notificationId, "default"))
+                            SystemServices.focusSenderWindow(islandContainer.notificationAppName, islandContainer.notificationSenderPid, islandContainer.notificationSummary, islandContainer.notificationBody);
+                        if (islandContainer.islandState === "notification")
+                            islandContainer.smartRestoreState();
+                        return;
+                    }
+
+                    if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandPrimaryButton)) {
 
                         if (islandContainer.toggleNotificationExpansionIfNeeded()) {
                             if (preparedOverviewOnPress)
@@ -3361,23 +3406,23 @@ PanelWindow {
                         }
                         onActionTriggered: function(actionKey) {
                             if (actionKey === "dismiss" || actionKey === "close") {
-                                islandContainer.removeNotificationFromHistory(islandContainer.notificationId);
-                                SystemServices.closeNotification(islandContainer.notificationId, 2);
+                                root.dismissNotification(islandContainer.notificationId);
                             } else if (actionKey === "focus") {
                                 SystemServices.focusSenderWindow(islandContainer.notificationAppName, islandContainer.notificationSenderPid, islandContainer.notificationSummary, islandContainer.notificationBody);
                             } else {
-                                SystemServices.invokeNotificationAction(islandContainer.notificationId, actionKey);
+                                root.invokeNotificationAction(islandContainer.notificationId, actionKey);
                                 if (actionKey === "default") {
                                     SystemServices.focusSenderWindow(islandContainer.notificationAppName, islandContainer.notificationSenderPid, islandContainer.notificationSummary, islandContainer.notificationBody);
                                 }
                             }
-                            islandContainer.smartRestoreState();
+                            if (islandContainer.islandState === "notification")
+                                islandContainer.smartRestoreState();
                         }
                         onCloseRequested: islandContainer.smartRestoreState()
                         onDismissRequested: {
-                            islandContainer.removeNotificationFromHistory(islandContainer.notificationId);
-                            SystemServices.closeNotification(islandContainer.notificationId, 2);
-                            islandContainer.smartRestoreState();
+                            root.dismissNotification(islandContainer.notificationId);
+                            if (islandContainer.islandState === "notification")
+                                islandContainer.smartRestoreState();
                         }
                     }
                 }
@@ -3420,10 +3465,6 @@ PanelWindow {
                             ? root.shellRootController.nightLightEnabled
                             : false
                         showCondition: islandContainer.controlCenterLayerVisible
-                        onFocusModeChanged: function(enabled) {
-                            if (root.shellRootController && root.shellRootController.focusEnabled !== undefined)
-                                root.shellRootController.focusEnabled = enabled;
-                        }
                         onNightLightModeChanged: function(enabled) {
                             if (root.shellRootController && root.shellRootController.nightLightEnabled !== undefined)
                                 root.shellRootController.nightLightEnabled = enabled;
@@ -3465,11 +3506,18 @@ PanelWindow {
                         heroFontFamily: root.heroFontFamily
 
                         onClearAllRequested: {
+                            if (root.shellRootController && root.shellRootController.dismissAllNotifications)
+                                root.shellRootController.dismissAllNotifications();
                             islandContainer.notificationHistoryModel.clear();
                         }
-                        onFocusModeChanged: function(enabled) {
-                            if (root.shellRootController && root.shellRootController.focusEnabled !== undefined)
-                                root.shellRootController.focusEnabled = enabled;
+                        onNotificationDismissRequested: function(id) {
+                            root.dismissNotification(id);
+                        }
+                        onNotificationActivated: function(id, appName, senderPid, summary, body) {
+                            if (!root.invokeNotificationAction(id, "default"))
+                                SystemServices.focusSenderWindow(appName, senderPid, summary, body);
+                            root.dismissNotification(id);
+                            islandContainer.smartRestoreState();
                         }
                         onCloseRequested: islandContainer.smartRestoreState()
                     }

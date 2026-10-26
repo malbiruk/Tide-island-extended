@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -127,6 +128,35 @@ private slots:
         QVERIFY2(runtime.configError().contains(QStringLiteral("offset %1:").arg(input.indexOf('#'))),
                  qPrintable(runtime.configError()));
         QCOMPARE(runtime.wallpaperCustomCommand(), QString());
+    }
+
+    void doNotDisturbPersistsAcrossRestartsAndSettingsSaves() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{\"hoverExpandAction\": 2}"));
+
+        {
+            UserConfigBackend runtime;
+            QCOMPARE(runtime.doNotDisturb(), false);
+            QSignalSpy spy(&runtime, &UserConfigBackend::doNotDisturbChanged);
+            runtime.setDoNotDisturb(true);
+            QCOMPARE(runtime.doNotDisturb(), true);
+            QCOMPARE(spy.count(), 1);
+        }
+
+        QFile file(directory.path() + "/tide-island/userconfig.json");
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QJsonObject saved = QJsonDocument::fromJson(file.readAll()).object();
+        file.close();
+        QCOMPARE(saved.value("doNotDisturb").toBool(), true);
+        QCOMPARE(saved.value("hoverExpandAction").toInt(), 2);
+
+        // A settings-app save keeps the key, and a fresh runtime reads it back.
+        Backend settings;
+        QVERIFY(settings.save(settings.userConfig()));
+        UserConfigBackend restarted;
+        QCOMPARE(restarted.doNotDisturb(), true);
     }
 };
 

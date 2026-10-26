@@ -128,7 +128,7 @@ Item {
 
     // Resolved sender avatar (photo/image file)
     readonly property string resolvedSenderAvatar: {
-        if (imagePath !== "" && (imagePath.startsWith("/") || imagePath.startsWith("file://"))) {
+        if (imagePath !== "" && (imagePath.startsWith("/") || imagePath.startsWith("file://") || imagePath.startsWith("image://"))) {
             return imagePath;
         }
         if (appIcon !== "" && (appIcon.startsWith("/") || appIcon.startsWith("file://"))) {
@@ -148,7 +148,7 @@ Item {
             const p = Quickshell.iconPath(appName.toLowerCase(), true);
             if (p !== "") return p;
         }
-        if (imagePath !== "" && !imagePath.startsWith("/") && !imagePath.startsWith("file://")) {
+        if (imagePath !== "" && !imagePath.startsWith("/") && !imagePath.startsWith("file://") && !imagePath.startsWith("image://")) {
             const p = Quickshell.iconPath(imagePath, true);
             if (p !== "") return p;
         }
@@ -159,7 +159,7 @@ Item {
         return "";
     }
     readonly property bool hasResolvedAppIcon: resolvedAppIcon !== ""
-    readonly property bool hasImageAttachment: imagePath !== "" && (imagePath.startsWith("/") || imagePath.startsWith("file://")) && imagePath !== resolvedSenderAvatar
+    readonly property bool hasImageAttachment: imagePath !== "" && (imagePath.startsWith("/") || imagePath.startsWith("file://") || imagePath.startsWith("image://")) && imagePath !== resolvedSenderAvatar
 
     // --- Actions Handling ---
     readonly property var filteredActions: {

@@ -17,6 +17,8 @@ Item {
     property string heroFontFamily: userConfig.heroFontFamily
 
     signal closeRequested()
+    signal notificationDismissRequested(var id)
+    signal notificationActivated(var id, string appName, var senderPid, string summary, string body)
 
     readonly property real headerHeight: 28
     readonly property real listTopGap: 9
@@ -149,7 +151,7 @@ Item {
                     if (currentIndex >= 0 && currentIndex < count) {
                         const item = model.get(currentIndex);
                         if (item && item.id !== undefined) {
-                            SystemServices.closeNotification(item.id, 2);
+                            root.notificationDismissRequested(item.id);
                         }
                     }
                     event.accepted = true;
@@ -217,17 +219,17 @@ Item {
                 readonly property string bodyText: model.body !== "" && model.body !== model.summary
                     ? model.body
                     : ""
-                readonly property bool hasAvatar: (model.imagePath && (model.imagePath.startsWith("/") || model.imagePath.startsWith("file://")))
+                readonly property bool hasAvatar: (model.imagePath && (model.imagePath.startsWith("/") || model.imagePath.startsWith("file://") || model.imagePath.startsWith("image://")))
                     || (model.appIcon && (model.appIcon.startsWith("/") || model.appIcon.startsWith("file://")))
                 readonly property string resolvedAppIcon: {
-                    if (model.imagePath && (model.imagePath.startsWith("/") || model.imagePath.startsWith("file://")))
+                    if (model.imagePath && (model.imagePath.startsWith("/") || model.imagePath.startsWith("file://") || model.imagePath.startsWith("image://")))
                         return model.imagePath;
                     if (model.appIcon) {
                         const p = Quickshell.iconPath(model.appIcon, true);
                         if (p !== "") return p;
                         if (model.appIcon.startsWith("/") || model.appIcon.startsWith("file://") || model.appIcon.startsWith("image://")) return model.appIcon;
                     }
-                    if (model.imagePath && !model.imagePath.startsWith("/") && !model.imagePath.startsWith("file://")) {
+                    if (model.imagePath && !model.imagePath.startsWith("/") && !model.imagePath.startsWith("file://") && !model.imagePath.startsWith("image://")) {
                         const p = Quickshell.iconPath(model.imagePath, true);
                         if (p !== "") return p;
                     }
@@ -403,12 +405,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        SystemServices.focusSenderWindow(model.appName || "", model.senderPid || 0, model.summary || "", model.body || "");
-                        if (root.notificationModel && index >= 0 && index < root.notificationModel.count)
-                            root.notificationModel.remove(index);
-                        root.closeRequested();
-                    }
+                    onClicked: root.notificationActivated(model.id, model.appName || "", model.senderPid || 0, model.summary || "", model.body || "")
                 }
             }
         }

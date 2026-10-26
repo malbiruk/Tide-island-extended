@@ -109,6 +109,7 @@ public:
     Q_INVOKABLE void ensureUserConfigAvailable();
     Q_INVOKABLE void invokeNotificationAction(uint id, const QString &actionKey);
     Q_INVOKABLE void closeNotification(uint id, uint reason = 2);
+    Q_INVOKABLE void logNotificationDaemonOwner() const;
     Q_INVOKABLE void copyToClipboard(const QString &text);
     Q_INVOKABLE void focusSenderWindow(const QString &appName,
                                        qint64 pid = 0,

@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Shapes
-import Quickshell.Io
 import IslandBackend
 import "../island"
 
@@ -9,7 +8,8 @@ Item {
 
     signal clearAllRequested()
     signal closeRequested()
-    signal focusModeChanged(bool enabled)
+    signal notificationDismissRequested(var id)
+    signal notificationActivated(var id, string appName, var senderPid, string summary, string body)
 
     focus: true
 
@@ -25,10 +25,7 @@ Item {
         }
     }
 
-    Component.onCompleted: {
-        notificationCenter.forceActiveFocus();
-        focusStateProcess.running = true;
-    }
+    Component.onCompleted: notificationCenter.forceActiveFocus()
 
     property var notificationModel: null
     property string iconFontFamily: userConfig.iconFontFamily
@@ -40,57 +37,11 @@ Item {
     readonly property real verticalPadding: 10
     readonly property real horizontalPadding: 22
 
-    // Focus / do-not-disturb: same swaync-client calls the control center's Focus toggle used.
-    property bool focusEnabled: false
-    property bool focusBusy: false
+    // Do-not-disturb is tide's own state, persisted as "doNotDisturb" in userconfig.json.
+    readonly property bool focusEnabled: UserConfig.doNotDisturb
 
     function toggleFocus() {
-        if (focusBusy)
-            return;
-
-        focusBusy = true;
-        if (focusEnabled)
-            focusDisableProcess.running = true;
-        else
-            focusEnableProcess.running = true;
-    }
-
-    Process {
-        id: focusStateProcess
-        command: ["sh", "-c", "if command -v swaync-client >/dev/null 2>&1; then swaync-client --get-dnd; fi"]
-        running: false
-
-        stdout: SplitParser {
-            onRead: function(line) {
-                const enabled = line.trim().toLowerCase() === "true";
-                notificationCenter.focusEnabled = enabled;
-                notificationCenter.focusModeChanged(enabled);
-            }
-        }
-    }
-
-    Process {
-        id: focusEnableProcess
-        command: ["sh", "-c", "if command -v swaync-client >/dev/null 2>&1; then swaync-client -dn; else exit 127; fi"]
-        running: false
-
-        onExited: function(exitCode) {
-            notificationCenter.focusBusy = false;
-            notificationCenter.focusEnabled = exitCode === 0;
-            notificationCenter.focusModeChanged(notificationCenter.focusEnabled);
-        }
-    }
-
-    Process {
-        id: focusDisableProcess
-        command: ["sh", "-c", "if command -v swaync-client >/dev/null 2>&1; then swaync-client -df; else exit 127; fi"]
-        running: false
-
-        onExited: function(exitCode) {
-            notificationCenter.focusBusy = false;
-            notificationCenter.focusEnabled = false;
-            notificationCenter.focusModeChanged(false);
-        }
+        UserConfig.doNotDisturb = !UserConfig.doNotDisturb;
     }
 
     NotificationHistory {
@@ -106,6 +57,12 @@ Item {
         textFontFamily: notificationCenter.textFontFamily
         heroFontFamily: notificationCenter.heroFontFamily
         onCloseRequested: notificationCenter.closeRequested()
+        onNotificationDismissRequested: function(id) {
+            notificationCenter.notificationDismissRequested(id);
+        }
+        onNotificationActivated: function(id, appName, senderPid, summary, body) {
+            notificationCenter.notificationActivated(id, appName, senderPid, summary, body);
+        }
     }
 
     Item {
@@ -117,7 +74,6 @@ Item {
         anchors.verticalCenter: clearButton.verticalCenter
         width: 24
         height: 24
-        opacity: notificationCenter.focusBusy ? 0.5 : 1
 
         Text {
             anchors.centerIn: parent
@@ -134,7 +90,6 @@ Item {
             id: focusMouse
 
             anchors.fill: parent
-            enabled: !notificationCenter.focusBusy
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: notificationCenter.toggleFocus()

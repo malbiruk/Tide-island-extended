@@ -412,16 +412,17 @@ void SystemServices::startBusMonitor() {
     if (m_shuttingDown || m_busMonitor) return;
     const QString executable = findExecutable(QStringLiteral("dbus-monitor"));
     if (executable.isEmpty()) {
-        qWarning() << "[SystemServices] dbus-monitor is not available; notification and portal monitoring are disabled";
+        qWarning() << "[SystemServices] dbus-monitor is not available; screen-cast portal monitoring is disabled";
         return;
     }
 
     m_busMonitor = new QProcess(this);
     m_busMonitor->setProcessChannelMode(QProcess::MergedChannels);
     m_busMonitor->setProgram(executable);
+    // Notifications are no longer eavesdropped: tide-island owns org.freedesktop.Notifications
+    // itself (Quickshell NotificationServer in shell.qml). Only the ScreenCast portal is watched.
     m_busMonitor->setArguments({
         QStringLiteral("--session"),
-        QStringLiteral("type='method_call',interface='org.freedesktop.Notifications',member='Notify'"),
         QStringLiteral("type='method_call',interface='org.freedesktop.portal.ScreenCast'"),
         QStringLiteral("type='signal',sender='org.freedesktop.portal.Desktop',interface='org.freedesktop.portal.Session',member='Closed'")
     });
@@ -793,6 +794,32 @@ void SystemServices::invokeNotificationAction(uint id, const QString &actionKey)
     if (!dunstctl.isEmpty()) {
         startCommand(dunstctl, {QStringLiteral("action")}, 1000, nullptr);
     }
+}
+
+// Called from shell.qml shortly after startup so the journal shows who serves notifications
+// if Quickshell's NotificationServer could not take the bus name (e.g. swaync still running).
+void SystemServices::logNotificationDaemonOwner() const {
+    QDBusConnectionInterface *bus = QDBusConnection::sessionBus().interface();
+    if (!bus)
+        return;
+
+    const QString name = QStringLiteral("org.freedesktop.Notifications");
+    const QDBusReply<uint> pidReply = bus->servicePid(name);
+    if (!pidReply.isValid()) {
+        qWarning() << "[Notifications]" << name << "has no owner; tide-island's notification server is not registered";
+        return;
+    }
+
+    const uint ownerPid = pidReply.value();
+    if (ownerPid == static_cast<uint>(QCoreApplication::applicationPid())) {
+        qInfo() << "[Notifications] tide-island owns" << name;
+        return;
+    }
+
+    QFile comm(QStringLiteral("/proc/%1/comm").arg(ownerPid));
+    const QString owner = comm.open(QIODevice::ReadOnly) ? QString::fromUtf8(comm.readAll()).trimmed() : QStringLiteral("?");
+    qWarning().noquote() << QStringLiteral("[Notifications] %1 is owned by %2 (pid %3); tide-island will take it over "
+                                           "once that process releases the name").arg(name, owner).arg(ownerPid);
 }
 
 void SystemServices::closeNotification(uint id, uint reason) {

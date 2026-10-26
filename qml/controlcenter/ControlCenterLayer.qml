@@ -10,7 +10,6 @@ Item {
     id: controlCenter
 
     signal connectivityPanelRequested(string kind, bool open)
-    signal focusModeChanged(bool enabled)
     signal nightLightModeChanged(bool enabled)
     signal requestNotification(string appName, string summary, string body)
     signal weatherRequested()
@@ -107,7 +106,8 @@ Item {
     property bool nightLightBusy: false
     property int nightLightTemperature: 4500
     readonly property bool hyprlandNightLight: CompositorBackend.compositor === "hyprland"
-    property bool focusEnabled: false
+    // Do-not-disturb is tide's own state, persisted as "doNotDisturb" in userconfig.json.
+    readonly property bool focusEnabled: UserConfig.doNotDisturb
     property bool focusBusy: false
 
     property string wifiLocalInfoMessage: ""
@@ -450,14 +450,7 @@ Item {
     }
 
     function toggleFocus() {
-        if (focusBusy)
-            return;
-
-        focusBusy = true;
-        if (focusEnabled)
-            focusDisableProcess.running = true;
-        else
-            focusEnableProcess.running = true;
+        UserConfig.doNotDisturb = !UserConfig.doNotDisturb;
     }
 
     function clearWifiPrompt() {
@@ -1317,7 +1310,6 @@ Item {
         SystemServices.requestVolume();
         SystemServices.requestMicVolume();
         refreshBatteryModeState();
-        focusStateProcess.running = true;
     }
 
     Behavior on opacity {
@@ -1361,20 +1353,6 @@ Item {
             id: batteryDrawerProgressAnimation
             duration: 140
             easing.type: Easing.OutCubic
-        }
-    }
-
-    Process {
-        id: focusStateProcess
-        command: ["sh", "-c", "if command -v swaync-client >/dev/null 2>&1; then swaync-client --get-dnd; fi"]
-        running: false
-
-        stdout: SplitParser {
-            onRead: function(line) {
-                const enabled = line.trim().toLowerCase() === "true";
-                controlCenter.focusEnabled = enabled;
-                controlCenter.focusModeChanged(enabled);
-            }
         }
     }
 
@@ -1454,33 +1432,6 @@ Item {
         }
     }
 
-    Process {
-        id: focusEnableProcess
-        command: ["sh", "-c", "if command -v swaync-client >/dev/null 2>&1; then swaync-client -dn; else exit 127; fi"]
-        running: false
-
-        onExited: function(exitCode) {
-            controlCenter.focusBusy = false;
-            controlCenter.focusEnabled = exitCode === 0;
-            controlCenter.focusModeChanged(controlCenter.focusEnabled);
-            if (exitCode === 0)
-                controlCenter.requestNotification("Focus", "Focus enabled", "Notifications paused");
-        }
-    }
-
-    Process {
-        id: focusDisableProcess
-        command: ["sh", "-c", "if command -v swaync-client >/dev/null 2>&1; then swaync-client -df; else exit 127; fi"]
-        running: false
-
-        onExited: function(exitCode) {
-            controlCenter.focusBusy = false;
-            controlCenter.focusEnabled = false;
-            controlCenter.focusModeChanged(false);
-            if (exitCode === 0)
-                controlCenter.requestNotification("Focus", "Focus disabled", "");
-        }
-    }
 
     Process {
         id: shutdownProcess

@@ -532,6 +532,26 @@ void UserConfigBackend::setIslandStyle(const QString &style)
     }
 }
 
+bool UserConfigBackend::doNotDisturb() const { return m_doNotDisturb; }
+void UserConfigBackend::setDoNotDisturb(bool enabled)
+{
+    if (m_doNotDisturb == enabled) return;
+    m_doNotDisturb = enabled;
+    emit doNotDisturbChanged();
+    QFile file(m_userConfigPath);
+    QJsonObject obj;
+    if (file.open(QIODevice::ReadOnly)) {
+        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        if (doc.isObject()) obj = doc.object();
+        file.close();
+    }
+    obj.insert(QStringLiteral("doNotDisturb"), enabled);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
+        file.close();
+    }
+}
+
 bool UserConfigBackend::lockscreenEnabled() const { return m_lockscreenEnabled; }
 void UserConfigBackend::setLockscreenEnabled(bool enabled)
 {
@@ -907,6 +927,7 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_lockscreenPamService, jsonString(configObject, QLatin1String("lockscreenPamService"), QStringLiteral("login")), &UserConfigBackend::lockscreenPamServiceChanged);
     updateField(this, m_lockscreenWallpaperPath, jsonString(configObject, QLatin1String("lockscreenWallpaperPath"), QString()), &UserConfigBackend::lockscreenWallpaperPathChanged);
     updateField(this, m_lockscreenBlur, jsonBool(configObject, QLatin1String("lockscreenBlur"), true), &UserConfigBackend::lockscreenBlurChanged);
+    updateField(this, m_doNotDisturb, jsonBool(configObject, QLatin1String("doNotDisturb"), false), &UserConfigBackend::doNotDisturbChanged);
 
     updateWatchedPaths();
 }

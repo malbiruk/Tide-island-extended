@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Notifications
 import IslandBackend
 import "qml/island"
 import "qml/lockscreen"
@@ -21,7 +22,8 @@ Scope {
     readonly property bool cameraActive: SystemServices.cameraActive
     readonly property bool privacyActive: SystemServices.privacyActive
     readonly property var activePrivacyApps: SystemServices.activePrivacyApps
-    property bool focusEnabled: false
+    // Do-not-disturb, persisted in userconfig.json ("doNotDisturb").
+    readonly property bool focusEnabled: UserConfig.doNotDisturb
     property bool nightLightEnabled: false
     property bool shuttingDown: false
     property bool islandAutoHideRuntimeEnabled: true
@@ -55,14 +57,129 @@ Scope {
         }
     }
 
-    function showNotificationAll(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid) {
-        if (focusEnabled)
+    // --- Notification daemon ---------------------------------------------------------------
+    // tide-island owns org.freedesktop.Notifications. Every notification stays tracked (and in
+    // the history) until it is dismissed in tide or closed by the sending app; a popup timing
+    // out only hides the popup.
+    readonly property int maxTrackedNotifications: 50
+    property var trackedNotifications: ({})
+
+    NotificationServer {
+        id: notificationServer
+
+        bodySupported: true
+        // Markup is stripped to plain text before display, so advertising it is safe.
+        bodyMarkupSupported: true
+        actionsSupported: true
+        imageSupported: true
+        persistenceSupported: true
+
+        onNotification: function(notification) {
+            shellRoot.receiveNotification(notification);
+        }
+    }
+
+    Timer {
+        interval: 3000
+        running: true
+        onTriggered: SystemServices.logNotificationDaemonOwner()
+    }
+
+    function receiveNotification(notification) {
+        notification.tracked = true;
+        const id = notification.id;
+        trackedNotifications[id] = notification;
+
+        notification.closed.connect(function() {
+            shellRoot.forgetNotification(id);
+        });
+        // replaces_id updates the same object in place: refresh its popup/history entry.
+        const refresh = function() {
+            Qt.callLater(shellRoot.presentNotification, notification, false);
+        };
+        notification.summaryChanged.connect(refresh);
+        notification.bodyChanged.connect(refresh);
+        notification.imageChanged.connect(refresh);
+        notification.actionsChanged.connect(refresh);
+
+        // Notifications re-emitted after a Quickshell reload go to the history only.
+        presentNotification(notification, notification.lastGeneration);
+        trimTrackedNotifications();
+    }
+
+    function presentNotification(notification, historyOnly) {
+        if (!trackedNotifications[notification.id])
             return;
 
+        const actions = [];
+        const notificationActions = notification.actions || [];
+        for (let i = 0; i < notificationActions.length; i++)
+            actions.push({ id: notificationActions[i].identifier, text: notificationActions[i].text });
+
+        const urgency = Number(notification.urgency);
+        // Do-not-disturb: no popups except critical ones; everything still goes to the history.
+        const popup = !historyOnly && (!focusEnabled || urgency === NotificationUrgency.Critical);
         shellRoot.forEachWindow((window) => {
-            if (window && window.showNotification)
-                window.showNotification(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid);
+            if (popup && window.showNotification)
+                window.showNotification(notification.id, notification.appName, notification.appIcon,
+                    notification.summary, notification.body, actions, notification.image, urgency, 0);
+            else if (!popup && window.recordNotification)
+                window.recordNotification(notification.id, notification.appName, notification.appIcon,
+                    notification.summary, notification.body, actions, notification.image, urgency, 0);
         });
+    }
+
+    function forgetNotification(id) {
+        delete trackedNotifications[id];
+        shellRoot.forEachWindow((window) => {
+            if (window.removeNotification)
+                window.removeNotification(id);
+        });
+    }
+
+    function trimTrackedNotifications() {
+        const ids = Object.keys(trackedNotifications).map(Number).sort((a, b) => a - b);
+        for (let i = 0; i < ids.length - maxTrackedNotifications; i++)
+            dismissNotification(ids[i]);
+    }
+
+    // Dismiss in tide: tells the sender (NotificationClosed) and removes it everywhere.
+    function dismissNotification(id) {
+        const notification = trackedNotifications[id];
+        if (notification)
+            notification.dismiss();
+        else
+            forgetNotification(id);
+    }
+
+    function dismissAllNotifications() {
+        const ids = Object.keys(trackedNotifications);
+        for (let i = 0; i < ids.length; i++)
+            dismissNotification(Number(ids[i]));
+    }
+
+    function invokeNotificationAction(id, actionKey) {
+        const notification = trackedNotifications[id];
+        if (!notification)
+            return false;
+        const notificationActions = notification.actions || [];
+        for (let i = 0; i < notificationActions.length; i++) {
+            if (notificationActions[i].identifier === actionKey) {
+                notificationActions[i].invoke();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function notificationHasAction(id, actionKey) {
+        const notification = trackedNotifications[id];
+        const notificationActions = notification ? (notification.actions || []) : [];
+        for (let i = 0; i < notificationActions.length; i++) {
+            if (notificationActions[i].identifier === actionKey)
+                return true;
+        }
+        return false;
     }
 
     function anyOverviewOpen() {
@@ -884,14 +1001,6 @@ Scope {
 
         function toggle() {
             globalLockscreen.toggle();
-        }
-    }
-
-    Connections {
-        target: SystemServices
-
-        function onNotificationReceived(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid) {
-            shellRoot.showNotificationAll(id, appName, appIcon, summary, body, actions, imagePath, urgency, senderPid);
         }
     }
 
