@@ -867,9 +867,9 @@ Item {
                             }
                         }
 
-                        // Presets Row for Lenovo IdeaPad (Conservation Mode)
+                        // Presets Row for Lenovo IdeaPad (Conservation Mode); hidden when the limit is read-only
                         Row {
-                            visible: SystemServices.batteryThresholdType === "conservation"
+                            visible: SystemServices.batteryThresholdType === "conservation" && SystemServices.batteryThresholdWritable
                             width: parent.width
                             spacing: 8
 
@@ -932,18 +932,22 @@ Item {
                             }
                         }
 
-                        // Presets Row for Generic Thresholds (ThinkPad, ASUS, etc.)
+                        // Presets Row for Generic Thresholds (ThinkPad, ASUS, Apple Silicon, etc.); hidden when read-only
                         Row {
-                            visible: SystemServices.batteryThresholdType === "threshold"
+                            id: thresholdPresetsRow
+                            visible: SystemServices.batteryThresholdType === "threshold" && SystemServices.batteryThresholdWritable
                             width: parent.width
                             spacing: 6
 
+                            readonly property var presets: SystemServices.batteryThresholdPresets
+
                             Repeater {
-                                model: [80, 85, 90, 100]
+                                model: thresholdPresetsRow.presets
 
                                 delegate: Rectangle {
                                     readonly property bool active: SystemServices.batteryThresholdValue === modelData
-                                    width: (parent.width - 18) / 4
+                                    width: (thresholdPresetsRow.width - thresholdPresetsRow.spacing * (thresholdPresetsRow.presets.length - 1))
+                                        / Math.max(1, thresholdPresetsRow.presets.length)
                                     height: 32
                                     radius: 10
                                     color: active ? StyleTokens.accent : StyleTokens.moduleHover
@@ -978,7 +982,10 @@ Item {
                                 ? (SystemServices.batteryConservationMode
                                     ? "Stops charging at 80% to preserve battery lifespan while plugged in."
                                     : "Charges battery to 100% capacity for extended mobile use.")
-                                : ("Charging stops at " + SystemServices.batteryThresholdValue + "% to reduce battery degradation.")
+                                : ("Charging stops at " + SystemServices.batteryThresholdValue + "%"
+                                    + (SystemServices.batteryThresholdWritable
+                                        ? " to reduce battery degradation."
+                                        : ". The limit is read-only for this user."))
                             color: StyleTokens.textMuted
                             font.pixelSize: 10
                             font.family: root.textFontFamily

@@ -2587,7 +2587,7 @@ void SystemServices::detectBatteryThresholdSupport() {
             m_batteryThresholdSupported = true;
             m_batteryThresholdType = QStringLiteral("threshold");
             m_batteryThresholdSysfsPath = candidate;
-            m_batteryThresholdPresets = QVariantList{80, 85, 90, 100};
+            m_batteryThresholdPresets = BatteryStatusUtils::chargeLimitPresets(systemBattery);
             return;
         }
     }
@@ -2654,6 +2654,9 @@ void SystemServices::requestBatteryThresholdState() {
     }
 
     updateBatteryMetrics();
+
+    // Without write access the UI shows the limit read-only instead of offering presets.
+    m_batteryThresholdWritable = BatteryStatusUtils::isWritableByUser(m_batteryThresholdSysfsPath);
 
     if (!m_batteryThresholdSupported || m_batteryThresholdSysfsPath.isEmpty()) {
         emit batteryThresholdChanged();

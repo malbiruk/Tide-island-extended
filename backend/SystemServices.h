@@ -33,6 +33,7 @@ class SystemServices final : public QObject {
     Q_PROPERTY(bool batteryConservationMode READ batteryConservationMode NOTIFY batteryThresholdChanged FINAL)
     Q_PROPERTY(int batteryThresholdValue READ batteryThresholdValue NOTIFY batteryThresholdChanged FINAL)
     Q_PROPERTY(QVariantList batteryThresholdPresets READ batteryThresholdPresets NOTIFY batteryThresholdChanged FINAL)
+    Q_PROPERTY(bool batteryThresholdWritable READ batteryThresholdWritable NOTIFY batteryThresholdChanged FINAL)
     Q_PROPERTY(bool batteryThresholdBusy READ batteryThresholdBusy NOTIFY batteryThresholdBusyChanged FINAL)
     Q_PROPERTY(QString batteryThresholdError READ batteryThresholdError NOTIFY batteryThresholdChanged FINAL)
     Q_PROPERTY(int batteryCycleCount READ batteryCycleCount NOTIFY batteryHealthMetricsChanged FINAL)
@@ -61,6 +62,7 @@ public:
     bool batteryConservationMode() const { return m_batteryConservationMode; }
     int batteryThresholdValue() const { return m_batteryThresholdValue; }
     QVariantList batteryThresholdPresets() const { return m_batteryThresholdPresets; }
+    bool batteryThresholdWritable() const { return m_batteryThresholdWritable; }
     bool batteryThresholdBusy() const { return m_batteryThresholdBusy; }
     QString batteryThresholdError() const { return m_batteryThresholdError; }
     int batteryCycleCount() const { return m_batteryCycleCount; }
@@ -321,6 +323,7 @@ private:
     bool m_batteryConservationMode = false;
     int m_batteryThresholdValue = 100;
     QVariantList m_batteryThresholdPresets;
+    bool m_batteryThresholdWritable = false;
     bool m_batteryThresholdBusy = false;
     QString m_batteryThresholdError;
     int m_batteryCycleCount = 0;

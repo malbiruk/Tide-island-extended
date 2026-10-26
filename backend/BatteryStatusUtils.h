@@ -2,7 +2,11 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QString>
+#include <QVariantList>
+
+#include <unistd.h>
 
 namespace BatteryStatusUtils {
 
@@ -50,6 +54,23 @@ inline QString systemBatteryPath(const QString &powerSupplyDir = QStringLiteral(
             return dir.absoluteFilePath(supply);
     }
     return QString();
+}
+
+// Whether the current user may write a sysfs attribute (permissions, ACLs and read-only
+// mounts all count), e.g. a battery's charge_control_end_threshold.
+inline bool isWritableByUser(const QString &path)
+{
+    return !path.isEmpty() && ::access(QFile::encodeName(path).constData(), W_OK) == 0;
+}
+
+// Charge-limit presets for a battery's charge_control_end_threshold. Apple Silicon's macsmc
+// battery only gets 80 and 100 (the values its firmware limit is known to handle); other
+// batteries keep the usual presets.
+inline QVariantList chargeLimitPresets(const QString &batteryPath)
+{
+    if (QFileInfo(batteryPath).fileName().startsWith(QStringLiteral("macsmc")))
+        return QVariantList{80, 100};
+    return QVariantList{80, 85, 90, 100};
 }
 
 } // namespace BatteryStatusUtils
