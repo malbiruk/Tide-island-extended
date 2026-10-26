@@ -1347,18 +1347,16 @@ Item {
         command: [
             "sh",
             "-c",
-            "if command -v tide-island >/dev/null 2>&1; then tide-island --lock; "
-                + "elif command -v hyprlock >/dev/null 2>&1; then hyprlock; "
-                + "elif command -v swaylock >/dev/null 2>&1; then swaylock; "
-                + "elif command -v i3lock >/dev/null 2>&1; then i3lock; "
+            "if command -v gtklock >/dev/null 2>&1; then gtklock -d; "
                 + "elif command -v loginctl >/dev/null 2>&1; then loginctl lock-session; "
+                + "elif command -v swaylock >/dev/null 2>&1; then swaylock; "
                 + "else exit 127; fi"
         ]
         running: false
         onExited: function(exitCode) {
             if (exitCode === 127)
                 controlCenter.requestNotification("Power", "Lock unavailable",
-                    "Install hyprlock, swaylock, or i3lock to enable screen locking.");
+                    "Install gtklock or swaylock to enable screen locking.");
         }
     }
 

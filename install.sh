@@ -952,14 +952,14 @@ check_dependencies() {
   check_tool "python3" "python3" "Wallpaper color & palette extraction script runner" 1
 
   printf '\nFeature-Specific Dependencies (Optional):\n'
-  check_feature "cava" "cava" "8-bar audio spectrum visualizer (Player & Lockscreen)"
+  check_feature "cava" "cava" "8-bar audio spectrum visualizer (Player)"
   check_feature "fuser" "psmisc" "Camera & video device privacy tracking (/dev/video*)"
   check_feature "gpu-screen-recorder" "gpu-screen-recorder" "Hardware accelerated screen & replay recorder"
   check_feature "brightnessctl" "brightnessctl" "Backlight brightness adjustment"
   check_power_profile
   check_feature "bluetoothctl" "bluez" "Bluetooth device pairing & control"
   check_feature "nmcli" "networkmanager" "Wi-Fi scanning & connection manager"
-  check_feature "pkexec" "polkit" "Privileged elevation (faillock reset, battery limit)"
+  check_feature "pkexec" "polkit" "Privileged elevation (battery limit)"
   check_feature "zenity" "zenity" "GUI dialog fallback prompt"
 
   if ((${#missing_optional[@]} > 0)); then

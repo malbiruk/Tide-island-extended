@@ -164,7 +164,7 @@ private slots:
         QVERIFY(directory.isValid());
         qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
         QVERIFY(writeConfig(directory.path(),
-            "// personal settings\n{\n    \"hoverExpandAction\": 2, /* keep */\n    \"lockscreenBlur\": false\n}\n"));
+            "// personal settings\n{\n    \"hoverExpandAction\": 2, /* keep */\n    \"islandBlurEnabled\": false\n}\n"));
 
         UserConfigBackend runtime;
         QCOMPARE(runtime.configError(), QString());
@@ -176,7 +176,7 @@ private slots:
         const QJsonObject saved = QJsonDocument::fromJson(file.readAll(), &error).object();
         QCOMPARE(error.error, QJsonParseError::NoError);
         QCOMPARE(saved.value("hoverExpandAction").toInt(), 2);
-        QCOMPARE(saved.value("lockscreenBlur").toBool(true), false);
+        QCOMPARE(saved.value("islandBlurEnabled").toBool(true), false);
         QCOMPARE(saved.value("doNotDisturb").toBool(), true);
     }
 

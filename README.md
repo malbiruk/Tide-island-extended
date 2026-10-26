@@ -79,12 +79,6 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
   </tr>
 </table>
 
-### Native Dynamic Island Lockscreen
-
-<p align="center">
-  <img src="docs/preview/lockscreen.png" width="95%" alt="Native Dynamic Island Lockscreen" />
-</p>
-
 ### Interactive Panels
 
 <table>
@@ -195,32 +189,10 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
   - **100% On-Demand Sampling**: Sampling timers only run when the glance layer is visibly mounted; zero CPU overhead when hidden. No third-party monitor dependencies (e.g. `nusmon`), extracting metrics directly from standard Linux `/proc` and `/sys` interfaces.
   - **Intuitive Triggers & Controls**: Sleek modern aesthetic without intrusive close buttons — dismiss seamlessly with `Escape`, click outside, or shortcut toggle (`SUPER+G`).
 - **In-App Matugen Assistant**: Direct one-click template installation and TOML snippet copying right inside Tide Island Settings (`Color & Wallpaper` tab).
-- **Native Dynamic Island Lockscreen & Ambient Multi-Monitor Standby**:
-  - **Fluid In/Out Morphing Animations**: An authentic, buttery-smooth Wayland lockscreen (`tide-island --lock`, `tide-island-lock`, or `quickshell ipc call lock lock`) that enters with a dynamic zoom-blur morph directly from the resting dynamic island capsule and smoothly lifts, dissolves, and unblurs upon unlocking.
-  - **Embedded Hero Music Player**:
-    - High-resolution album cover art in a rounded squircle frame.
-    - **Live Audio Visualizer**: 5-bar live equalizer syncing in real time with Cava audio frequency telemetry or procedural audio waveforms when music is playing.
-    - **Mac / Control Center Pill Capsule Scrubber**: Seekable capsule progress bar that smoothly thickens from 8px to 14px on hover or drag with zero distracting knobs or dots.
-    - **Hero Playback Controls & Track Timestamps**: Balanced Previous, glowing Hero Play/Pause button with warm ambient accent halo, Next track controls, and live elapsed / total duration counters (`1:14 / 4:05`) with instant click-and-drag seek.
-  - **Linux PAM Authentication & Security**: Complete, secure Linux PAM authentication with responsive typing micro-interactions, Enter-to-unlock, `Esc`/`Ctrl+U` to clear, error shake animation on failed attempts, system lockout detection (`faillock`) with live countdown timers, and automatic session restoration.
-  - **Cute Password Pearls**: Frosted glass pill input field featuring enlarged 14px glowing pearl bullets with bouncy pop spring animations (`Easing.OutBack`) that dynamically compact for longer passwords, keeping bullets centered and visible.
-  - **Bundled Modern Typography**: Includes `InterVariable.ttf` out of the box for crisp, ultra-clean clock numbers, greeting pills, and system details with zero external font setup required.
-  - **Dual-Panel Primary Card & Multi-Monitor Support**:
-    - **Left Panel (Hero Clock, Date, Greeting & Media)**: Modern display clock, formatted date, dynamic contextual greeting pill (`Good afternoon, <user>`), and the embedded hero media player.
-    - **Right Panel (Avatar & Authentication)**: Crisp circular user profile avatar with a living, breathing ambient halo glow, bold username, and the interactive password pill.
-    - **Multi-Monitor Standby View**: Secondary and non-primary displays automatically show a minimalist ambient clock and date over the blurred wallpaper.
-  - **Live Hardware Telemetry & Cute Soft Power Controls**:
-    - Horizontal rounded battery pill (`\uf240`–`\uf244`) matching the Control Center and System Glance, with live charge percentage, charging bolt (`⚡`), and charge-aware color transitions.
-    - Real-time weather condition pill with temperature.
-    - Soft rounded glass power buttons (`Sleep`, `Restart`, `Power Off`) with hover glow and safe arming confirmation.
-  - **Wallpaper Detection & In-App Customization**:
-    - Automatic live wallpaper extraction from `awww`, `swww`, or `hyprpaper` with real-time Gaussian blur and saturation preservation.
-    - Dedicated lockscreen settings in **Tide Island Settings** (`General` ➔ `Lockscreen`) with toggles for Wallpaper Blur, Lockscreen Media Player, Power Action buttons, Battery Status pill, and custom wallpaper file selection.
 
 ### Core Features
 
 - Clock
-- Dynamic Island Lockscreen & Ambient Multi-Monitor Standby (`tide-island --lock`, desktop shortcut, or IPC)
 - System Glance & Dashboard (Super + G, swipe down, or IPC)
 - Bluetooth earphone connection bubble with dynamic battery gauge ring
 - Music player
@@ -292,10 +264,9 @@ Tide Island Extended is engineered to deliver fluid 60fps+ animations while main
 
 ### Architectural Optimizations
 - **Zero-Subprocess Telemetry Engine**: System statistics (CPU ticks, RAM, swap, and disk capacity) are read directly from Linux `/proc/stat`, `/proc/meminfo`, and POSIX `statvfs()` system calls via a native C++ singleton without spawning shell commands (`free`, `df`, `top`).
-- **Retina Image Decode Bounding**: All dynamic image elements (lockscreen wallpapers, MPRIS high-res album covers, user avatars, notifications, and clipboard previews) specify explicit `sourceSize` bounds. 4K/8K images are downsampled at decode time, preventing multi-megapixel raw bitmaps from inflating memory.
+- **Retina Image Decode Bounding**: All dynamic image elements (MPRIS high-res album covers, user avatars, notifications, and clipboard previews) specify explicit `sourceSize` bounds. 4K/8K images are downsampled at decode time, preventing multi-megapixel raw bitmaps from inflating memory.
 - **Multiplexed D-Bus Event Loop**: Notification mirroring and portal screencast monitoring are consolidated into a single `dbus-monitor` process with combined match rules, eliminating process duplication.
 - **Declarative Scene Graph Animation**: Audio visualizer waves and phase loops run directly on the Qt Quick Scene Graph hardware render thread, avoiding high-frequency JavaScript timer wakeups.
-- **Lazy Shader & FBO Allocation**: Full-screen wallpaper blur buffers and OpacityMask shaders are conditionally instantiated (`layer.enabled: root.locked && root.blurEnabled`), completely freeing offscreen framebuffer textures from GPU VRAM when the session is unlocked or panels are closed.
 
 <br>
 
@@ -403,12 +374,6 @@ tide-island-config-app
   - Click the `›` chevron on either the Sound or Microphone card in the Control Center to reveal the Audio flyout panel.
   - Instantly switch default output endpoints (Speakers, Headphones, HDMI, Bluetooth earbuds) and active microphone sources in real time.
   - Switch to the **Mixer** tab to adjust individual per-application volume sliders and toggle mute status, complete with freedesktop application icons.
-- **Lockscreen Settings**:
-  - Set a custom lockscreen wallpaper path (with file picker and live preview), or automatically use the active desktop wallpaper (`awww`, `swww`, `hyprpaper`).
-  - Responsive toggle switches for Wallpaper Blur, Lockscreen Media Player, Power Action pills, and Battery Status pill.
-  - Customize the hero lockscreen clock font via `Time Font Family` in **Font Settings** or enjoy the bundled `Inter Variable` typography out of the box.
-  - Configurable PAM service authentication backend (default: `login`, or `system-auth` / `hyprlock`).
-  - Searchable application launcher entry: Launch "Lock Screen" directly from any app launcher via `tide-island-lock.desktop`.
 - **Color Palette & Matugen**: Tide Island supports dynamic system-wide color palettes generated by tools like [Matugen](https://github.com/InioX/matugen) or customized manually in `~/.config/tide-island/colors.json`.
   - **Live Auto-Reload**: Palette updates on disk are automatically detected and reloaded instantly via `QFileSystemWatcher` without restarting the service.
   - **Transparency Preserved**: Island capsule background transparency (`islandBackgroundOpacity`) continues to work seamlessly alongside dynamic palette tints.
@@ -422,39 +387,6 @@ tide-island-config-app
 
 
 ## Common Commands
-
-#### Lock the screen:
-
-```bash
-tide-island --lock
-# or: tide-island-lock
-```
-
-**Hyprland Keybinding (`hyprland.conf`)**:
-```conf
-bind = SUPER, L, exec, tide-island-lock
-```
-
-**niri Keybinding (`config.kdl`)**:
-```kdl
-binds {
-    Mod+L { spawn "tide-island-lock"; }
-}
-```
-
-**Idle Daemon Integration (`hypridle.conf`)**:
-```conf
-listener {
-    timeout = 300                                 # 5min
-    on-timeout = tide-island-lock                 # lock screen when timeout has passed
-}
-
-listener {
-    timeout = 330                                 # 5.5min
-    on-timeout = hyprctl dispatch dpms off        # screen off when timeout has passed
-    on-resume = hyprctl dispatch dpms on          # screen on when activity is detected
-}
-```
 
 #### Restart after editing the configuration:
 
@@ -517,9 +449,6 @@ You can control Tide Island remotely using `quickshell ipc call`:
 | `quickshell ipc call recorder openReplays` | Open saved replays folder in file manager |
 | `quickshell ipc call tide reloadColors` | Reload color palette from colors.json |
 | `quickshell ipc call theme reload` | Reload color palette from colors.json |
-| `quickshell ipc call lock lock` | Lock the screen immediately |
-| `quickshell ipc call lock unlock` | Unlock the screen |
-| `quickshell ipc call lock toggle` | Toggle lockscreen state |
 
 <br>
 

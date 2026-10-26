@@ -4,18 +4,9 @@ import Quickshell.Io
 import Quickshell.Services.Notifications
 import IslandBackend
 import "qml/island"
-import "qml/lockscreen"
 
 Scope {
     id: shellRoot
-
-    Lockscreen {
-        id: globalLockscreen
-    }
-
-    function triggerLock() {
-        globalLockscreen.lock();
-    }
 
     readonly property bool screenRecordingActive: SystemServices.screenRecordingActive
     readonly property bool micActive: SystemServices.micActive
@@ -916,22 +907,6 @@ Scope {
 
         function open() {
             shellRoot.forFocusedWindow((window) => window.showTimerWindow());
-        }
-    }
-
-    IpcHandler {
-        target: "lock"
-
-        function lock() {
-            globalLockscreen.lock();
-        }
-
-        function unlock() {
-            globalLockscreen.unlock();
-        }
-
-        function toggle() {
-            globalLockscreen.toggle();
         }
     }
 

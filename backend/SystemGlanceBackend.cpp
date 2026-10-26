@@ -556,27 +556,6 @@ QString SystemGlanceBackend::formatUptime(quint64 uptimeSeconds)
     return QStringLiteral("%1m").arg(minutes);
 }
 
-void SystemGlanceBackend::lockScreen()
-{
-    // Prefer Tide Island native lockscreen
-    const QString tideIsland = QStandardPaths::findExecutable(QStringLiteral("tide-island"));
-    if (!tideIsland.isEmpty()) {
-        QProcess::startDetached(tideIsland, {QStringLiteral("--lock")});
-        return;
-    }
-
-    // Try external lock helpers as fallback
-    if (!QStandardPaths::findExecutable(QStringLiteral("hyprlock")).isEmpty()) {
-        QProcess::startDetached(QStringLiteral("hyprlock"), {});
-    } else if (!QStandardPaths::findExecutable(QStringLiteral("swaylock")).isEmpty()) {
-        QProcess::startDetached(QStringLiteral("swaylock"), {});
-    } else if (!QStandardPaths::findExecutable(QStringLiteral("waylock")).isEmpty()) {
-        QProcess::startDetached(QStringLiteral("waylock"), {});
-    } else {
-        QProcess::startDetached(QStringLiteral("loginctl"), {QStringLiteral("lock-session")});
-    }
-}
-
 void SystemGlanceBackend::suspendSystem()
 {
     QProcess::startDetached(QStringLiteral("systemctl"), {QStringLiteral("suspend")});

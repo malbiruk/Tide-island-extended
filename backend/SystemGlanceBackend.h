@@ -178,7 +178,6 @@ public:
     Q_INVOKABLE void refreshBattery();
     Q_INVOKABLE void checkUpdatesAsync(bool force = false);
     Q_INVOKABLE void launchUpdateTerminal();
-    Q_INVOKABLE void lockScreen();
     Q_INVOKABLE void suspendSystem();
     Q_INVOKABLE void rebootSystem();
     Q_INVOKABLE void powerOffSystem();

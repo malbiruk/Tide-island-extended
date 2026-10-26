@@ -396,71 +396,6 @@ void UserConfigBackend::setDoNotDisturb(bool enabled)
     writeConfigValue(QStringLiteral("doNotDisturb"), enabled);
 }
 
-bool UserConfigBackend::lockscreenEnabled() const { return m_lockscreenEnabled; }
-void UserConfigBackend::setLockscreenEnabled(bool enabled)
-{
-    if (m_lockscreenEnabled == enabled) return;
-    m_lockscreenEnabled = enabled;
-    emit lockscreenEnabledChanged();
-    writeConfigValue(QStringLiteral("lockscreenEnabled"), enabled);
-}
-
-bool UserConfigBackend::lockscreenMedia() const { return m_lockscreenMedia; }
-void UserConfigBackend::setLockscreenMedia(bool enabled)
-{
-    if (m_lockscreenMedia == enabled) return;
-    m_lockscreenMedia = enabled;
-    emit lockscreenMediaChanged();
-    writeConfigValue(QStringLiteral("lockscreenMedia"), enabled);
-}
-
-bool UserConfigBackend::lockscreenPowerActions() const { return m_lockscreenPowerActions; }
-void UserConfigBackend::setLockscreenPowerActions(bool enabled)
-{
-    if (m_lockscreenPowerActions == enabled) return;
-    m_lockscreenPowerActions = enabled;
-    emit lockscreenPowerActionsChanged();
-    writeConfigValue(QStringLiteral("lockscreenPowerActions"), enabled);
-}
-
-bool UserConfigBackend::lockscreenShowBattery() const { return m_lockscreenShowBattery; }
-void UserConfigBackend::setLockscreenShowBattery(bool enabled)
-{
-    if (m_lockscreenShowBattery == enabled) return;
-    m_lockscreenShowBattery = enabled;
-    emit lockscreenShowBatteryChanged();
-    writeConfigValue(QStringLiteral("lockscreenShowBattery"), enabled);
-}
-
-QString UserConfigBackend::lockscreenPamService() const { return m_lockscreenPamService; }
-void UserConfigBackend::setLockscreenPamService(const QString &service)
-{
-    const QString clean = service.trimmed();
-    if (clean.isEmpty() || m_lockscreenPamService == clean) return;
-    m_lockscreenPamService = clean;
-    emit lockscreenPamServiceChanged();
-    writeConfigValue(QStringLiteral("lockscreenPamService"), clean);
-}
-
-QString UserConfigBackend::lockscreenWallpaperPath() const { return m_lockscreenWallpaperPath; }
-void UserConfigBackend::setLockscreenWallpaperPath(const QString &path)
-{
-    const QString clean = path.trimmed();
-    if (m_lockscreenWallpaperPath == clean) return;
-    m_lockscreenWallpaperPath = clean;
-    emit lockscreenWallpaperPathChanged();
-    writeConfigValue(QStringLiteral("lockscreenWallpaperPath"), clean.isEmpty() ? QJsonValue(QJsonValue::Undefined) : QJsonValue(clean));
-}
-
-bool UserConfigBackend::lockscreenBlur() const { return m_lockscreenBlur; }
-void UserConfigBackend::setLockscreenBlur(bool enabled)
-{
-    if (m_lockscreenBlur == enabled) return;
-    m_lockscreenBlur = enabled;
-    emit lockscreenBlurChanged();
-    writeConfigValue(QStringLiteral("lockscreenBlur"), enabled);
-}
-
 void UserConfigBackend::setDefaultTlpSudoPassword(const QString &password)
 {
     if (m_defaultTlpSudoPassword == password)
@@ -716,13 +651,6 @@ void UserConfigBackend::loadConfig()
     }
     updateField(this, m_avatarPath, nextAvatarPath, &UserConfigBackend::avatarPathChanged);
 
-    updateField(this, m_lockscreenEnabled, jsonBool(configObject, QLatin1String("lockscreenEnabled"), true), &UserConfigBackend::lockscreenEnabledChanged);
-    updateField(this, m_lockscreenMedia, jsonBool(configObject, QLatin1String("lockscreenMedia"), true), &UserConfigBackend::lockscreenMediaChanged);
-    updateField(this, m_lockscreenPowerActions, jsonBool(configObject, QLatin1String("lockscreenPowerActions"), true), &UserConfigBackend::lockscreenPowerActionsChanged);
-    updateField(this, m_lockscreenShowBattery, jsonBool(configObject, QLatin1String("lockscreenShowBattery"), true), &UserConfigBackend::lockscreenShowBatteryChanged);
-    updateField(this, m_lockscreenPamService, jsonString(configObject, QLatin1String("lockscreenPamService"), QStringLiteral("login")), &UserConfigBackend::lockscreenPamServiceChanged);
-    updateField(this, m_lockscreenWallpaperPath, jsonString(configObject, QLatin1String("lockscreenWallpaperPath"), QString()), &UserConfigBackend::lockscreenWallpaperPathChanged);
-    updateField(this, m_lockscreenBlur, jsonBool(configObject, QLatin1String("lockscreenBlur"), true), &UserConfigBackend::lockscreenBlurChanged);
     updateField(this, m_doNotDisturb, jsonBool(configObject, QLatin1String("doNotDisturb"), false), &UserConfigBackend::doNotDisturbChanged);
 
     updateWatchedPaths();
