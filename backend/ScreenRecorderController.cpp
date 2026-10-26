@@ -320,12 +320,14 @@ void ScreenRecorderController::startRecording(bool withMic) {
         args << QStringLiteral("-q") << QStringLiteral("very_high");
         args << QStringLiteral("-o") << m_currentRecordingFile;
     } else {
-        // CPU H.264 in yuv420p for broad player compatibility; the container comes from the
-        // .mp4 extension and -y avoids an overwrite prompt on stdin.
+        // CPU H.264 (veryfast preset, cheap enough for real time) in yuv420p for broad player
+        // compatibility; the container comes from the .mp4 extension and -y avoids an
+        // overwrite prompt on stdin.
         args << QStringLiteral("-o") << screen;
         args << QStringLiteral("-f") << m_currentRecordingFile;
         args << QStringLiteral("-r") << QString::number(m_fps);
         args << QStringLiteral("-c") << QStringLiteral("libx264");
+        args << QStringLiteral("-p") << QStringLiteral("preset=veryfast");
         args << QStringLiteral("-x") << QStringLiteral("yuv420p");
         args << QStringLiteral("-y");
         const QString audioDevice = resolveWfRecorderAudioDevice(useMic);
