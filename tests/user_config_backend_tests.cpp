@@ -333,7 +333,7 @@ private slots:
 
         QVERIFY(writeConfig(directory.path(), "{\"islandBatteryThreshold\": 0}"));
         runtime.reload();
-        QCOMPARE(runtime.islandBatteryThreshold(), 1);
+        QCOMPARE(runtime.islandBatteryThreshold(), 5);
 
         QVERIFY(writeConfig(directory.path(), "{\"islandBatteryThreshold\": 150}"));
         runtime.reload();

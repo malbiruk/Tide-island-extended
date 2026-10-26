@@ -610,7 +610,7 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_islandBatteryMode,
                 (batteryMode == QLatin1String("always") || batteryMode == QLatin1String("never")) ? batteryMode : QStringLiteral("low"),
                 &UserConfigBackend::islandBatteryModeChanged);
-    updateField(this, m_islandBatteryThreshold, jsonBoundedInt(configObject, QLatin1String("islandBatteryThreshold"), 40, 1, 100), &UserConfigBackend::islandBatteryThresholdChanged);
+    updateField(this, m_islandBatteryThreshold, jsonBoundedInt(configObject, QLatin1String("islandBatteryThreshold"), 40, 5, 100), &UserConfigBackend::islandBatteryThresholdChanged);
     updateField(this, m_islandAutoHideKeepActivities, jsonBool(configObject, QLatin1String("islandAutoHideKeepActivities"), true), &UserConfigBackend::islandAutoHideKeepActivitiesChanged);
     updateField(this, m_islandEdge,
                 jsonString(configObject, QLatin1String("islandEdge"), QString()).trimmed().toLower() == QLatin1String("bottom")

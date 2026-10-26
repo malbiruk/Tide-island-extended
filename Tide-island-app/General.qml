@@ -272,7 +272,7 @@ PagePanel {
                         keyName: "islandBatteryThreshold"
                         fallbackText: "40"
                         numeric: true
-                        minimumValue: 1
+                        minimumValue: 5
                         maximumValue: 100
                         visible: batteryModeRow.selectedId === "low"
                         width: parent.width
