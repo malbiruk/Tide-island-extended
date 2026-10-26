@@ -8,7 +8,6 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-option(TIDE_ISLAND_WITH_NIRI "Build niri compositor integration" ON)
 
 # GuiPrivate only for qpa/qplatformnativeinterface.h (a window's wl_surface, via a virtual call).
 set(QT_NO_PRIVATE_MODULE_WARNING ON)
@@ -286,31 +285,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/system_glance_tests.cpp")
     add_test(NAME system_glance COMMAND system_glance_tests)
 endif()
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/compositor_backend_tests.cpp")
-    add_executable(compositor_backend_tests
-        tests/compositor_backend_tests.cpp
-        backend/CompositorBackend.h
-        backend/CompositorBackend.cpp
-    )
-
-    target_include_directories(compositor_backend_tests PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/backend
-    )
-
-    target_compile_definitions(compositor_backend_tests PRIVATE
-        TIDE_ISLAND_WITH_NIRI=$<BOOL:${TIDE_ISLAND_WITH_NIRI}>
-    )
-
-    target_link_libraries(compositor_backend_tests PRIVATE
-        Qt6::Core
-        Qt6::Qml
-        Qt6::Network
-        Qt6::Test
-    )
-
-    add_test(NAME compositor_backend COMMAND compositor_backend_tests)
-endif()
-
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/lyricsmpris_runtime_tests.cpp")
     add_executable(lyricsmpris_runtime_tests
         tests/lyricsmpris_runtime_tests.cpp
@@ -357,8 +331,6 @@ qt_add_qml_module(IslandBackend
         backend/SystemServices.cpp
         backend/SystemStats.h
         backend/SystemStats.cpp
-        backend/CompositorBackend.h
-        backend/CompositorBackend.cpp
         backend/StyleTokensBackend.h
         backend/StyleTokensBackend.cpp
         backend/FileShelfModel.h
@@ -391,10 +363,6 @@ set_target_properties(IslandBackendplugin PROPERTIES
 target_include_directories(IslandBackend PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/backend
     ${CMAKE_CURRENT_BINARY_DIR}/wayland
-)
-
-target_compile_definitions(IslandBackend PRIVATE
-    TIDE_ISLAND_WITH_NIRI=$<BOOL:${TIDE_ISLAND_WITH_NIRI}>
 )
 
 target_link_libraries(IslandBackend PRIVATE

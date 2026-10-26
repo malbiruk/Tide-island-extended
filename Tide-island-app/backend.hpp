@@ -35,17 +35,6 @@ public:
     Q_INVOKABLE bool save(const QVariantMap &changes, const QStringList &removedKeys = QStringList());
     Q_INVOKABLE void setColorScheme(const QString &colorScheme);
     Q_INVOKABLE bool copyToClipboard(const QString &text);
-    Q_INVOKABLE QVariantList shortcutBindings() const;
-    Q_INVOKABLE QString currentCompositor() const;
-    Q_INVOKABLE QString compositorDisplayName() const;
-    Q_INVOKABLE bool supportsTideWorkspaceOverview() const;
-    Q_INVOKABLE bool supportsHyprlandShortcutSnippets() const;
-    Q_INVOKABLE bool supportsNiriShortcutSnippets() const;
-    Q_INVOKABLE QString nightLightBackendName() const;
-    Q_INVOKABLE QString niriConfigCommands() const;
-    Q_INVOKABLE bool niriShortcutBindingsNeedApply() const;
-    Q_INVOKABLE bool ensureNiriShortcutBindings();
-    Q_INVOKABLE bool applyShortcutBindings(const QVariantList &shortcutBindings);
     Q_INVOKABLE QString applicationLauncherFavoritesPath() const;
     Q_INVOKABLE QVariantList applicationLauncherFavoriteEntries() const;
     Q_INVOKABLE bool saveApplicationLauncherFavorites(const QVariantList &favoriteIds);
@@ -66,18 +55,6 @@ signals:
     void userConfigChanged();
 
 private:
-    QString hyprlandConfigPath() const;
-    QString hyprlandLuaConfigPath() const;
-    QString niriConfigPath() const;
-    QString managedShortcutConfigPath() const;
-    QString managedNiriShortcutConfigPath() const;
-    bool writeManagedShortcutConfig(const QVariantList &shortcutBindings);
-    bool writeManagedShortcutLuaConfig(const QVariantList &shortcutBindings);
-    bool hyprlandUsesLuaConfig() const;
-    bool installManagedNiriShortcutConfig(const QVariantList &shortcutBindings);
-    bool ensureManagedShortcutSource();
-    bool reloadHyprland();
-    bool validateNiriConfig(const QString &configText);
     void load();
     bool readUserConfigObject(QJsonObject &object);
     void setErrorString(const QString &errorString);

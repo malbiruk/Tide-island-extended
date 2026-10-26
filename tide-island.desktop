@@ -1,10 +1,10 @@
 [Desktop Entry]
 Name=Tide Island Extended
-Comment=Dynamic Island for Hyprland and niri
+Comment=Dynamic Island for driftwm
 Exec=/usr/bin/tide-island
 Icon=preferences-desktop-notification
 Terminal=false
 Type=Application
 Categories=Utility;
-Keywords=hyprland;niri;quickshell;island;
+Keywords=driftwm;quickshell;island;
 NoDisplay=true

@@ -1,15 +1,14 @@
 <h1 align="center">Tide Island Extended</h1>
 
 <p align="center">
-  <b>An independently maintained and enhanced fork of Tide Island for Hyprland and niri.</b>
+  <b>A driftwm-only fork of Tide Island Extended.</b>
 </p>
 
 <p align="center">
   <a href="https://github.com/Bimbok/Tide-island-extended/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/Bimbok/Tide-island-extended?style=flat-square&color=8aadf4"></a>
   <a href="https://github.com/Bimbok/Tide-island-extended/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/Bimbok/Tide-island-extended?style=flat-square&color=8aadf4"></a>
   <a href="https://github.com/enhaoswen/Tide-island"><img alt="Upstream: enhaoswen/Tide-island" src="https://img.shields.io/badge/upstream-enhaoswen%2FTide--island-8aadf4?style=flat-square"></a>
-  <img alt="Hyprland" src="https://img.shields.io/badge/Hyprland-111111?style=flat-square&color=8aadf4">
-  <img alt="niri" src="https://img.shields.io/badge/niri-111111?style=flat-square&color=8aadf4">
+  <img alt="driftwm" src="https://img.shields.io/badge/driftwm-111111?style=flat-square&color=8aadf4">
   <img alt="C++ + Qt" src="https://img.shields.io/badge/C%2B%2B%20%2B%20Qt-111111?style=flat-square&color=8aadf4">
 </p>
 
@@ -38,9 +37,9 @@
 
 ## About Tide Island Extended
 
-Tide Island Extended is a desktop widget for Hyprland and niri, styled like the Dynamic Island.
+Tide Island Extended is a desktop widget for the driftwm compositor, styled like the Dynamic Island.
 
-When nothing much is going on, it sits compactly in your bar or corner, staying out of the way. When you need to check information, it expands into an interactive panel where you can view lyrics, switch workspaces, adjust system settings, check notifications, view weather, or inspect custom system statistics.
+When nothing much is going on, it sits compactly in your bar or corner, staying out of the way. When you need to check information, it expands into an interactive panel where you can view lyrics, adjust system settings, check notifications, view weather, or inspect custom system statistics.
 
 It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid and responsive while keeping resource usage minimal.
 
@@ -102,7 +101,7 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
       <img src="docs/preview/control_center.png" width="100%" alt="Control Center" />
     </td>
     <td width="50%">
-      <img src="docs/preview/workspace_overview.png" width="100%" alt="Workspace Overview" />
+
     </td>
   </tr>
   <tr>
@@ -152,7 +151,7 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 
 - **MacBook Top Notch & Dynamic Island Style Switcher**:
   - **Fluid Dual-Style Morphing**: Freely toggle between the classic floating **Dynamic Island** (floating pill capsule with customizable top margin) and top-attached **MacBook-Style Notch** (flush with the top bezel at `y: 0`, flat 0px top corners, 16px bottom rounded corners, and smooth 10px concave transition ears curving naturally into the screen bezel).
-  - **Full Workspace & Panel Harmony**: Seamlessly applied across resting island states, expanded panels, notifications, and the workspace overview switcher.
+  - **Full Panel Harmony**: Seamlessly applied across resting island states, expanded panels and notifications.
   - **In-App Toggle & Direct Shortcut**: Switch on the fly via the **Island Style** selector in **Tide Island Extended Settings** (`[ Island ]` / `[ Notch ]`), pressing `SUPER+ALT+N`, or via Quickshell IPC.
 - **Bluetooth Earphone & Headset Satellite Bubble**:
   - **Instant Connection Pop-Out**: A sleek satellite circular bubble automatically emerges alongside the island whenever Bluetooth earphones, headphones, or audio headsets connect.
@@ -250,7 +249,6 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 - Weather & Forecast
 - Calendar
 - Wallpaper switcher
-- Workspace overview
 - Custom page
 - Notification Center
 - Power menu
@@ -269,7 +267,6 @@ Click the × button on a notification card to dismiss it, or use **Clear All** i
 - Microphone intensity & mute changes
 - Brightness changes
 - Battery charging / discharging & conservation limit
-- Workspace changes
 - Media playback (optional)
 - System notifications
 
@@ -291,9 +288,9 @@ Click the × button on a notification card to dismiss it, or use **Clear All** i
 
 ### Compositor support
 
-- Hyprland: full current experience, including Tide's workspace overview, workspace animations, shortcuts, and Night Light through `hyprsunset`.
-- niri: island views, focused-output IPC commands, workspace change hints, native niri overview, shortcuts through `~/.config/tide-island/niri-shortcuts.kdl`, and Night Light through `gammastep`.
-- Tide checks `TIDE_ISLAND_COMPOSITOR` first, then `$XDG_CURRENT_DESKTOP`. It uses `$NIRI_SOCKET` only when the desktop environment is inconclusive, then falls back to Hyprland. This prevents inherited compositor sockets from causing a false detection.
+This fork targets driftwm only. Notification actions hand the app an xdg-activation token, so
+driftwm raises the sender's window; keybindings for the IPC commands below go in driftwm's own
+config.
 
 <br>
 
@@ -314,7 +311,6 @@ Tide Island Extended is engineered to deliver fluid 60fps+ animations while main
 - **Multiplexed D-Bus Event Loop**: Notification mirroring and portal screencast monitoring are consolidated into a single `dbus-monitor` process with combined match rules, eliminating process duplication.
 - **Declarative Scene Graph Animation**: Audio visualizer waves and phase loops run directly on the Qt Quick Scene Graph hardware render thread, avoiding high-frequency JavaScript timer wakeups.
 - **Lazy Shader & FBO Allocation**: Full-screen wallpaper blur buffers and OpacityMask shaders are conditionally instantiated (`layer.enabled: root.locked && root.blurEnabled`), completely freeing offscreen framebuffer textures from GPU VRAM when the session is unlocked or panels are closed.
-- **Dormant Workspace Tracking**: Background `hyprctl` window snapshot queries are suspended when the Workspace Overview is hidden, eliminating IPC polling while working.
 
 <br>
 
@@ -392,19 +388,7 @@ Enable and start it immediately (Recommended):
 systemctl --user enable --now tide-island.service
 ```
 
-If you want to manage startup manually, add this to your `hyprland.conf`:
-
-```conf
-exec-once = tide-island
-```
-
-Or add this to `hyprland.lua`:
-
-```lua
-hl.exec_once("tide-island")
-```
-
-If the systemd service is already enabled, you do not need to add `exec-once`.
+If you want to manage startup manually, start `tide-island` from driftwm's autostart instead.
 
 <br>
 
@@ -416,7 +400,6 @@ Search `Tide Island Settings` in any application launcher, or run:
 tide-island-config-app
 ```
 
-- **Shortcuts**: Configure shortcuts for Workspace Overview, Application Launcher, Music Player, Notification Center, Control Center, System Glance (`Super + G`), Clipboard History (`Super + V`), Weather (`Super + E`), and Calendar (`Super + K` by default).
 - **Interaction**: Configure click actions for the dynamic island pill (Left, Middle, and Right mouse buttons for Player, Control Center, and Clipboard History).
 - **Weather**: Configure auto-detection or custom city name, temperature units (°C or °F), and refresh interval.
 - **Calendar**: Quick month view with week numbers and relative date indicators. Click the date in the Control Center, press `Super + K`, or use the scroll wheel / arrow keys to browse months. Press `Home` to return to today, and `Esc` to close.

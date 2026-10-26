@@ -8,7 +8,6 @@ import "qml/common"
 import "qml/controlcenter"
 import "qml/connectivity"
 import "qml/island"
-import "qml/workspace"
 
 PanelWindow {
     id: root
@@ -31,43 +30,11 @@ PanelWindow {
     readonly property int unreadNotificationCount: shellRootController && shellRootController.unreadNotificationCount
         ? shellRootController.unreadNotificationCount
         : 0
-    property string overviewPhase: "closed"
-    property bool overviewPreloading: false
-    readonly property bool overviewPreparing: overviewPhase === "preparing"
-    readonly property bool overviewVisible: overviewPhase === "preparing" || overviewPhase === "opening" || overviewPhase === "open"
-    readonly property bool overviewMounted: overviewPhase !== "closed" || overviewPreloading
-    readonly property bool overviewLoaderActive: !compositorIsNiri
-        && (overviewMounted || overviewUnloadGraceTimer.running)
-    readonly property bool overviewDataReady: overviewLoader.item
-        ? !!overviewLoader.item.overviewDataReady
-        : false
-    readonly property bool overviewWallpaperReady: overviewWallpaperCache.ready
-    readonly property bool overviewVisualReady: overviewDataReady && overviewWallpaperReady
-    readonly property bool overviewContentVisible: (overviewPhase === "opening" || overviewPhase === "open")
-        && overviewVisualReady
-    readonly property bool compositorIsNiri: CompositorBackend.compositor === "niri"
-    readonly property int compositorRevision: CompositorBackend.revision
     readonly property string screenOutputName: screen && screen.name !== undefined ? String(screen.name) : ""
-    readonly property var hyprlandIntegration: hyprlandIntegrationLoader.item
-    readonly property var hyprMonitor: hyprlandIntegration ? hyprlandIntegration.monitor : null
-    readonly property string hyprMonitorName: hyprlandIntegration ? hyprlandIntegration.monitorName : ""
-    readonly property string compositorOutputName: compositorIsNiri ? screenOutputName : hyprMonitorName
-    readonly property bool monitorFocused: {
-        compositorRevision;
-        return compositorIsNiri
-            ? CompositorBackend.isOutputFocused(screenOutputName)
-            : (hyprlandIntegration ? hyprlandIntegration.monitorFocused : false);
-    }
     readonly property bool connectivityPromptActive: controlCenterLoader.item
         ? controlCenterLoader.item.hasConnectivityPrompt
         : false
     readonly property var controlCenterRef: controlCenterLoader.item
-    readonly property int currentMonitorWorkspaceId: {
-        compositorRevision;
-        return compositorIsNiri
-            ? CompositorBackend.activeWorkspaceIndexForOutput(screenOutputName)
-            : (hyprlandIntegration ? hyprlandIntegration.workspaceId : 1);
-    }
     readonly property bool screenRecordingActive: shellRootController
         && shellRootController.screenRecordingActive !== undefined
         ? !!shellRootController.screenRecordingActive
@@ -113,21 +80,6 @@ PanelWindow {
     readonly property var weatherService: (root.shellRootController && root.shellRootController.weatherService)
         ? root.shellRootController.weatherService
         : (fallbackWeatherServiceLoader.item || null)
-
-    Loader {
-        id: hyprlandIntegrationLoader
-
-        active: !root.compositorIsNiri
-        asynchronous: false
-        source: active ? "qml/island/HyprlandWindowIntegration.qml" : ""
-    }
-
-    Binding {
-        target: hyprlandIntegrationLoader.item
-        property: "screenObject"
-        value: root.screen
-        when: hyprlandIntegrationLoader.item !== null
-    }
 
     color: StyleTokens.transparent
     WlrLayershell.namespace: "tide-island"
@@ -212,7 +164,7 @@ PanelWindow {
         }
         // Clip the completed union before sending it to the compositor. During
         // auto-hide the capsule leaves the window before its opacity reaches
-        // zero. Hyprland can treat a nonempty, wholly offscreen blur region as
+        // zero. A compositor may treat a nonempty, wholly offscreen blur region as
         // unrestricted blur after clipping it, flashing the full layer surface.
         Region {
             intersection: Intersection.Intersect
@@ -329,8 +281,7 @@ PanelWindow {
     // Panels that close on a click outside them. While one is open the surface grows to the
     // full output height and its input mask covers it (outsideClickDismissArea). The file
     // shelf is excluded so drags out of it can still drop onto other windows.
-    readonly property bool outsideClickDismissActive: !root.overviewVisible
-        && !root.connectivityPromptActive
+    readonly property bool outsideClickDismissActive: !root.connectivityPromptActive
         && (["control_center", "notification_center", "calendar", "weather", "glance",
             "clipboard", "application_launcher", "wallpaper_picker", "privacy_hud"]
             .indexOf(islandContainer.islandState) !== -1
@@ -347,14 +298,10 @@ PanelWindow {
             ? Math.ceil(islandContainer.effectiveTopMargin + mainCapsule.targetHeight + root.connectivityDetailGap
                 + root.connectivityDetailHeight + 12)
             : Math.ceil(islandContainer.effectiveTopMargin + root.connectivityDetailHeight + 12)
-    readonly property real overviewWindowHeight: root.overviewVisible
-        ? Math.ceil(islandContainer.effectiveTopMargin + root.overviewCapsuleHeight + 8)
-        : 0
     readonly property real requestedWindowHeight: Math.max(
         root.notificationCenterWindowHeight,
         root.capsuleWindowHeight,
         root.connectivityDetailWindowHeight,
-        root.overviewWindowHeight,
         root.outsideClickDismissWindowHeight,
         Math.ceil(root.controlCenterWindowHeight)
     )
@@ -406,13 +353,7 @@ PanelWindow {
             return WlrKeyboardFocus.Exclusive;
         if (islandContainer.notificationLayerVisible)
             return WlrKeyboardFocus.OnDemand;
-        // Keep keyboard focus on the overview until an overview action closes it.
-        // Click-to-focus closes the overview before focusing the selected client.
-        if (root.monitorFocused && root.overviewVisible)
-            return WlrKeyboardFocus.Exclusive;
         if (islandContainer.expandedPlayerKeyboardFocusRequested)
-            return WlrKeyboardFocus.Exclusive;
-        if (root.monitorFocused && root.connectivityPromptActive)
             return WlrKeyboardFocus.Exclusive;
         return WlrKeyboardFocus.None;
     }
@@ -425,7 +366,6 @@ PanelWindow {
     readonly property int iconFontSize: userConfig.iconFontSize
     readonly property string defaultSplitIcon: "\ud83c\udfa7"
     readonly property string notificationStatusIcon: "\uf0f3"
-    readonly property real overviewWindowCornerRadius: 12
     readonly property int dynamicIslandAcceptedButtons: userConfig.mouseButtonsMask([
         1,
         2,
@@ -453,12 +393,10 @@ PanelWindow {
     readonly property bool autoHideCanHideNow: autoHideEnabled
         && !restingActivityPinned
         && autoHideRestingState
-        && !root.overviewVisible
         && !root.connectivityPromptActive
         && !root.anyConnectivityDetailMounted
     readonly property bool autoHideMustShow: (!autoHideRestingState && !islandContainer.transientSlideOut)
         || restingActivityPinned
-        || root.overviewVisible
         || root.connectivityPromptActive
         || root.anyConnectivityDetailMounted
     readonly property bool autoHideTargetVisible: autoHideMustShow
@@ -477,17 +415,6 @@ PanelWindow {
         0,
         Math.min(root.width - autoHideRevealWidth, root.width * userConfig.islandPositionX / 100 - autoHideRevealWidth / 2)
     )
-    readonly property real overviewCapsuleWidth: islandContainer.overviewView ? islandContainer.overviewView.width : 760
-    readonly property real overviewCapsuleHeight: islandContainer.overviewView ? islandContainer.overviewView.height : 308
-    readonly property real overviewCapsuleRadius: islandContainer.overviewView
-        ? islandContainer.overviewView.largeWorkspaceRadius + islandContainer.overviewView.outerPadding
-        : 44
-    readonly property color overviewCapsuleColor: islandContainer.overviewView
-        ? islandContainer.overviewView.cardColor
-        : StyleTokens.overviewCard
-    readonly property color overviewCapsuleBorderColor: islandContainer.overviewView
-        ? islandContainer.overviewView.cardBorderColor
-        : StyleTokens.overviewBorder
     property bool wifiConnectivityDetailOpen: false
     property bool wifiConnectivityDetailMounted: false
     property bool bluetoothConnectivityDetailOpen: false
@@ -524,7 +451,6 @@ PanelWindow {
         : 0
     readonly property real connectivityDetailGap: 12
     readonly property int connectivityDetailAnimationDuration: 220
-    readonly property string overviewWallpaperSource: overviewWallpaperCache.effectiveSource
     property string wallpaperPickerActiveWallpaper: userConfig.wallpaperPath
 
     Behavior on autoHideProgress {
@@ -617,7 +543,6 @@ PanelWindow {
     function transientCanSlideOut() {
         return (autoHideEnabled || autoHideForcedHidden)
             && !autoHidePointerInside
-            && !root.overviewVisible
             && !root.connectivityPromptActive
             && !root.anyConnectivityDetailMounted
             && !(userConfig.islandAutoHideKeepActivities
@@ -654,64 +579,6 @@ PanelWindow {
             scheduleAutoHide();
         else
             showAutoHiddenIsland("manual");
-    }
-
-    function beginOverviewOpening() {
-        if (!overviewPreparing) return;
-        if (overviewLoader.status !== Loader.Ready || !overviewVisualReady) return;
-        overviewPreloading = false;
-        overviewPhase = "opening";
-        overviewRevealTimer.restart();
-    }
-
-    function prepareOverview() {
-        if (compositorIsNiri) return;
-        if (overviewPhase !== "closed") return;
-        overviewUnloadGraceTimer.stop();
-        overviewPreloading = true;
-        overviewPreloadExpireTimer.restart();
-    }
-
-    function cancelPreparedOverview() {
-        if (compositorIsNiri) return;
-        if (overviewPhase !== "closed") return;
-        overviewPreloadExpireTimer.stop();
-        overviewPreloading = false;
-    }
-
-    function openOverview() {
-        if (compositorIsNiri)
-            return;
-        if (overviewPhase !== "closed") return;
-        overviewUnloadGraceTimer.stop();
-        overviewPreloadExpireTimer.stop();
-        overviewPreloading = true;
-        overviewPhase = "preparing";
-        if (overviewLoader.status === Loader.Ready) {
-            beginOverviewOpening();
-        }
-    }
-
-    function closeOverview() {
-        if (compositorIsNiri)
-            return;
-        if (!overviewMounted) return;
-        if (overviewLoader.status === Loader.Ready)
-            overviewUnloadGraceTimer.restart();
-        overviewRevealTimer.stop();
-        overviewPreloadExpireTimer.stop();
-        islandContainer.restoreRestingCapsule(true);
-        overviewPreloading = false;
-        overviewPhase = "closed";
-    }
-
-    function closeOverviewEverywhere() {
-        if (shellRootController && shellRootController.closeOverviewAll) {
-            shellRootController.closeOverviewAll();
-            return;
-        }
-
-        closeOverview();
     }
 
     function setConnectivityDetailVisible(kind, open) {
@@ -827,60 +694,8 @@ PanelWindow {
         setConnectivityDetailVisible("audio_input", false);
     }
 
-    function openOverviewEverywhere() {
-        if (shellRootController && shellRootController.openOverviewAll) {
-            shellRootController.openOverviewAll();
-            return;
-        }
-
-        openOverview();
-    }
-
-    function prepareOverviewEverywhere() {
-        if (shellRootController && shellRootController.prepareOverviewAll) {
-            shellRootController.prepareOverviewAll();
-            return;
-        }
-
-        prepareOverview();
-    }
-
-    function cancelPreparedOverviewEverywhere() {
-        if (shellRootController && shellRootController.cancelPreparedOverviewAll) {
-            shellRootController.cancelPreparedOverviewAll();
-            return;
-        }
-
-        cancelPreparedOverview();
-    }
-
-    function toggleOverviewEverywhere() {
-        if (compositorIsNiri) {
-            CompositorBackend.toggleOverview();
-            return;
-        }
-
-        if (shellRootController && shellRootController.toggleOverviewAll) {
-            shellRootController.toggleOverviewAll();
-            return;
-        }
-
-        if (overviewMounted)
-            closeOverviewEverywhere();
-        else
-            openOverviewEverywhere();
-    }
-
-    function prewarmWallpaperCache() {
-        overviewWallpaperCache.prewarm();
-    }
-
     function handleWallpaperApplySucceeded(filePath) {
         wallpaperPickerActiveWallpaper = filePath;
-        if (shellRootController && shellRootController.refreshOverviewWallpaperCaches)
-            shellRootController.refreshOverviewWallpaperCaches(filePath);
-        else
-            prewarmWallpaperCache();
     }
 
     // Called by the notification daemon in shell.qml with a record and a mode:
@@ -911,13 +726,12 @@ PanelWindow {
             && shellRootController.invokeNotificationAction(id, actionKey, islandContainer.Window.window));
     }
 
-    // Body click, the "default" pill and history clicks: run the app's default action (if it
-    // has one; invoking closes a non-resident notification), then focus its window where the
-    // compositor needs tide's help (niri, Hyprland). `details` is captured by the caller
-    // beforehand, because the popup may be cleared in the meantime.
+    // The Open pill and history clicks: run the app's default action (if it has one; invoking
+    // closes a non-resident notification, and its activation token lets the app raise its
+    // window). `details` is captured by the caller beforehand, because the popup may be cleared
+    // in the meantime.
     function activateNotification(details, dismissAfter) {
         const invoked = root.invokeNotificationAction(details.id, "default");
-        SystemServices.focusSenderWindow(details.appName, details.senderPid, details.summary, details.body);
         const resident = !!(shellRootController && shellRootController.notificationIsResident
             && shellRootController.notificationIsResident(details.id));
         if (dismissAfter && !invoked && !resident)
@@ -1125,17 +939,7 @@ PanelWindow {
         if (islandContainer.islandState === "glance")
             islandContainer.smartRestoreState();
     }
-
-    onOverviewVisibleChanged: {
-        if (overviewVisible && monitorFocused) overviewFocusTimer.restart();
-        if (overviewVisible)
-            showAutoHiddenIsland("state");
-        else
-            scheduleAutoHide();
-    }
     onConnectivityPromptActiveChanged: {
-        if (connectivityPromptActive && monitorFocused)
-            connectivityPromptFocusTimer.restart();
         if (connectivityPromptActive)
             showAutoHiddenIsland("state");
         else
@@ -1152,24 +956,6 @@ PanelWindow {
             scheduleAutoHide();
         else
             showAutoHiddenIsland("state");
-    }
-    onOverviewVisualReadyChanged: {
-        if (overviewVisualReady) beginOverviewOpening();
-    }
-    onOverviewContentVisibleChanged: {
-        if (overviewContentVisible && monitorFocused)
-            overviewFocusTimer.restart();
-    }
-    onMonitorFocusedChanged: {
-        if (overviewVisible && monitorFocused) overviewFocusTimer.restart();
-        if (connectivityPromptActive && monitorFocused) connectivityPromptFocusTimer.restart();
-    }
-
-    Timer {
-        id: overviewFocusTimer
-        interval: 0
-        repeat: false
-        onTriggered: root.focusOverview()
     }
 
     Timer {
@@ -1204,13 +990,6 @@ PanelWindow {
         islandContainer.forceActiveFocus();
         if (wallpaperPickerLoader.item && wallpaperPickerLoader.item.grabKeyboardFocus)
             wallpaperPickerLoader.item.grabKeyboardFocus();
-    }
-
-    function focusOverview() {
-        islandContainer.forceActiveFocus();
-        const view = islandContainer.overviewView;
-        if (view && view.grabKeyboardFocus)
-            view.grabKeyboardFocus();
     }
 
     function focusExpandedPlayer() {
@@ -1265,31 +1044,6 @@ PanelWindow {
     }
 
     Timer {
-        id: overviewRevealTimer
-        interval: 0
-        repeat: false
-        onTriggered: {
-            if (root.overviewPhase === "opening") root.overviewPhase = "open";
-        }
-    }
-
-    Timer {
-        id: overviewPreloadExpireTimer
-        interval: 1200
-        repeat: false
-        onTriggered: {
-            if (root.overviewPhase === "closed")
-                root.overviewPreloading = false;
-        }
-    }
-
-    Timer {
-        id: overviewUnloadGraceTimer
-        interval: 260
-        repeat: false
-    }
-
-    Timer {
         id: wifiConnectivityDetailCleanupTimer
         interval: root.connectivityDetailAnimationDuration
         repeat: false
@@ -1320,17 +1074,6 @@ PanelWindow {
         onTriggered: root.audioConnectivityDetailMounted = false
     }
 
-    OverviewWallpaperCacheController {
-        id: overviewWallpaperCache
-
-        active: root.overviewLoaderActive
-        wallpaperPath: userConfig.wallpaperCustomCommandEnabled === true && root.wallpaperPickerActiveWallpaper !== ""
-            ? root.wallpaperPickerActiveWallpaper
-            : userConfig.wallpaperPath
-        hyprMonitor: root.hyprMonitor
-        screenObject: root.screen
-    }
-
     IslandClock {
         id: timeObj
         clockFormat: userConfig.clockFormat
@@ -1351,7 +1094,6 @@ PanelWindow {
             || notificationCenterLayerVisible
             || notificationLayerVisible
             || expandedPlayerKeyboardFocusRequested
-            || (root.monitorFocused && (root.overviewVisible || root.connectivityPromptActive))
 
         property bool powerMenuRequested: false
         property string islandState: "normal"
@@ -1359,7 +1101,6 @@ PanelWindow {
         property real osdProgress: -1.0
         property bool osdProgressAnimationEnabled: true
         property string osdCustomText: ""
-        property int currentWs: root.currentMonitorWorkspaceId > 0 ? root.currentMonitorWorkspaceId : 1
         readonly property int batteryCapacity: systemState.batteryCapacity
         readonly property bool isCharging: systemState.isCharging
 
@@ -1421,7 +1162,6 @@ PanelWindow {
         property string notificationImagePath: ""
         property int notificationUrgency: 1
         property int notificationExpireTimeoutMs: -1
-        property var notificationSenderPid: 0
         property bool notificationExpanded: false
         property bool isEmergencyAlert: false
         property real customCapsuleWidth: userConfig.islandWidth
@@ -1430,7 +1170,6 @@ PanelWindow {
         property real transientCapsuleProgress: -1.0
         property string transientCapsuleText: ""
         property string restingState: normalizeRestingState(userConfig.dynamicIslandRestingState)
-        property string workspaceOriginSide: "none"
         property string splitOriginSide: "none"
         property var notificationHistoryModel: ListModel {}
         readonly property var cavaLevels: systemState.cavaLevels
@@ -1538,30 +1277,22 @@ PanelWindow {
         readonly property bool showsMediaInNormal: restingState === "lyrics"
             || (restingState === "normal" && !!currentTrack)
             || (restingState === "custom" && !hasCustomLeftItems && !!currentTrack)
-        readonly property bool fileShelfLayerInteractive: !root.overviewVisible
-            && (islandState === "file_shelf" || islandState === "normal" || islandState === "lyrics" || islandState === "custom")
-        readonly property bool clipboardLayerInteractive: !root.overviewVisible
-            && (islandState === "clipboard" || islandState === "normal" || islandState === "lyrics" || islandState === "custom")
-        readonly property bool weatherLayerInteractive: !root.overviewVisible
-            && (islandState === "weather" || islandState === "normal" || islandState === "lyrics" || islandState === "custom")
-        readonly property bool calendarLayerInteractive: !root.overviewVisible
-            && (islandState === "calendar" || islandState === "normal" || islandState === "lyrics" || islandState === "custom")
+        readonly property bool fileShelfLayerInteractive: (islandState === "file_shelf" || islandState === "normal" || islandState === "lyrics" || islandState === "custom")
+        readonly property bool clipboardLayerInteractive: (islandState === "clipboard" || islandState === "normal" || islandState === "lyrics" || islandState === "custom")
+        readonly property bool weatherLayerInteractive: (islandState === "weather" || islandState === "normal" || islandState === "lyrics" || islandState === "custom")
+        readonly property bool calendarLayerInteractive: (islandState === "calendar" || islandState === "normal" || islandState === "lyrics" || islandState === "custom")
         readonly property bool fileShelfOverlayActive: Boolean(fileShelfLayerInteractive && fileShelfLoader.item && fileShelfLoader.item.hasVisibleCards)
         readonly property bool fileShelfAcceptingDrop: islandFileDropArea.containsDrag
-            && !root.overviewVisible
             && (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
         readonly property real timerProgress: timerActive && timerTotalSeconds > 0
             ? Math.max(0, Math.min(1, timerRemainingSeconds / timerTotalSeconds))
             : 0
         readonly property bool timerBubbleWanted: (timerActive && timerRemainingSeconds > 0 || timerCompletionAnimating)
-            && !root.overviewVisible
             && (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
         readonly property bool fileShelfBubbleWanted: FileShelf.count > 0
-            && !root.overviewVisible
             && (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
         readonly property var connectedEarphoneDevice: bluetoothConnectionTracker.activeEarphoneDevice
         readonly property bool bluetoothEarphoneBubbleWanted: !!connectedEarphoneDevice
-            && !root.overviewVisible
             && (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
         readonly property bool isNotchMode: userConfig.islandStyle === "notch" && !root.atBottom
         readonly property real effectiveTopMargin: isNotchMode ? 0 : userConfig.islandTopMargin
@@ -1571,15 +1302,12 @@ PanelWindow {
         readonly property real bubblesBaseX: mainCapsule.x + mainCapsule.width + privacyBubbleGap + (isNotchMode ? 10 : 0)
         readonly property bool cameraBubbleWanted: userConfig.privacyCameraBubbleEnabled
             && cameraActive
-            && !root.overviewVisible
             && (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
         readonly property bool micBubbleWanted: userConfig.privacyMicBubbleEnabled
             && micActive
-            && !root.overviewVisible
             && (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
         readonly property real privacyBubblesOffset: (cameraBubble.mounted ? privacyBubbleStep : 0) + (micBubble.mounted ? privacyBubbleStep : 0)
-        readonly property bool fileShelfCanAutoOpen: !root.overviewVisible
-            && (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
+        readonly property bool fileShelfCanAutoOpen: (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
         readonly property bool blocksTransientSplit: islandState === "expanded"
             || islandState === "control_center"
             || islandState === "notification"
@@ -1600,12 +1328,10 @@ PanelWindow {
         readonly property bool canShowSideSwipe: islandState === "normal"
             || islandState === "custom"
             || islandState === "lyrics"
-            || (islandState === "long_capsule" && workspaceOriginSide === "none")
         readonly property real rightSwipeProgress: Math.max(0, swipeTransitionProgress)
         readonly property var customLeftItems: systemState.customLeftItems
         readonly property bool hasCustomLeftItems: systemState.hasCustomLeftItems
-        readonly property bool customSwipeVisible: !root.overviewVisible
-            && hasCustomLeftItems
+        readonly property bool customSwipeVisible: hasCustomLeftItems
             && (
                 capsuleMouseArea.sideSwipeInteractive
                 ? swipeTransitionProgress < 0
@@ -1613,33 +1339,29 @@ PanelWindow {
                     islandState === "custom"
                     || (islandState === "normal" && swipeTransitionProgress < 0)
                     || (islandState === "split" && splitOriginSide === "left")
-                    || (islandState === "long_capsule"
-                        && (workspaceOriginSide === "left" || swipeTransitionProgress < 0))
                 )
             )
-        readonly property bool lyricsSwipeVisible: !root.overviewVisible && (
+        readonly property bool lyricsSwipeVisible: (
             capsuleMouseArea.sideSwipeInteractive
             ? swipeTransitionProgress >= 0
             : (
                 islandState === "lyrics"
                 || (islandState === "normal" && swipeTransitionProgress >= 0)
                 || (islandState === "split" && splitOriginSide === "right")
-                || (islandState === "long_capsule"
-                    && (workspaceOriginSide === "right" || swipeTransitionProgress > 0))
             )
         )
-        readonly property bool expandedLayerVisible: !root.overviewVisible && islandState === "expanded"
-        readonly property bool notificationLayerVisible: !root.overviewVisible && islandState === "notification"
-        readonly property bool controlCenterLayerVisible: !root.overviewVisible && islandState === "control_center"
-        readonly property bool notificationCenterLayerVisible: !root.overviewVisible && islandState === "notification_center"
-        readonly property bool wallpaperPickerLayerVisible: !root.overviewVisible && islandState === "wallpaper_picker"
-        readonly property bool applicationLauncherLayerVisible: !root.overviewVisible && islandState === "application_launcher"
-        readonly property bool fileShelfLayerVisible: !root.overviewVisible && islandState === "file_shelf"
-        readonly property bool clipboardLayerVisible: !root.overviewVisible && islandState === "clipboard"
-        readonly property bool weatherLayerVisible: !root.overviewVisible && islandState === "weather"
-        readonly property bool calendarLayerVisible: !root.overviewVisible && islandState === "calendar"
-        readonly property bool privacyHudLayerVisible: !root.overviewVisible && islandState === "privacy_hud"
-        readonly property bool glanceLayerVisible: !root.overviewVisible && islandState === "glance"
+        readonly property bool expandedLayerVisible: islandState === "expanded"
+        readonly property bool notificationLayerVisible: islandState === "notification"
+        readonly property bool controlCenterLayerVisible: islandState === "control_center"
+        readonly property bool notificationCenterLayerVisible: islandState === "notification_center"
+        readonly property bool wallpaperPickerLayerVisible: islandState === "wallpaper_picker"
+        readonly property bool applicationLauncherLayerVisible: islandState === "application_launcher"
+        readonly property bool fileShelfLayerVisible: islandState === "file_shelf"
+        readonly property bool clipboardLayerVisible: islandState === "clipboard"
+        readonly property bool weatherLayerVisible: islandState === "weather"
+        readonly property bool calendarLayerVisible: islandState === "calendar"
+        readonly property bool privacyHudLayerVisible: islandState === "privacy_hud"
+        readonly property bool glanceLayerVisible: islandState === "glance"
         readonly property var activePlayer: mediaController.activePlayer
         readonly property string lyricsDisplayText: mediaController.displayText
         readonly property string currentTrack: mediaController.currentTrack
@@ -1653,9 +1375,6 @@ PanelWindow {
         readonly property bool cameraActive: root.cameraActive
         readonly property bool privacyActive: root.privacyActive
         readonly property var bluetoothDevices: bluetoothConnectionTracker.devices
-        readonly property var overviewView: overviewLoader.item && overviewLoader.item.overviewView
-            ? overviewLoader.item.overviewView
-            : null
 
         onExpandedLayerVisibleChanged: {
             if (expandedLayerVisible)
@@ -1684,8 +1403,7 @@ PanelWindow {
                 restingState = "normal";
 
                 if (islandState === "custom"
-                        || (islandState === "split" && splitOriginSide === "left")
-                        || (islandState === "long_capsule" && workspaceOriginSide === "left")) {
+                        || (islandState === "split" && splitOriginSide === "left")) {
                     restoreRestingCapsule(true);
                 } else {
                     applyRestingVisuals();
@@ -1714,7 +1432,6 @@ PanelWindow {
             dateText: timeObj.currentDateLabel
             currentTrack: islandContainer.currentTrack
             currentArtUrl: islandContainer.currentArtUrl
-            currentWorkspace: islandContainer.currentWs
             customSwipeActive: false
             statsVisible: false
             lyricsCavaActive: islandContainer.restingMusicVisible && restingLayer.visible
@@ -1722,28 +1439,6 @@ PanelWindow {
 
             onTransientRequested: function(icon, progress, text) {
                 islandContainer.showTransientCapsule(icon, progress, text);
-            }
-        }
-
-        CompositorWorkspaceTracker {
-            id: workspaceTracker
-
-            compositor: CompositorBackend.compositor
-            hyprMonitor: root.hyprMonitor
-            hyprMonitorName: root.hyprMonitorName
-            outputName: root.compositorOutputName
-            monitorFocused: root.monitorFocused
-
-            onWorkspaceSynced: function(workspaceId) {
-                islandContainer.currentWs = workspaceId;
-            }
-
-            onWorkspaceActivated: function(workspaceId) {
-                if(userConfig.islandShowWorkspaceOnAutoHide){
-                    root.showAutoHiddenIsland();
-                }
-
-                islandContainer.showWorkspaceCapsule(workspaceId);
             }
         }
 
@@ -1778,12 +1473,6 @@ PanelWindow {
                     return;
                 }
 
-                if (root.overviewVisible) {
-                    root.closeOverviewEverywhere();
-                    event.accepted = true;
-                    return;
-                }
-
                 if (islandContainer.islandState !== islandContainer.restingState) {
                     islandContainer.smartRestoreState();
                     event.accepted = true;
@@ -1795,39 +1484,6 @@ PanelWindow {
                     event.accepted = true;
                     return;
                 }
-            }
-
-            if (!root.overviewVisible) return;
-
-            const view = islandContainer.overviewView;
-            if (event.key === Qt.Key_H) {
-                if (view)
-                    view.focusAdjacentWorkspace(0, -1);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_J) {
-                if (view)
-                    view.focusAdjacentWorkspace(1, 0);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_K) {
-                if (view)
-                    view.focusAdjacentWorkspace(-1, 0);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_L) {
-                if (view)
-                    view.focusAdjacentWorkspace(0, 1);
-                event.accepted = true;
-            } else if ((event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier)) || event.key === Qt.Key_Backtab) {
-                if (root.compositorIsNiri)
-                    CompositorBackend.focusWorkspaceAdjacent(-1);
-                else if (root.hyprlandIntegration)
-                    root.hyprlandIntegration.focusWorkspace("r-1");
-                event.accepted = true;
-            } else if (event.key === Qt.Key_Tab) {
-                if (root.compositorIsNiri)
-                    CompositorBackend.focusWorkspaceAdjacent(1);
-                else if (root.hyprlandIntegration)
-                    root.hyprlandIntegration.focusWorkspace("r+1");
-                event.accepted = true;
             }
         }
 
@@ -1879,15 +1535,6 @@ PanelWindow {
                 return;
             case "toggleRecording":
                 ScreenRecorder.toggleRecording();
-                return;
-            case "toggleOverview":
-                root.toggleOverviewEverywhere();
-                return;
-            case "openOverview":
-                root.openOverviewEverywhere();
-                return;
-            case "closeOverview":
-                root.closeOverviewEverywhere();
                 return;
             case "toggleLyrics":
                 if (restingState === "lyrics")
@@ -2030,8 +1677,6 @@ PanelWindow {
                 return "left";
             case "lyrics":
                 return "right";
-            case "long_capsule":
-                return workspaceOriginSide;
             case "split":
                 return splitOriginSide;
             default:
@@ -2048,7 +1693,6 @@ PanelWindow {
 
         function abortSideTransientMode() {
             sideTransientRestoreTimer.stop();
-            workspaceOriginSide = "none";
             splitOriginSide = "none";
         }
 
@@ -2330,7 +1974,6 @@ PanelWindow {
                 imagePath: raw.imagePath || "",
                 urgency: typeof raw.urgency === "number" ? raw.urgency : 1,
                 expireTimeoutMs: typeof raw.expireTimeoutMs === "number" ? raw.expireTimeoutMs : -1,
-                senderPid: (typeof raw.senderPid === "number" && raw.senderPid > 0) ? raw.senderPid : 0,
                 transient: !!raw.transient
             };
         }
@@ -2350,7 +1993,7 @@ PanelWindow {
                 return;
             }
 
-            const popupBlocked = mode !== "popup" || root.overviewVisible || islandState === "control_center"
+            const popupBlocked = mode !== "popup" || islandState === "control_center"
                 || islandState === "expanded" || islandState === "file_shelf";
             // Real notifications always reach the history (transient ones never); tide's own
             // feedback (negative ids) is dropped when it can't be shown.
@@ -2395,14 +2038,12 @@ PanelWindow {
             notificationImagePath = record.imagePath;
             notificationUrgency = record.urgency;
             notificationExpireTimeoutMs = record.expireTimeoutMs;
-            notificationSenderPid = record.senderPid;
         }
 
         function notificationDetails() {
             return {
                 id: notificationId,
                 appName: notificationAppName,
-                senderPid: notificationSenderPid,
                 summary: notificationSummary,
                 body: notificationBody
             };
@@ -2437,7 +2078,6 @@ PanelWindow {
                 actions: record.actions,
                 imagePath: record.imagePath,
                 urgency: record.urgency,
-                senderPid: record.senderPid,
                 timestamp: new Date(),
                 count: count
             };
@@ -2501,12 +2141,7 @@ PanelWindow {
             return true;
         }
 
-        function suppressCapsuleClick(cancelPreparedOverview) {
-            if (cancelPreparedOverview === undefined) cancelPreparedOverview = false;
-            if (cancelPreparedOverview && capsuleMouseArea.preparedOverviewOnPress) {
-                root.cancelPreparedOverviewEverywhere();
-                capsuleMouseArea.preparedOverviewOnPress = false;
-            }
+        function suppressCapsuleClick() {
             capsuleMouseArea.suppressNextClick = true;
             swipeSuppressReset.restart();
         }
@@ -2516,8 +2151,7 @@ PanelWindow {
             const normalizedRestingState = normalizeRestingState(restingState);
             const targetSide = restingStateSide(normalizedRestingState);
             const shouldAnimateToSide = targetSide !== "none"
-                && ((islandState === "long_capsule" && workspaceOriginSide === targetSide)
-                    || (islandState === "split" && splitOriginSide === targetSide));
+                && islandState === "split" && splitOriginSide === targetSide;
 
             if (!forceImmediate && shouldAnimateToSide) {
                 expandedByPlayerAutoOpen = false;
@@ -2682,20 +2316,6 @@ PanelWindow {
             showRestingCapsule("normal");
         }
 
-        function showWorkspaceCapsule(wsId) {
-            currentWs = wsId;
-            if (root.autoHideSuppressesTransientReveal) return;
-            if (islandState === "control_center" || islandState === "notification") return;
-            const animateFromSide = currentTransientOriginSide();
-            clearTransientCapsule();
-            sideTransientRestoreTimer.stop();
-            workspaceOriginSide = animateFromSide;
-            splitOriginSide = "none";
-            islandState = "long_capsule";
-            swipeTransitionProgress = 0;
-            restartAutoHideTimer();
-        }
-
         Timer { id: autoHideTimer; interval: islandContainer.defaultAutoHideInterval; onTriggered: islandContainer.handleAutoHideTimeout() }
         Timer {
             id: islandTimerTick
@@ -2723,7 +2343,6 @@ PanelWindow {
             id: sideTransientRestoreTimer
             interval: islandContainer.swipeAnimationDuration
             onTriggered: {
-                islandContainer.workspaceOriginSide = "none";
                 islandContainer.splitOriginSide = "none";
                 islandContainer.islandState = islandContainer.normalizeRestingState(islandContainer.restingState);
                 islandContainer.clearTransientCapsule();
@@ -2781,13 +2400,11 @@ PanelWindow {
             readonly property bool notificationHistorySurface: islandContainer.islandState === "notification_center"
             readonly property bool isCriticalNotification: islandContainer.islandState === "notification" && islandContainer.notificationUrgency === 2
             property real outlineWidth: islandContainer.isNotchMode ? 0 : 2
-            property color outlineColor: root.overviewContentVisible
-                ? root.overviewCapsuleBorderColor
-                : (isCriticalNotification ? StyleTokens.danger : StyleTokens.surfaceBorder)
+            property color outlineColor: isCriticalNotification ? StyleTokens.danger : StyleTokens.surfaceBorder
             property real displayedWidth: baseTargetWidth
             // At rest the clock sits on the island anchor and the capsule extends left for music
             // and right for battery: shift the capsule centre by half the difference.
-            property real centerShift: islandContainer.islandState === "normal" && !root.overviewVisible
+            property real centerShift: islandContainer.islandState === "normal"
                 ? (restingLayer.leftSectionWidth - restingLayer.rightSectionWidth) / 2
                 : 0
             Behavior on centerShift {
@@ -2797,17 +2414,14 @@ PanelWindow {
                 }
             }
             readonly property real baseTargetWidth: {
-                if (root.overviewVisible) return root.overviewCapsuleWidth;
                 if (sideTransientRestoreTimer.running) {
                     if (islandContainer.restingState === "lyrics"
-                            && ((islandContainer.islandState === "split" && islandContainer.splitOriginSide === "right")
-                                || (islandContainer.islandState === "long_capsule" && islandContainer.workspaceOriginSide === "right"))) {
+                            && islandContainer.islandState === "split" && islandContainer.splitOriginSide === "right") {
                         return islandContainer.lyricsCapsuleWidth;
                     }
 
                     if (islandContainer.restingState === "custom"
-                            && ((islandContainer.islandState === "split" && islandContainer.splitOriginSide === "left")
-                                || (islandContainer.islandState === "long_capsule" && islandContainer.workspaceOriginSide === "left"))) {
+                            && islandContainer.islandState === "split" && islandContainer.splitOriginSide === "left") {
                         return islandContainer.customCapsuleWidth;
                     }
                 }
@@ -2815,8 +2429,6 @@ PanelWindow {
                 switch (islandContainer.islandState) {
                 case "split":
                     return islandContainer.splitCapsuleWidth;
-                case "long_capsule":
-                    return 220;
                 case "custom":
                     return islandContainer.customCapsuleWidth;
                 case "lyrics":
@@ -2852,8 +2464,6 @@ PanelWindow {
                 }
             }
             readonly property real targetHeight: {
-                if (root.overviewVisible) return root.overviewCapsuleHeight;
-
                 switch (islandContainer.islandState) {
                 case "control_center":
                     return controlCenterLoader.item && controlCenterLoader.item.powerViewActive
@@ -2885,7 +2495,6 @@ PanelWindow {
                 }
             }
             readonly property real targetRadius: {
-                if (root.overviewVisible) return root.overviewCapsuleRadius;
                 if (!islandContainer.isNotchMode) return 10;
 
                 switch (islandContainer.islandState) {
@@ -2924,9 +2533,7 @@ PanelWindow {
             readonly property real sideSwipePreviewWidth: mainCapsule.sideSwipeWidthForProgress(
                 islandContainer.swipeTransitionProgress
             )
-            color: root.overviewContentVisible
-                ? root.overviewCapsuleColor
-                : Qt.rgba(StyleTokens.panel.r, StyleTokens.panel.g, StyleTokens.panel.b, userConfig.islandBackgroundOpacity / 100.0)
+            color: Qt.rgba(StyleTokens.panel.r, StyleTokens.panel.g, StyleTokens.panel.b, userConfig.islandBackgroundOpacity / 100.0)
             y: root.edgeY(islandContainer.effectiveTopMargin
                 - (1 - root.autoHideProgress) * (targetHeight + islandContainer.effectiveTopMargin + 8), height)
             x: parent ? parent.width * userConfig.islandPositionX / 100 - width / 2 - centerShift : 0
@@ -3041,7 +2648,7 @@ PanelWindow {
                 id: capsuleMouseArea
                 anchors.fill: parent
                 z: -1
-                enabled: !root.overviewVisible && twoFingerTouchArea.touchPoints.length < 2
+                enabled: twoFingerTouchArea.touchPoints.length < 2
                 acceptedButtons: root.dynamicIslandAcceptedButtons
                 preventStealing: true
                 hoverEnabled: root.hoverExpandEnabled || root.autoHideEnabled
@@ -3054,7 +2661,6 @@ PanelWindow {
                 property bool swipeMoved: false
                 property bool sideSwipeInteractive: false
                 property bool suppressNextClick: false
-                property bool preparedOverviewOnPress: false
                 property bool swipeDownDetected: false
                 property bool swipeUpDetected: false
 
@@ -3098,23 +2704,6 @@ PanelWindow {
                     swipeMoved = false;
                     sideSwipeInteractive = swipeArmed;
                     islandContainer.swipeTransitionProgress = swipeStartProgress;
-
-                    // A notification popup ignores the configured island actions.
-                    let pressedAction = "";
-                    if (islandContainer.islandState === "notification") {
-                        pressedAction = "";
-                    } else if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandPrimaryButton)) {
-                        pressedAction = userConfig.dynamicIslandPrimaryAction;
-                    } else if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandSecondaryButton)) {
-                        pressedAction = userConfig.dynamicIslandSecondaryAction;
-                    } else if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandMiddleButton)) {
-                        pressedAction = userConfig.dynamicIslandMiddleAction;
-                    }
-
-                    preparedOverviewOnPress = pressedAction === "openOverview"
-                        || (pressedAction === "toggleOverview" && root.overviewPhase === "closed");
-                    if (preparedOverviewOnPress)
-                        root.prepareOverviewEverywhere();
                 }
 
                 onPositionChanged: (mouse) => {
@@ -3148,9 +2737,6 @@ PanelWindow {
 
                 onReleased: {
                     if (swipeMoved) {
-                        if (preparedOverviewOnPress)
-                            root.cancelPreparedOverviewEverywhere();
-                        preparedOverviewOnPress = false;
                         suppressNextClick = true;
                         swipeSuppressReset.restart();
                     }
@@ -3224,15 +2810,12 @@ PanelWindow {
                 }
 
                 onCanceled: {
-                    if (preparedOverviewOnPress)
-                        root.cancelPreparedOverviewEverywhere();
                     swipeArmed = false;
                     swipeMoved = false;
                     swipeDownDetected = false;
                     swipeUpDetected = false;
                     sideSwipeInteractive = false;
                     suppressNextClick = false;
-                    preparedOverviewOnPress = false;
                     swipeSuppressReset.stop();
                     mainCapsule.displayedWidth = mainCapsule.baseTargetWidth;
                     islandContainer.swipeTransitionProgress = islandContainer.swipeRestProgressForState();
@@ -3246,14 +2829,10 @@ PanelWindow {
                     if (suppressNextClick) {
                         swipeSuppressReset.stop();
                         suppressNextClick = false;
-                        preparedOverviewOnPress = false;
                         return;
                     }
 
                     if (islandContainer.islandState === "privacy_hud") {
-                        if (preparedOverviewOnPress)
-                            root.cancelPreparedOverviewEverywhere();
-                        preparedOverviewOnPress = false;
                         islandContainer.smartRestoreState();
                         return;
                     }
@@ -3261,9 +2840,6 @@ PanelWindow {
                     // A notification popup handles every click itself; never fall through to the
                     // configured island click actions (e.g. toggling the control center).
                     if (islandContainer.islandState === "notification") {
-                        if (preparedOverviewOnPress)
-                            root.cancelPreparedOverviewEverywhere();
-                        preparedOverviewOnPress = false;
 
                         // Only a plain left click activates; right and middle do nothing here.
                         if (mouse.button !== Qt.LeftButton)
@@ -3283,9 +2859,6 @@ PanelWindow {
                         const point = restingLayer.mapFromItem(capsuleMouseArea, mouse.x, mouse.y);
                         const section = restingLayer.sectionAt(point.x, point.y);
                         if (section !== "clock") {
-                            if (preparedOverviewOnPress)
-                                root.cancelPreparedOverviewEverywhere();
-                            preparedOverviewOnPress = false;
                             if (section === "bell")
                                 islandContainer.showNotificationCenter();
                             else if (section === "battery")
@@ -3299,25 +2872,19 @@ PanelWindow {
                     if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandPrimaryButton)) {
 
                         if (islandContainer.toggleNotificationExpansionIfNeeded()) {
-                            if (preparedOverviewOnPress)
-                                root.cancelPreparedOverviewEverywhere();
-                            preparedOverviewOnPress = false;
                             return;
                         }
 
-                        preparedOverviewOnPress = false;
                         islandContainer.handleConfiguredClickAction(userConfig.dynamicIslandPrimaryAction);
                         return;
                     }
 
                     if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandSecondaryButton)) {
-                        preparedOverviewOnPress = false;
                         islandContainer.handleConfiguredClickAction(userConfig.dynamicIslandSecondaryAction);
                         return;
                     }
 
                     if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandMiddleButton)) {
-                        preparedOverviewOnPress = false;
                         islandContainer.handleConfiguredClickAction(userConfig.dynamicIslandMiddleAction);
                         return;
                     }
@@ -3328,7 +2895,6 @@ PanelWindow {
                 id: twoFingerTouchArea
                 anchors.fill: parent
                 z: 0
-                enabled: !root.overviewVisible
                 mouseEnabled: false
                 minimumTouchPoints: 2
                 maximumTouchPoints: 2
@@ -3438,7 +3004,7 @@ PanelWindow {
 
             RestingIslandLayer {
                 id: restingLayer
-                showCondition: !root.overviewVisible && islandContainer.islandState === "normal"
+                showCondition: islandContainer.islandState === "normal"
                 timeText: timeObj.currentTime
                 timeFontFamily: root.timeFontFamily
                 textFontFamily: root.textFontFamily
@@ -3459,7 +3025,7 @@ PanelWindow {
             Loader {
                 id: splitIconLoader
                 anchors.fill: parent
-                active: !root.overviewVisible && islandContainer.splitShowsIconOnly
+                active: islandContainer.splitShowsIconOnly
                 asynchronous: false
                 visible: active
 
@@ -3477,7 +3043,7 @@ PanelWindow {
             Loader {
                 id: osdLayerLoader
                 anchors.fill: parent
-                active: !root.overviewVisible && islandContainer.splitUsesExtendedLayout
+                active: islandContainer.splitUsesExtendedLayout
                 asynchronous: false
                 visible: active
 
@@ -3493,30 +3059,6 @@ PanelWindow {
                         transitionProgress: islandContainer.swipeTransitionProgress
                         slideDirection: islandContainer.splitOriginSide
                         showCondition: true
-                    }
-                }
-            }
-
-            Loader {
-                id: workspaceLayerLoader
-                anchors.fill: parent
-                active: !root.overviewVisible
-                    && islandContainer.islandState === "long_capsule"
-                    && (islandContainer.workspaceOriginSide !== "none"
-                        || Math.abs(islandContainer.swipeTransitionProgress) < 0.001)
-                asynchronous: false
-                visible: active
-
-                sourceComponent: Component {
-                    WorkspaceLayer {
-                        workspaceId: islandContainer.currentWs
-                        displayText: "Workspace " + islandContainer.currentWs
-                        textFontFamily: root.textFontFamily
-                        textPixelSize: root.bodyFontSize
-                        animateVisibility: islandContainer.restingState === "normal"
-                        transitionProgress: islandContainer.swipeTransitionProgress
-                        showCondition: true
-                        slideDirection: islandContainer.workspaceOriginSide
                     }
                 }
             }
@@ -3596,7 +3138,7 @@ PanelWindow {
                         heroFontFamily: root.heroFontFamily
                         showCondition: true
                         onExpansionToggleRequested: {
-                            islandContainer.suppressCapsuleClick(true);
+                            islandContainer.suppressCapsuleClick();
                             islandContainer.toggleNotificationExpansionIfNeeded();
                         }
                         onActionTriggered: function(actionKey) {
@@ -3604,8 +3146,6 @@ PanelWindow {
                             const details = islandContainer.notificationDetails();
                             if (actionKey === "dismiss" || actionKey === "close")
                                 root.dismissNotification(details.id);
-                            else if (actionKey === "focus")
-                                SystemServices.focusSenderWindow(details.appName, details.senderPid, details.summary, details.body);
                             else if (actionKey === "default")
                                 root.activateNotification(details, false);
                             else
@@ -3672,7 +3212,6 @@ PanelWindow {
                         brightnessLevel: islandContainer.currentBrightness
                         micLevel: islandContainer.currentMicVolume
                         micMuted: islandContainer.isMicMuted
-                        currentWorkspace: islandContainer.currentWs
                         currentTrack: islandContainer.currentTrack
                         currentArtist: islandContainer.currentArtist
                         showCondition: islandContainer.controlCenterLayerVisible
@@ -3721,9 +3260,8 @@ PanelWindow {
                         onNotificationDismissRequested: function(id) {
                             root.dismissNotification(id);
                         }
-                        onNotificationActivated: function(id, appName, senderPid, summary, body) {
-                            root.activateNotification({ id: id, appName: appName, senderPid: senderPid,
-                                summary: summary, body: body }, true);
+                        onNotificationActivated: function(id) {
+                            root.activateNotification({ id: id }, true);
                             islandContainer.smartRestoreState();
                         }
                         onCloseRequested: islandContainer.smartRestoreState()
@@ -3931,35 +3469,6 @@ PanelWindow {
                 border.width: islandFileDropArea.containsDrag ? 2 : 0
                 border.color: StyleTokens.accent
                 visible: islandFileDropArea.containsDrag
-            }
-
-            Loader {
-                id: overviewLoader
-
-                anchors.fill: parent
-                active: root.overviewLoaderActive
-                asynchronous: false
-                visible: root.overviewContentVisible
-
-                onStatusChanged: {
-                    if (status === Loader.Ready && root.overviewPreparing) {
-                        root.beginOverviewOpening();
-                        root.focusOverview();
-                    }
-                }
-
-                sourceComponent: Component {
-                    WorkspaceOverviewScene {
-                        screen: root.screen
-                        showCondition: root.overviewVisible
-                        previewsEnabled: root.overviewContentVisible
-                        textFontFamily: root.textFontFamily
-                        heroFontFamily: root.heroFontFamily
-                        wallpaperPath: root.overviewWallpaperSource
-                        windowCornerRadius: root.overviewWindowCornerRadius
-                        onCloseRequested: root.closeOverviewEverywhere()
-                    }
-                }
             }
 
         }

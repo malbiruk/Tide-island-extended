@@ -147,8 +147,6 @@ Scope {
         for (let i = 0; i < notificationActions.length; i++)
             actions.push({ id: notificationActions[i].identifier, text: notificationActions[i].text });
 
-        const hints = notification.hints || {};
-        const senderPid = Number(hints["sender-pid"]);
         return {
             id: notification.id,
             appName: notification.appName,
@@ -159,7 +157,6 @@ Scope {
             imagePath: notification.image,
             urgency: Number(notification.urgency),
             expireTimeoutMs: notificationExpireTimeoutMs(notification),
-            senderPid: Number.isFinite(senderPid) && senderPid > 0 ? Math.floor(senderPid) : 0,
             transient: !!notification.transient
         };
     }
@@ -337,64 +334,6 @@ Scope {
         return !!(notification && notification.resident);
     }
 
-    function anyOverviewOpen() {
-        if (CompositorBackend.compositor === "niri")
-            return false;
-
-        const windows = panelVariants.instances ? panelVariants.instances : [];
-        for (let index = 0; index < windows.length; index++) {
-            const window = windows[index];
-            if (window && window.overviewPhase !== "closed")
-                return true;
-        }
-
-        return false;
-    }
-
-    function prepareOverviewAll() {
-        if (CompositorBackend.compositor === "niri")
-            return;
-
-        shellRoot.forEachWindow((window) => window.prepareOverview());
-    }
-
-    function cancelPreparedOverviewAll() {
-        if (CompositorBackend.compositor === "niri")
-            return;
-
-        shellRoot.forEachWindow((window) => window.cancelPreparedOverview());
-    }
-
-    function openOverviewAll() {
-        if (CompositorBackend.compositor === "niri") {
-            CompositorBackend.openOverview();
-            return;
-        }
-
-        shellRoot.forEachWindow((window) => window.openOverview());
-    }
-
-    function closeOverviewAll() {
-        if (CompositorBackend.compositor === "niri") {
-            CompositorBackend.closeOverview();
-            return;
-        }
-
-        shellRoot.forEachWindow((window) => window.closeOverview());
-    }
-
-    function toggleOverviewAll() {
-        if (CompositorBackend.compositor === "niri") {
-            CompositorBackend.toggleOverview();
-            return;
-        }
-
-        if (shellRoot.anyOverviewOpen())
-            shellRoot.closeOverviewAll();
-        else
-            shellRoot.openOverviewAll();
-    }
-
     function anyIslandShown() {
         const windows = panelVariants.instances ? panelVariants.instances : [];
         for (let index = 0; index < windows.length; index++) {
@@ -434,53 +373,14 @@ Scope {
         });
     }
 
-    function refreshOverviewWallpaperCaches(wallpaperPath) {
-        shellRoot.forEachWindow((window) => {
-            if (window
-                    && wallpaperPath !== undefined
-                    && wallpaperPath !== null
-                    && String(wallpaperPath) !== "") {
-                window.wallpaperPickerActiveWallpaper = String(wallpaperPath);
-            }
-            if (window && window.prewarmWallpaperCache)
-                window.prewarmWallpaperCache();
-        });
-    }
-
+    // driftwm reports no focused output, so panels opened by IPC go to the first island.
     function forFocusedWindow(callback) {
         const windows = panelVariants.instances ? panelVariants.instances : [];
-        let fallbackWindow = null;
         for (let index = 0; index < windows.length; index++) {
-            const window = windows[index];
-            if (window && !fallbackWindow)
-                fallbackWindow = window;
-            if (window && window.monitorFocused) {
-                callback(window);
+            if (windows[index]) {
+                callback(windows[index]);
                 return;
             }
-        }
-
-        if (fallbackWindow)
-            callback(fallbackWindow);
-    }
-
-    IpcHandler {
-        target: "overview"
-
-        function toggle() {
-            shellRoot.toggleOverviewAll();
-        }
-
-        function open() {
-            shellRoot.openOverviewAll();
-        }
-
-        function close() {
-            shellRoot.closeOverviewAll();
-        }
-
-        function refreshWallpaperCache() {
-            shellRoot.refreshOverviewWallpaperCaches();
         }
     }
 
@@ -1156,22 +1056,6 @@ Scope {
 
         function toggle() {
             globalLockscreen.toggle();
-        }
-    }
-
-    Connections {
-        target: CompositorBackend
-
-        function onOverviewToggleRequested() {
-            shellRoot.toggleOverviewAll();
-        }
-
-        function onOverviewOpenRequested() {
-            shellRoot.openOverviewAll();
-        }
-
-        function onOverviewCloseRequested() {
-            shellRoot.closeOverviewAll();
         }
     }
 

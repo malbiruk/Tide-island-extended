@@ -41,7 +41,6 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(QString powerProfileDriver READ powerProfileDriver NOTIFY powerProfileDriverChanged FINAL)
     Q_PROPERTY(QString terminalEmulator READ terminalEmulator NOTIFY terminalEmulatorChanged FINAL)
 
-    Q_PROPERTY(int workspaceOverviewWindowDragButton READ workspaceOverviewWindowDragButton NOTIFY workspaceOverviewWindowDragButtonChanged FINAL)
 
     Q_PROPERTY(int dynamicIslandPrimaryButton READ dynamicIslandPrimaryButton NOTIFY dynamicIslandPrimaryButtonChanged FINAL)
     Q_PROPERTY(QString dynamicIslandPrimaryAction READ dynamicIslandPrimaryAction NOTIFY dynamicIslandPrimaryActionChanged FINAL)
@@ -53,7 +52,6 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(int hoverExpandAction READ hoverExpandAction NOTIFY hoverExpandActionChanged FINAL)
     Q_PROPERTY(bool islandAutoHideEnabled READ islandAutoHideEnabled NOTIFY islandAutoHideEnabledChanged FINAL)
     Q_PROPERTY(int islandAutoHideDelayMs READ islandAutoHideDelayMs NOTIFY islandAutoHideDelayMsChanged FINAL)
-    Q_PROPERTY(bool islandShowWorkspaceOnAutoHide READ islandShowWorkspaceOnAutoHide NOTIFY islandShowWorkspaceOnAutoHideChanged FINAL)
     Q_PROPERTY(QString islandBatteryMode READ islandBatteryMode NOTIFY islandBatteryModeChanged FINAL)
     Q_PROPERTY(bool islandAutoHideKeepActivities READ islandAutoHideKeepActivities NOTIFY islandAutoHideKeepActivitiesChanged FINAL)
     // Popup timeouts in seconds for normal and low urgency (critical popups stay until dismissed).
@@ -126,7 +124,6 @@ public:
     QString tlpPermissionMode() const;
     QString powerProfileDriver() const;
     QString terminalEmulator() const;
-    int workspaceOverviewWindowDragButton() const;
     int dynamicIslandPrimaryButton() const;
     QString dynamicIslandPrimaryAction() const;
     int dynamicIslandSecondaryButton() const;
@@ -136,7 +133,6 @@ public:
     const QVariantList &dynamicIslandLeftSwipeItems() const;
     int hoverExpandAction() const;
     QString islandStyle() const;
-    bool islandShowWorkspaceOnAutoHide() const;
     QString islandBatteryMode() const;
     bool islandAutoHideKeepActivities() const;
     int notificationTimeout() const;
@@ -219,7 +215,6 @@ signals:
     void tlpPermissionModeChanged();
     void powerProfileDriverChanged();
     void terminalEmulatorChanged();
-    void workspaceOverviewWindowDragButtonChanged();
     void dynamicIslandPrimaryButtonChanged();
     void dynamicIslandPrimaryActionChanged();
     void dynamicIslandSecondaryButtonChanged();
@@ -228,7 +223,6 @@ signals:
     void dynamicIslandMiddleActionChanged();
     void dynamicIslandLeftSwipeItemsChanged();
     void islandStyleChanged();
-    void islandShowWorkspaceOnAutoHideChanged();
     void islandBatteryModeChanged();
     void islandAutoHideKeepActivitiesChanged();
     void notificationTimeoutChanged();
@@ -304,7 +298,6 @@ private:
     QString m_tlpPermissionMode = QStringLiteral("skip");
     QString m_powerProfileDriver = QStringLiteral("auto");
     QString m_terminalEmulator;
-    int m_workspaceOverviewWindowDragButton = 1;
     int m_dynamicIslandPrimaryButton = 1;
     QString m_dynamicIslandPrimaryAction = QStringLiteral("none");
     int m_dynamicIslandSecondaryButton = 3;
@@ -312,7 +305,6 @@ private:
     int m_dynamicIslandMiddleButton = 2;
     QString m_dynamicIslandMiddleAction = QStringLiteral("toggleClipboard");
     QVariantList m_dynamicIslandLeftSwipeItems;
-    bool m_islandShowWorkspaceOnAutoHide = true;
     QString m_islandBatteryMode = QStringLiteral("low");
     bool m_islandAutoHideKeepActivities = true;
     int m_notificationTimeout = 8;

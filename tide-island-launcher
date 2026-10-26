@@ -6,7 +6,6 @@
 LAUNCHER_PATH="$(readlink -f "$0")"
 INSTALL_PREFIX="$(dirname "$(dirname "$LAUNCHER_PATH")")"
 QML_PATH="${TIDE_ISLAND_QML_PATH:-$INSTALL_PREFIX/share/tide-island}"
-CONFIG_APP="${TIDE_ISLAND_CONFIG_APP:-$INSTALL_PREFIX/bin/tide-island-config-app}"
 QML_MODULE_PATH="$INSTALL_PREFIX/@CMAKE_INSTALL_LIBDIR@/qt6/qml"
 if [[ "$QML_MODULE_PATH" == *"@CMAKE_INSTALL_LIBDIR@"* ]]; then
   if [[ -d "$INSTALL_PREFIX/lib/qt6/qml" ]]; then
@@ -68,24 +67,6 @@ if [[ "${SYSTEMD_EXEC_PID:-}" != "$$" ]]; then
       fi
     fi
   done
-fi
-
-# Auto-discover Niri socket if running on Niri but NIRI_SOCKET is not in env
-if [[ -z "${NIRI_SOCKET:-}" ]]; then
-  for s in /run/user/"$(id -u)"/niri*.sock; do
-    if [[ -S "$s" ]]; then
-      export NIRI_SOCKET="$s"
-      break
-    fi
-  done
-fi
-
-desktop_name=":${XDG_CURRENT_DESKTOP,,}:"
-compositor_override="${TIDE_ISLAND_COMPOSITOR,,}"
-if [[ "$compositor_override" == "niri" ]] \
-    || [[ -z "$compositor_override" && "$desktop_name" == *":niri:"* ]] \
-    || [[ -z "$compositor_override" && "$desktop_name" != *":hyprland:"* && -n "${NIRI_SOCKET:-}" ]]; then
-  "$CONFIG_APP" --ensure-niri-shortcuts || true
 fi
 
 exec /usr/bin/quickshell -p "$QML_PATH" "$@"

@@ -9,7 +9,7 @@ Item {
     signal clearAllRequested()
     signal closeRequested()
     signal notificationDismissRequested(var id)
-    signal notificationActivated(var id, string appName, var senderPid, string summary, string body)
+    signal notificationActivated(var id)
 
     focus: true
 
@@ -60,8 +60,8 @@ Item {
         onNotificationDismissRequested: function(id) {
             notificationCenter.notificationDismissRequested(id);
         }
-        onNotificationActivated: function(id, appName, senderPid, summary, body) {
-            notificationCenter.notificationActivated(id, appName, senderPid, summary, body);
+        onNotificationActivated: function(id) {
+            notificationCenter.notificationActivated(id);
         }
     }
 

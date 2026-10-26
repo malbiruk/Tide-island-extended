@@ -925,23 +925,6 @@ check_feature() {
   fi
 }
 
-check_night_light() {
-  if command -v hyprsunset >/dev/null 2>&1; then
-    printf '  [✓] %-22s - %s\n' "hyprsunset" "Night Light temperature filter (Hyprland)"
-  elif command -v gammastep >/dev/null 2>&1; then
-    printf '  [✓] %-22s - %s\n' "gammastep" "Night Light temperature filter (Wayland)"
-  else
-    local pkg="gammastep"
-    [[ "$DISTRO_FAMILY" == "arch" ]] && pkg="hyprsunset (or gammastep)"
-    printf '  [ ] %-22s - %s (Optional, package: %s)\n' "hyprsunset/gammastep" "Night Light temperature filter" "$pkg"
-    if [[ "$DISTRO_FAMILY" == "arch" ]]; then
-      missing_optional+=("hyprsunset")
-    else
-      missing_optional+=("gammastep")
-    fi
-  fi
-}
-
 check_wallpaper_backend() {
   local found=""
   local b
@@ -991,7 +974,6 @@ check_dependencies() {
   check_feature "cava" "cava" "8-bar audio spectrum visualizer (Player & Lockscreen)"
   check_feature "fuser" "psmisc" "Camera & video device privacy tracking (/dev/video*)"
   check_feature "gpu-screen-recorder" "gpu-screen-recorder" "Hardware accelerated screen & replay recorder"
-  check_night_light
   check_wallpaper_backend
   check_feature "brightnessctl" "brightnessctl" "Backlight brightness adjustment"
   check_power_profile

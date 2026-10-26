@@ -34,23 +34,23 @@ target_link_libraries(tide-island-config-app PRIVATE
     Qt6::QuickDialogs2
 )
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/shortcut_config_tests.cpp")
-    add_executable(tide_island_shortcut_config_tests
-        tests/shortcut_config_tests.cpp
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/config_app_tests.cpp")
+    add_executable(tide_island_config_app_tests
+        tests/config_app_tests.cpp
         backend.hpp
         backend.cpp
     )
 
-    target_include_directories(tide_island_shortcut_config_tests PRIVATE
+    target_include_directories(tide_island_config_app_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
-    target_link_libraries(tide_island_shortcut_config_tests PRIVATE
+    target_link_libraries(tide_island_config_app_tests PRIVATE
         Qt6::Gui
         Qt6::Test
     )
 
-    add_test(NAME tide_island_shortcut_config COMMAND tide_island_shortcut_config_tests)
+    add_test(NAME tide_island_config_app COMMAND tide_island_config_app_tests)
 endif()
 
 set_source_files_properties(Theme.qml ConfigStore.qml PROPERTIES
@@ -77,7 +77,6 @@ qt_add_qml_module(tide-island-config-app
         WeatherSettings.qml
         FontSettings.qml
         Interaction.qml
-        Shortcut.qml
         ApplicationLauncherSettings.qml
 )
 

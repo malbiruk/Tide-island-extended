@@ -63,7 +63,7 @@ ShellRoot {
         const capsule = capsuleBlur.surface;
         const originalProgress = island.autoHideProgress;
         // Keep opacity above the blur cutoff after the capsule has left the
-        // window. A nonempty offscreen region can make Hyprland blur the whole
+        // window. A nonempty offscreen region can make a compositor blur the whole
         // layer when its renderer clips that region down to nothing.
         for (const progress of [1, 0.5, 0.05, 0, 0.05, 0.5, 1]) {
             hideStep.value = progress;

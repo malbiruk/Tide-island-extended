@@ -297,10 +297,6 @@ QString UserConfigBackend::terminalEmulator() const
     return m_terminalEmulator;
 }
 
-int UserConfigBackend::workspaceOverviewWindowDragButton() const
-{
-    return m_workspaceOverviewWindowDragButton;
-}
 
 int UserConfigBackend::dynamicIslandPrimaryButton() const
 {
@@ -347,10 +343,6 @@ bool UserConfigBackend::islandAutoHideEnabled() const
     return m_islandAutoHideEnabled;
 }
 
-bool UserConfigBackend::islandShowWorkspaceOnAutoHide() const
-{
-    return m_islandShowWorkspaceOnAutoHide;
-}
 
 // Island battery section: "low" (only below 40 % while discharging), "always" or "never".
 QString UserConfigBackend::islandBatteryMode() const
@@ -787,7 +779,6 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_tlpPermissionMode, jsonString(configObject, QLatin1String("tlpPermissionMode"), QStringLiteral("skip")), &UserConfigBackend::tlpPermissionModeChanged);
     updateField(this, m_powerProfileDriver, jsonString(configObject, QLatin1String("powerProfileDriver"), QStringLiteral("auto")), &UserConfigBackend::powerProfileDriverChanged);
     updateField(this, m_terminalEmulator, jsonString(configObject, QLatin1String("terminalEmulator"), QString()), &UserConfigBackend::terminalEmulatorChanged);
-    updateField(this, m_workspaceOverviewWindowDragButton, jsonInt(configObject, QLatin1String("workspaceOverviewWindowDragButton"), 1), &UserConfigBackend::workspaceOverviewWindowDragButtonChanged);
     updateField(this, m_dynamicIslandPrimaryButton, jsonInt(configObject, QLatin1String("dynamicIslandPrimaryButton"), 1), &UserConfigBackend::dynamicIslandPrimaryButtonChanged);
     // The expanded player is no longer a click action: missing or legacy values mean "none".
     const QString primaryAction = jsonString(configObject, QLatin1String("dynamicIslandPrimaryAction"), QStringLiteral("none"));
@@ -795,7 +786,6 @@ void UserConfigBackend::loadConfig()
                 primaryAction == QLatin1String("toggleExpandedPlayer") ? QStringLiteral("none") : primaryAction,
                 &UserConfigBackend::dynamicIslandPrimaryActionChanged);
     updateField(this, m_dynamicIslandSecondaryButton, jsonInt(configObject, QLatin1String("dynamicIslandSecondaryButton"), 3), &UserConfigBackend::dynamicIslandSecondaryButtonChanged);
-    updateField(this, m_islandShowWorkspaceOnAutoHide, jsonBool(configObject, QLatin1String("islandShowWorkspaceOnAutoHide"), true), &UserConfigBackend::islandShowWorkspaceOnAutoHideChanged);
     const QString batteryMode = jsonString(configObject, QLatin1String("islandBatteryMode"), QStringLiteral("low")).trimmed().toLower();
     updateField(this, m_islandBatteryMode,
                 (batteryMode == QLatin1String("always") || batteryMode == QLatin1String("never")) ? batteryMode : QStringLiteral("low"),
