@@ -8,6 +8,9 @@ Item {
     property bool rightSide: false
     // Centred under the capsule instead of beside it (the battery popup opened from the island).
     property bool below: false
+    // Island on the bottom edge: side popups align with the capsule's bottom, and the "below"
+    // popup sits above it.
+    property bool atBottom: false
     property string panelKind: "wifi"
     property var provider: null
     property var mainCapsule: null
@@ -31,9 +34,14 @@ Item {
         : rightSide
             ? Math.min(availableWidth - width - 16, capsuleX + capsuleWidth + detailGap)
             : Math.max(16, capsuleX - width - detailGap)
-    readonly property real shownY: below ? capsuleY + capsuleHeight + detailGap : capsuleY
+    readonly property real shownY: below
+        ? (atBottom ? capsuleY - detailGap - height : capsuleY + capsuleHeight + detailGap)
+        : (atBottom ? capsuleY + capsuleHeight - height : capsuleY)
     readonly property real hiddenX: below ? shownX : shownX + (rightSide ? -12 : 12)
-    readonly property real hiddenY: below ? shownY - 8 : capsuleY + 4
+    // Starts a little toward the capsule (below) or toward the screen middle (beside).
+    readonly property real hiddenY: below
+        ? shownY + (atBottom ? 8 : -8)
+        : shownY + (atBottom ? -4 : 4)
     readonly property real panelScale: 0.96 + revealProgress * 0.04
 
     function startPanelAnimation(nextOpen) {
@@ -77,7 +85,12 @@ Item {
         anchors.fill: parent
         transform: Scale {
             origin.x: shell.below ? panelBody.width / 2 : (shell.rightSide ? 0 : panelBody.width)
-            origin.y: shell.below ? 0 : Math.min(panelBody.height - 32, Math.max(36, shell.capsuleHeight - 215))
+            origin.y: {
+                if (shell.below)
+                    return shell.atBottom ? panelBody.height : 0;
+                const fromTop = Math.min(panelBody.height - 32, Math.max(36, shell.capsuleHeight - 215));
+                return shell.atBottom ? panelBody.height - fromTop : fromTop;
+            }
             xScale: shell.panelScale
             yScale: shell.panelScale
         }

@@ -13,6 +13,20 @@ import "qml/workspace"
 PanelWindow {
     id: root
     property var shellRootController: null
+
+    // The screen edge the island lives on. At the bottom everything mirrors vertically: the
+    // capsule rests on the bottom margin and grows upward, side popups align with its bottom
+    // edge, auto-hide slides it down, the reveal strip sits at the bottom edge and the drag that
+    // opens the Glance goes up. Panel content keeps its own top-down order.
+    readonly property bool atBottom: userConfig.islandEdge === "bottom"
+    // y of an item `itemHeight` tall that keeps `offset` px from the island's edge.
+    function edgeY(offset, itemHeight) {
+        return atBottom ? root.height - offset - itemHeight : offset;
+    }
+    // A vertical drag measured toward the middle of the screen.
+    function inwardDelta(dy) {
+        return atBottom ? -dy : dy;
+    }
     // Shell-wide unread notifications (shell.qml); shown on the resting island and the CC bell.
     readonly property int unreadNotificationCount: shellRootController && shellRootController.unreadNotificationCount
         ? shellRootController.unreadNotificationCount
@@ -117,7 +131,7 @@ PanelWindow {
 
     color: StyleTokens.transparent
     WlrLayershell.namespace: "tide-island"
-    anchors { top: true; left: true; right: true }
+    anchors { top: !root.atBottom; bottom: root.atBottom; left: true; right: true }
 
     // Blur only the visible material, never the full-width layer surface or
     // the invisible gesture strip. The input mask remains independent.
@@ -211,7 +225,7 @@ PanelWindow {
         // strip that reveals it (pointer or file drag). The strip never grows with content.
         Region {
             x: Math.floor(root.autoHideRevealX)
-            y: 0
+            y: Math.floor(root.autoHideRevealY)
             width: Math.ceil(root.autoHideRevealWidth)
             height: Math.ceil(root.autoHideRevealHeight)
         }
@@ -458,6 +472,7 @@ PanelWindow {
     property real exclusiveZoneProgress: exclusiveZoneTargetActive ? 1 : 0
     readonly property real autoHideRevealWidth: autoHideEnabled ? Math.min(root.width, Math.max(userConfig.islandWidth + 120, 240)) : 0
     readonly property real autoHideRevealHeight: autoHideEnabled ? 10 : 0
+    readonly property real autoHideRevealY: root.edgeY(0, autoHideRevealHeight)
     readonly property real autoHideRevealX: Math.max(
         0,
         Math.min(root.width - autoHideRevealWidth, root.width * userConfig.islandPositionX / 100 - autoHideRevealWidth / 2)
@@ -1548,7 +1563,7 @@ PanelWindow {
         readonly property bool bluetoothEarphoneBubbleWanted: !!connectedEarphoneDevice
             && !root.overviewVisible
             && (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
-        readonly property bool isNotchMode: userConfig.islandStyle === "notch"
+        readonly property bool isNotchMode: userConfig.islandStyle === "notch" && !root.atBottom
         readonly property real effectiveTopMargin: isNotchMode ? 0 : userConfig.islandTopMargin
         readonly property int privacyBubbleSize: 36
         readonly property int privacyBubbleGap: 8
@@ -2912,8 +2927,8 @@ PanelWindow {
             color: root.overviewContentVisible
                 ? root.overviewCapsuleColor
                 : Qt.rgba(StyleTokens.panel.r, StyleTokens.panel.g, StyleTokens.panel.b, userConfig.islandBackgroundOpacity / 100.0)
-            y: islandContainer.effectiveTopMargin
-                - (1 - root.autoHideProgress) * (targetHeight + islandContainer.effectiveTopMargin + 8)
+            y: root.edgeY(islandContainer.effectiveTopMargin
+                - (1 - root.autoHideProgress) * (targetHeight + islandContainer.effectiveTopMargin + 8), height)
             x: parent ? parent.width * userConfig.islandPositionX / 100 - width / 2 - centerShift : 0
             clip: true
             width: displayedWidth
@@ -3106,7 +3121,8 @@ PanelWindow {
                     if (!pressed || !swipeArmed || suppressNextClick || twoFingerTouchArea.touchPoints.length >= 2) return;
 
                     const mappedPoint = capsuleMouseArea.mapToItem(islandContainer, mouse.x, mouse.y);
-                    const dy = mappedPoint.y - swipeStartY;
+                    // "Down" below means toward the middle of the screen (up when at the bottom).
+                    const dy = root.inwardDelta(mappedPoint.y - swipeStartY);
                     const dx = Math.abs(mappedPoint.x - swipeStartX);
                     if (dy > 30 && dx < 35) {
                         swipeDownDetected = true;
@@ -3343,7 +3359,7 @@ PanelWindow {
                         (touchPoints[0].y + touchPoints[1].y) / 2);
                     
                     const deltaX = centerPoint.x - swipeStartX;
-                    const deltaY = centerPoint.y - swipeStartY;
+                    const deltaY = root.inwardDelta(centerPoint.y - swipeStartY);
                     if (deltaY > 30 && Math.abs(deltaX) < 35) {
                         touchSwipeDown = true;
                         swipeMoved = true;
@@ -4177,7 +4193,7 @@ PanelWindow {
             width: bubbleSize
             height: bubbleSize
             x: hiddenX + (shownX - hiddenX) * reveal
-            y: centerY + (1 - reveal) * 10
+            y: centerY + (1 - reveal) * (root.atBottom ? -10 : 10)
             z: 6
             visible: mounted
             opacity: reveal * root.autoHideProgress
@@ -4416,6 +4432,7 @@ PanelWindow {
             panelKind: "wifi"
             provider: controlCenterLoader.item
             mainCapsule: mainCapsule
+            atBottom: root.atBottom
             availableWidth: root.width
             detailWidth: root.connectivityDetailWidth
             detailHeight: root.connectivityDetailHeight
@@ -4434,6 +4451,7 @@ PanelWindow {
             panelKind: "bluetooth"
             provider: controlCenterLoader.item
             mainCapsule: mainCapsule
+            atBottom: root.atBottom
             availableWidth: root.width
             detailWidth: root.connectivityDetailWidth
             detailHeight: root.connectivityDetailHeight
@@ -4453,6 +4471,7 @@ PanelWindow {
             panelKind: "power"
             provider: controlCenterLoader.item
             mainCapsule: mainCapsule
+            atBottom: root.atBottom
             availableWidth: root.width
             detailWidth: root.connectivityDetailWidth
             detailHeight: root.connectivityDetailHeight
@@ -4471,6 +4490,7 @@ PanelWindow {
             panelKind: root.audioConnectivityDetailKind
             provider: controlCenterLoader.item
             mainCapsule: mainCapsule
+            atBottom: root.atBottom
             availableWidth: root.width
             detailWidth: root.connectivityDetailWidth
             detailHeight: root.connectivityDetailHeight
@@ -4534,7 +4554,7 @@ PanelWindow {
         id: autoHideRevealArea
 
         x: root.autoHideRevealX
-        y: 0
+        y: root.autoHideRevealY
         z: 20
         width: root.autoHideRevealWidth
         height: root.autoHideRevealHeight
@@ -4557,7 +4577,7 @@ PanelWindow {
         id: autoHideRevealDropArea
 
         x: root.autoHideRevealX
-        y: 0
+        y: root.autoHideRevealY
         z: 21
         width: root.autoHideRevealWidth
         height: root.autoHideRevealHeight

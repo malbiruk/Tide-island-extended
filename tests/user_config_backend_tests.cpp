@@ -276,6 +276,24 @@ private slots:
         QCOMPARE(runtime.notificationTimeout(), 12);
         QCOMPARE(runtime.notificationTimeoutLow(), 1);
     }
+
+    void islandEdgeIsTopUnlessBottom() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{}"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.islandEdge(), QStringLiteral("top"));
+
+        QVERIFY(writeConfig(directory.path(), "{\"islandEdge\": \"Bottom\"}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandEdge(), QStringLiteral("bottom"));
+
+        QVERIFY(writeConfig(directory.path(), "{\"islandEdge\": \"left\"}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandEdge(), QStringLiteral("top"));
+    }
 };
 
 QTEST_GUILESS_MAIN(UserConfigBackendTests)
