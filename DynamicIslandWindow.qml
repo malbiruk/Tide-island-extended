@@ -1662,11 +1662,14 @@ PanelWindow {
         }
 
         // Tide's own short feedback notices; their ids come from one shell-wide counter.
+        // Feedback from this island's panels: through the shell, which applies Do Not Disturb and
+        // keeps it in every island's history; the pop-up shows here.
         function showNotificationCapsule(appName, summary, body) {
-            const id = root.shellRootController && root.shellRootController.nextInternalNotificationId
-                ? root.shellRootController.nextInternalNotificationId()
-                : -(++internalNotificationSerial);
-            presentNotificationRecord({ id: id, appName: appName, summary: summary, body: body }, "popup");
+            if (root.shellRootController && root.shellRootController.showInternalNotice) {
+                root.shellRootController.showInternalNotice(appName, summary, body, root);
+                return;
+            }
+            presentNotificationRecord({ id: -(++internalNotificationSerial), appName: appName, summary: summary, body: body }, "popup");
         }
 
         function presentNotificationRecord(raw, mode) {

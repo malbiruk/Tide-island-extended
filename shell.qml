@@ -126,12 +126,16 @@ Scope {
         return -internalNotificationSerial;
     }
 
-    // Tide's own feedback (e.g. the recorder's), on every island like a notification.
-    function showInternalNotice(appName, summary, body) {
+    // Tide's own feedback (e.g. the recorder's): in every island's history, as a pop-up on one
+    // island only (popupWindow, else the first), and not at all as a pop-up during Do Not Disturb.
+    function showInternalNotice(appName, summary, body, popupWindow) {
         const record = { id: nextInternalNotificationId(), appName: appName, summary: summary, body: body };
+        let target = popupWindow || null;
+        if (!target)
+            shellRoot.forFocusedWindow((window) => target = window);
         shellRoot.forEachWindow((window) => {
             if (window.presentNotificationRecord)
-                window.presentNotificationRecord(record, "popup");
+                window.presentNotificationRecord(record, window === target && !focusEnabled ? "popup" : "history");
         });
     }
 
