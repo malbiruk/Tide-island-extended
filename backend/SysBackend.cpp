@@ -553,18 +553,11 @@ void SysBackend::startTimedProcess(QProcess *process, QTimer *timeoutTimer, cons
 }
 
 void SysBackend::setupLyrics() {
-    m_lyricsProcess = new QProcess(this);
     m_lyricsRestartTimer = new QTimer(this);
     m_lyricsRestartTimer->setSingleShot(true);
     m_lyricsRestartTimer->setInterval(3000);
 
     connect(m_lyricsRestartTimer, &QTimer::timeout, this, &SysBackend::startLyricsBackend);
-    connect(m_lyricsProcess, &QProcess::readyReadStandardOutput, this, &SysBackend::handleLyricsReadyRead);
-    connect(m_lyricsProcess, &QProcess::readyReadStandardError, this, &SysBackend::handleLyricsStderr);
-    connect(m_lyricsProcess, &QProcess::stateChanged, this, &SysBackend::handleLyricsProcessStateChanged);
-    connect(m_lyricsProcess, &QProcess::errorOccurred, this, &SysBackend::handleLyricsProcessError);
-    connect(m_lyricsProcess, &QProcess::finished, this, &SysBackend::handleLyricsProcessFinished);
-
 }
 
 void SysBackend::setLyricsClientActive(const QString &clientId, bool active) {
@@ -578,8 +571,7 @@ void SysBackend::setLyricsClientActive(const QString &clientId, bool active) {
 
     if (m_lyricsClients.isEmpty()) {
         stopLyricsBackend();
-    } else if (m_lyricsProcess && m_lyricsProcess->state() == QProcess::NotRunning
-               && !m_lyricsRestartTimer->isActive()) {
+    } else if (!m_lyricsProcess && !m_lyricsRestartTimer->isActive()) {
         startLyricsBackend();
     }
 }
@@ -634,10 +626,10 @@ void SysBackend::setLyricsBackendStatus(const QString &status) {
     emit lyricsBackendStatusChanged();
 }
 
+// Each run gets its own QProcess, so a stopping daemon never delays the next one.
 void SysBackend::startLyricsBackend() {
-    if (!m_lyricsProcess) return;
+    if (m_lyricsProcess) return;
     if (m_lyricsClients.isEmpty()) return;
-    if (m_lyricsProcess->state() != QProcess::NotRunning) return;
 
     m_lyricsExecutablePath = findLyricsBackendExecutable();
     if (m_lyricsExecutablePath.isEmpty()) {
@@ -653,19 +645,34 @@ void SysBackend::startLyricsBackend() {
     setLyricsIsSynced(false);
     setLyricsBackendStatus("starting");
 
+    m_lyricsProcess = new QProcess(this);
+    connect(m_lyricsProcess, &QProcess::readyReadStandardOutput, this, &SysBackend::handleLyricsReadyRead);
+    connect(m_lyricsProcess, &QProcess::readyReadStandardError, this, &SysBackend::handleLyricsStderr);
+    connect(m_lyricsProcess, &QProcess::stateChanged, this, &SysBackend::handleLyricsProcessStateChanged);
+    connect(m_lyricsProcess, &QProcess::errorOccurred, this, &SysBackend::handleLyricsProcessError);
+    connect(m_lyricsProcess, &QProcess::finished, this, &SysBackend::handleLyricsProcessFinished);
     m_lyricsProcess->setProgram(m_lyricsExecutablePath);
     m_lyricsProcess->setArguments({ "--pipe" });
     m_lyricsProcess->start();
 }
 
+// Never waits on the GUI thread: SIGTERM now, SIGKILL a second later if it lingers; the
+// QProcess goes away once the daemon has exited.
 void SysBackend::stopLyricsBackend() {
     if (m_lyricsRestartTimer)
         m_lyricsRestartTimer->stop();
-    if (m_lyricsProcess && m_lyricsProcess->state() != QProcess::NotRunning) {
-        m_lyricsProcess->terminate();
-        if (!m_lyricsProcess->waitForFinished(150)) {
-            m_lyricsProcess->kill();
-            m_lyricsProcess->waitForFinished(300);
+    if (QProcess *process = m_lyricsProcess) {
+        m_lyricsProcess = nullptr;
+        process->disconnect(this);
+        if (process->state() == QProcess::NotRunning) {
+            process->deleteLater();
+        } else {
+            connect(process, &QProcess::finished, process, &QObject::deleteLater);
+            process->terminate();
+            QTimer::singleShot(1000, process, [process]() {
+                if (process->state() != QProcess::NotRunning)
+                    process->kill();
+            });
         }
     }
 
@@ -732,6 +739,10 @@ void SysBackend::handleLyricsProcessFinished(int exitCode, QProcess::ExitStatus 
     Q_UNUSED(exitCode)
     Q_UNUSED(exitStatus)
 
+    if (m_lyricsProcess) {
+        m_lyricsProcess->deleteLater();
+        m_lyricsProcess = nullptr;
+    }
     setLyricsCurrentLyric("");
     setLyricsIsSynced(false);
 
@@ -746,6 +757,10 @@ void SysBackend::handleLyricsProcessError(QProcess::ProcessError error) {
     setLyricsIsSynced(false);
 
     if (error == QProcess::FailedToStart) {
+        if (m_lyricsProcess) {
+            m_lyricsProcess->deleteLater();
+            m_lyricsProcess = nullptr;
+        }
         setLyricsBackendStatus("missing");
         return;
     }

@@ -20,7 +20,8 @@ Item {
     // The lyrics daemon runs while something plays and for a minute after it pauses or stops,
     // so a short pause keeps the fetched lyrics.
     readonly property bool activePlayerPlaying: !!activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing
-    property bool lyricsWanted: activePlayerPlaying
+    // Set imperatively from the start, so the first pause also gets its grace minute.
+    property bool lyricsWanted: false
     onActivePlayerPlayingChanged: {
         if (activePlayerPlaying) {
             lyricsIdleTimer.stop();
@@ -86,6 +87,7 @@ Item {
     onClientIdChanged: syncLyricsBackend()
 
     Component.onCompleted: {
+        lyricsWanted = activePlayerPlaying;
         updatePlainLyric();
         syncLyricsBackend();
     }
