@@ -4,6 +4,7 @@ import QtQuick.Shapes
 import Qt5Compat.GraphicalEffects
 import Quickshell
 import IslandBackend
+import "../common/NotificationText.js" as NotificationText
 import "../controlcenter"
 
 Item {
@@ -388,7 +389,7 @@ Item {
                             anchors.bottomMargin: 2
                             width: parent.width
                             height: 16
-                            text: delegateItem.bodyText.replace(/\[([^\]]+)\]\(["']?([^)"']+)["']?\)/g, "$1")
+                            text: NotificationText.oneLine(delegateItem.bodyText)
                             textFormat: Text.PlainText
                             color: StyleTokens.textSecondary
                             font.pixelSize: 12

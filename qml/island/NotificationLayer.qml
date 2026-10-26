@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Quickshell
 import IslandBackend
+import "../common/NotificationText.js" as NotificationText
 
 Item {
     id: root
@@ -321,23 +322,11 @@ Item {
         return "";
     }
 
-    // The body is plain text: escape it first, then turn http(s) links ([text](url) or bare)
-    // into anchors. Nothing else from the sender is interpreted as markup.
-    function formatNotificationBody(rawText) {
-        if (!rawText) return "";
-        const escaped = String(rawText)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-        let formatted = escaped.replace(/\[([^\]]+)\]\((?:&quot;|')?(https?:\/\/[^)\s"']+?)(?:&quot;|')?\)/g, '<a href="$2">$1</a>');
-        formatted = formatted.replace(/(^|[^"'>=])(https?:\/\/[^\s<]+)/g, '$1<a href="$2">$2</a>');
-        return formatted;
-    }
+    readonly property string displayBodyLine: NotificationText.oneLine(displayBody)
     readonly property string combinedPreviewText: {
-        if (summary !== "" && body !== "" && body !== summary) return summary + "  •  " + body;
+        if (summary !== "" && displayBodyLine !== "") return summary + "  •  " + displayBodyLine;
         if (summary !== "") return summary;
-        if (body !== "") return body;
+        if (displayBodyLine !== "") return displayBodyLine;
         return "New notification";
     }
 
@@ -417,7 +406,7 @@ Item {
         height: 0
         opacity: 0
         width: 260
-        text: displayBody !== "" ? displayBody : displayTitle
+        text: displayBodyLine !== "" ? displayBodyLine : displayTitle
         font.pixelSize: 12
         font.family: textFontFamily
         wrapMode: Text.WordWrap
@@ -608,7 +597,7 @@ Item {
                     id: compactBodyText
                     width: parent.width
                     visible: root.displayBody !== ""
-                    text: root.displayBody.replace(/\[([^\]]+)\]\(["']?([^)"']+)["']?\)/g, "$1")
+                    text: root.displayBodyLine
                     color: StyleTokens.textSecondary
                     font.pixelSize: 11
                     font.family: root.textFontFamily
@@ -1005,7 +994,8 @@ Item {
                         id: expandedBodyText
                         visible: root.displayBody !== ""
                         width: parent.width
-                        text: root.formatNotificationBody(root.displayBody)
+                        // Line breaks kept; http(s) links clickable, opened scoped.
+                        text: NotificationText.toStyledText(root.displayBody)
                         textFormat: Text.StyledText
                         linkColor: StyleTokens.accent
                         onLinkActivated: function(link) {

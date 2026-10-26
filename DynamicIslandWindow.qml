@@ -4,6 +4,7 @@ import Quickshell.Wayland
 import Quickshell.Services.Mpris
 import IslandBackend
 import "qml/common"
+import "qml/common/NotificationText.js" as NotificationText
 import "qml/controlcenter"
 import "qml/connectivity"
 import "qml/island"
@@ -1657,27 +1658,6 @@ PanelWindow {
             notificationExpanded = false;
         }
 
-        function codePointText(entity, codePoint) {
-            return codePoint > 0 && codePoint <= 0x10FFFF ? String.fromCodePoint(codePoint) : entity;
-        }
-
-        // Plain text from a (possibly marked-up) notification string. Entities are decoded with
-        // &amp; last, so "&amp;lt;" stays "&lt;" instead of turning into "<".
-        function cleanNotificationText(text) {
-            return String(text === undefined || text === null ? "" : text)
-                .replace(/<[^>]*>/g, " ")
-                .replace(/&nbsp;/g, " ")
-                .replace(/&quot;/g, "\"")
-                .replace(/&#39;|&apos;/g, "'")
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">")
-                .replace(/&#(\d+);/g, (match, code) => codePointText(match, Number(code)))
-                .replace(/&#x([0-9a-fA-F]+);/g, (match, code) => codePointText(match, parseInt(code, 16)))
-                .replace(/&amp;/g, "&")
-                .replace(/\s+/g, " ")
-                .trim();
-        }
-
         function applyRestingVisuals() {
             swipeTransitionProgress = restingStateProgress(restingState);
         }
@@ -1913,14 +1893,16 @@ PanelWindow {
             for (let i = 0; i < rawActions.length; i++)
                 actions.push(rawActions[i]);
 
-            const cleanedAppName = cleanNotificationText(raw.appName);
-            const cleanedSummary = cleanNotificationText(raw.summary);
-            const cleanedBody = cleanNotificationText(raw.body);
+            // Markup becomes plain text; the body keeps its line breaks and http(s) links.
+            const cleanedAppName = NotificationText.oneLine(NotificationText.fromMarkup(raw.appName, false));
+            const cleanedSummary = NotificationText.oneLine(NotificationText.fromMarkup(raw.summary, false));
+            const cleanedBody = NotificationText.fromMarkup(raw.body, true);
             return {
                 id: typeof raw.id === "number" ? raw.id : 0,
                 appName: cleanedAppName !== "" ? cleanedAppName : "Notification",
                 appIcon: raw.appIcon || "",
-                summary: cleanedSummary !== "" ? cleanedSummary : (cleanedBody !== "" ? cleanedBody : "New notification"),
+                summary: cleanedSummary !== "" ? cleanedSummary
+                    : (cleanedBody !== "" ? NotificationText.oneLine(cleanedBody) : "New notification"),
                 body: cleanedSummary !== "" ? cleanedBody : "",
                 actions: actions,
                 imagePath: raw.imagePath || "",

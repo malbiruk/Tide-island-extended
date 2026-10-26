@@ -108,6 +108,22 @@ target_link_libraries(bluetooth_formatting_tests PRIVATE
 
 add_test(NAME bluetooth_formatting COMMAND bluetooth_formatting_tests)
 
+add_executable(notification_text_tests
+    tests/notification_text_tests.cpp
+)
+
+target_compile_definitions(notification_text_tests PRIVATE
+    NOTIFICATION_TEXT_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/qml/common/NotificationText.js"
+)
+
+target_link_libraries(notification_text_tests PRIVATE
+    Qt6::Core
+    Qt6::Qml
+    Qt6::Test
+)
+
+add_test(NAME notification_text COMMAND notification_text_tests)
+
 add_executable(file_shelf_model_tests
     tests/file_shelf_model_tests.cpp
     backend/FileShelfModel.h
