@@ -162,12 +162,15 @@ Scope {
         return Number.isFinite(value) ? Math.round(value) : -1;
     }
 
-    // Local image paths only when they are regular files; icon names and image:// stay.
+    // Local image paths only when they are regular files; image:// and icon names stay. Anything
+    // else with a scheme (http(s), data, …) is never loaded: no remote fetches for a sender.
     function notificationImageSource(value) {
         const source = value || "";
         if (source.startsWith("/") || source.startsWith("file://"))
             return SystemServices.isRegularFile(source) ? source : "";
-        return source;
+        if (source.startsWith("image://"))
+            return source;
+        return /^[a-z][a-z0-9+.-]*:/i.test(source) ? "" : source;
     }
 
     function notificationRecord(notification) {
