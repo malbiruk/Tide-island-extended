@@ -1,5 +1,5 @@
 [Unit]
-Description=Tide Island Extended Dynamic Island for driftwm
+Description=Tide Island Extended Dynamic Island
 PartOf=graphical-session.target
 After=graphical-session.target
 

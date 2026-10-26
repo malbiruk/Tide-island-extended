@@ -1,10 +1,10 @@
 [Desktop Entry]
 Name=Tide Island Extended
-Comment=Dynamic Island for driftwm
+Comment=Dynamic Island for Wayland
 Exec=/usr/bin/tide-island
 Icon=preferences-desktop-notification
 Terminal=false
 Type=Application
 Categories=Utility;
-Keywords=driftwm;quickshell;island;
+Keywords=wayland;quickshell;island;
 NoDisplay=true

@@ -417,7 +417,7 @@ Scope {
         });
     }
 
-    // driftwm reports no focused output, so panels opened by IPC go to the first island.
+    // The shell can't learn the focused output from the compositor, so panels opened by IPC go to the first island.
     function forFocusedWindow(callback) {
         const windows = panelVariants.instances ? panelVariants.instances : [];
         for (let index = 0; index < windows.length; index++) {
