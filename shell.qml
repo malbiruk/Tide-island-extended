@@ -126,6 +126,23 @@ Scope {
         return -internalNotificationSerial;
     }
 
+    // Tide's own feedback (e.g. the recorder's), on every island like a notification.
+    function showInternalNotice(appName, summary, body) {
+        const record = { id: nextInternalNotificationId(), appName: appName, summary: summary, body: body };
+        shellRoot.forEachWindow((window) => {
+            if (window.presentNotificationRecord)
+                window.presentNotificationRecord(record, "popup");
+        });
+    }
+
+    Connections {
+        target: ScreenRecorder
+
+        function onNotificationRequested(title, message) {
+            shellRoot.showInternalNotice("Screen Recorder", title, message);
+        }
+    }
+
     // The app's expire_timeout (D-Bus milliseconds; -1 = server default, 0 = never).
     function notificationExpireTimeoutMs(notification) {
         const value = Number(notification.expireTimeout);

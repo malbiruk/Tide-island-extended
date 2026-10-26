@@ -1370,15 +1370,6 @@ Item {
     }
 
     Connections {
-        target: ScreenRecorder
-        ignoreUnknownSignals: true
-
-        function onNotificationRequested(title, message) {
-            controlCenter.requestNotification("Screen Recorder", title, message);
-        }
-    }
-
-    Connections {
         target: SystemServices
 
         function onTlpStateReady(available, profile, output, errorString) {

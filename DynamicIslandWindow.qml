@@ -1929,9 +1929,9 @@ PanelWindow {
 
             const popupBlocked = mode !== "popup" || islandState === "control_center"
                 || islandState === "expanded" || islandState === "file_shelf";
-            // Real notifications always reach the history (transient ones never); tide's own
-            // feedback (negative ids) is dropped when it can't be shown.
-            if (!record.transient && (!popupBlocked || record.id >= 0))
+            // Everything but transient notifications reaches the history, so tide's own feedback
+            // (negative ids) is still there when the popup is blocked.
+            if (!record.transient)
                 addNotificationToHistory(record);
             if (popupBlocked)
                 return;
