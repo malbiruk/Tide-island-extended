@@ -50,7 +50,7 @@ Item {
     readonly property real rightSectionWidth: rightContentWidth > 0 ? rightContentWidth + edgePadding : 0
 
     readonly property real centerX: width / 2 + centerShift - centerSectionWidth / 2
-    readonly property real batteryCenterX: centerX + centerSectionWidth + bellSlotWidth + battery.implicitWidth / 2
+    readonly property real batteryCenterX: battery.x + battery.width / 2
     // The title's room in the music section as the capsule currently draws it (centerX follows
     // the capsule's animated width), so the row moves with the capsule's edge.
     readonly property real musicTitleSlotWidth: Math.max(0,

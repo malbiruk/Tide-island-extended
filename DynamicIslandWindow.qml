@@ -3193,7 +3193,8 @@ PanelWindow {
             mounted: root.powerConnectivityDetailMounted
             rightSide: true
             below: root.powerDetailStandalone
-            belowCenterX: mainCapsule.x + restingLayer.batteryCenterX
+            // Under the battery section; centred under the capsule once that hides.
+            belowCenterX: restingLayer.batteryVisible ? mainCapsule.x + restingLayer.batteryCenterX : -1
             panelKind: "power"
             provider: controlCenterLoader.item
             mainCapsule: mainCapsule
