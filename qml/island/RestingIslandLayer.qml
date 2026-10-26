@@ -34,7 +34,7 @@ Item {
     readonly property real edgePadding: 12
     readonly property real innerSpacing: 8
     readonly property real coverSize: 20
-    readonly property real musicTextMaxWidth: 200
+    readonly property real musicTextMaxWidth: 360
     readonly property real bellWidth: 22
 
     readonly property real centerSectionWidth: Math.max(minimumCenterWidth, Math.ceil(timeMetrics.advanceWidth) + edgePadding * 2)
@@ -130,8 +130,8 @@ Item {
             fontWeight: Font.DemiBold
             letterSpacing: -0.15
             maxWidth: root.musicTextMaxWidth
-            // Lyric lines change every few seconds; the capsule keeps its size.
-            fixedWidth: true
+            // Fits each line up to the cap; the capsule animates the width as lyric lines change.
+            fixedWidth: false
             active: root.musicVisible && root.showCondition
         }
 
