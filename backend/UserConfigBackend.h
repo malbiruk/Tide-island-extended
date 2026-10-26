@@ -44,7 +44,8 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(QString islandEdge READ islandEdge NOTIFY islandEdgeChanged FINAL)
     Q_PROPERTY(int notificationTimeout READ notificationTimeout NOTIFY notificationTimeoutChanged FINAL)
     Q_PROPERTY(int notificationTimeoutLow READ notificationTimeoutLow NOTIFY notificationTimeoutLowChanged FINAL)
-    Q_PROPERTY(QString idleInhibitCommand READ idleInhibitCommand NOTIFY idleInhibitCommandChanged FINAL)
+    Q_PROPERTY(QStringList idleInhibitCommand READ idleInhibitCommand NOTIFY idleInhibitCommandChanged FINAL)
+    Q_PROPERTY(QStringList lockCommand READ lockCommand NOTIFY lockCommandChanged FINAL)
 
     Q_PROPERTY(int islandWidth READ islandWidth NOTIFY islandWidthChanged FINAL)
     Q_PROPERTY(int islandHeight READ islandHeight NOTIFY islandHeightChanged FINAL)
@@ -99,7 +100,8 @@ public:
     int notificationTimeout() const;
     QString islandEdge() const;
     int notificationTimeoutLow() const;
-    QString idleInhibitCommand() const;
+    QStringList idleInhibitCommand() const;
+    QStringList lockCommand() const;
     bool islandAutoHideEnabled() const;
     int islandAutoHideDelayMs() const;
     int islandWidth() const;
@@ -157,6 +159,7 @@ signals:
     void islandEdgeChanged();
     void notificationTimeoutLowChanged();
     void idleInhibitCommandChanged();
+    void lockCommandChanged();
     void hoverExpandActionChanged();
     void islandAutoHideEnabledChanged();
     void islandAutoHideDelayMsChanged();
@@ -214,7 +217,8 @@ private:
     int m_notificationTimeout = 8;
     QString m_islandEdge = QStringLiteral("top");
     int m_notificationTimeoutLow = 5;
-    QString m_idleInhibitCommand;
+    QStringList m_idleInhibitCommand;
+    QStringList m_lockCommand;
     int m_hoverExpandAction = 0;
     bool m_islandAutoHideEnabled = true;
     int m_islandAutoHideDelayMs = 1000;

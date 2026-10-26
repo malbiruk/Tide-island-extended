@@ -223,15 +223,19 @@ private slots:
         UserConfigBackend runtime;
         QCOMPARE(runtime.islandBatteryMode(), QStringLiteral("low"));
         QCOMPARE(runtime.islandAutoHideKeepActivities(), true);
-        QCOMPARE(runtime.idleInhibitCommand(), QString());
+        QCOMPARE(runtime.idleInhibitCommand(), QStringList());
+        QCOMPARE(runtime.lockCommand(), QStringList());
 
         QVERIFY(writeConfig(directory.path(),
             "{\"islandBatteryMode\": \"Always\", \"islandAutoHideKeepActivities\": false,"
-            " \"idleInhibitCommand\": \"~/bin/caffeine.sh\"}"));
+            " \"idleInhibitCommand\": \"~/bin/caffeine.sh\","
+            " \"lockCommand\": \" gtklock -d -b \\\"/home/x/My Pictures/bg.png\\\" \"}"));
         runtime.reload();
         QCOMPARE(runtime.islandBatteryMode(), QStringLiteral("always"));
         QCOMPARE(runtime.islandAutoHideKeepActivities(), false);
-        QCOMPARE(runtime.idleInhibitCommand(), QDir::homePath() + QStringLiteral("/bin/caffeine.sh"));
+        QCOMPARE(runtime.idleInhibitCommand(), QStringList{QDir::homePath() + QStringLiteral("/bin/caffeine.sh")});
+        QCOMPARE(runtime.lockCommand(), (QStringList{QStringLiteral("gtklock"), QStringLiteral("-d"), QStringLiteral("-b"),
+                                                     QStringLiteral("/home/x/My Pictures/bg.png")}));
 
         QVERIFY(writeConfig(directory.path(), "{\"islandBatteryMode\": \"sometimes\"}"));
         runtime.reload();

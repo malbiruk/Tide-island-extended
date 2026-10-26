@@ -34,30 +34,32 @@ Item {
     property real playerProgress: 0
 
     // Idle inhibit ("caffeine") through UserConfig.idleInhibitCommand: `<cmd> toggle` / `<cmd> status`.
-    readonly property string idleInhibitCommand: UserConfig.idleInhibitCommand
+    readonly property var idleInhibitCommand: UserConfig.idleInhibitCommand
+    readonly property bool idleInhibitConfigured: idleInhibitCommand.length > 0
     property bool idleInhibitOn: false
     readonly property bool idleInhibitBusy: idleInhibitToggleProcess.running || idleInhibitStatusProcess.running
 
     function refreshIdleInhibit() {
-        if (idleInhibitCommand !== "" && !idleInhibitStatusProcess.running)
+        if (idleInhibitConfigured && !idleInhibitStatusProcess.running)
             idleInhibitStatusProcess.running = true;
     }
 
     function toggleIdleInhibit() {
-        if (idleInhibitCommand !== "" && !idleInhibitBusy)
+        if (idleInhibitConfigured && !idleInhibitBusy)
             idleInhibitToggleProcess.running = true;
     }
 
     Process {
         id: idleInhibitToggleProcess
-        command: [controlCenter.idleInhibitCommand, "toggle"]
+        // Toggling may start an inhibitor that must outlive the shell.
+        command: SystemServices.scopedCommand(Array.from(controlCenter.idleInhibitCommand).concat(["toggle"]))
         running: false
         onExited: controlCenter.refreshIdleInhibit()
     }
 
     Process {
         id: idleInhibitStatusProcess
-        command: [controlCenter.idleInhibitCommand, "status"]
+        command: Array.from(controlCenter.idleInhibitCommand).concat(["status"])
         running: false
 
         stdout: SplitParser {
@@ -1344,19 +1346,26 @@ Item {
     }
     Process {
         id: lockProcess
-        command: [
+        readonly property var configuredCommand: UserConfig.lockCommand
+        command: SystemServices.scopedCommand(configuredCommand.length > 0 ? configuredCommand : [
             "sh",
             "-c",
             "if command -v gtklock >/dev/null 2>&1; then gtklock -d; "
                 + "elif command -v loginctl >/dev/null 2>&1; then loginctl lock-session; "
                 + "elif command -v swaylock >/dev/null 2>&1; then swaylock; "
                 + "else exit 127; fi"
-        ]
+        ])
         running: false
         onExited: function(exitCode) {
-            if (exitCode === 127)
+            if (exitCode === 0)
+                return;
+            if (configuredCommand.length === 0 && exitCode === 127)
                 controlCenter.requestNotification("Power", "Lock unavailable",
-                    "Install gtklock or swaylock to enable screen locking.");
+                    "Set a lock command, or install gtklock or swaylock.");
+            else
+                controlCenter.requestNotification("Power", "Lock failed",
+                    (configuredCommand.length > 0 ? configuredCommand[0] : "The screen locker")
+                        + " exited with code " + exitCode + ".");
         }
     }
 
@@ -2197,7 +2206,7 @@ Item {
             onCancelRequested: SystemServices.requestBrightness()
             onIconClicked: controlCenter.cycleBrightnessPreset()
             // Idle inhibit: coffee cup, filled while inhibiting
-            secondaryIconText: controlCenter.idleInhibitCommand === ""
+            secondaryIconText: !controlCenter.idleInhibitConfigured
                 ? ""
                 : (controlCenter.idleInhibitOn ? "\u{F0176}" : "\u{F06CA}")
             secondaryActive: controlCenter.idleInhibitOn

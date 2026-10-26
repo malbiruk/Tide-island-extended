@@ -10,6 +10,7 @@
 #include <QSaveFile>
 #include <QJsonParseError>
 #include <QJsonValue>
+#include <QProcess>
 #include <QSet>
 #include <QUrl>
 #include <QVariant>
@@ -33,6 +34,15 @@ QVariantList defaultDynamicIslandLeftSwipeItems()
         QStringLiteral("albumcover"),
         QStringLiteral("trackname"),
     };
+}
+
+// A command line as the shell would split it (quotes allowed); "~" in the program is the home dir.
+QStringList commandArguments(const QString &command)
+{
+    QStringList arguments = QProcess::splitCommand(command.trimmed());
+    if (!arguments.isEmpty() && (arguments.first() == QLatin1String("~") || arguments.first().startsWith(QLatin1String("~/"))))
+        arguments.first().replace(0, 1, QDir::homePath());
+    return arguments;
 }
 
 QString jsonString(const QJsonObject &object, QLatin1String key, const QString &fallback)
@@ -251,10 +261,16 @@ int UserConfigBackend::notificationTimeoutLow() const
 }
 
 // Command implementing `toggle` and `status` (prints "on"/"off") for idle inhibition;
-// empty hides the control. A leading "~" is expanded.
-QString UserConfigBackend::idleInhibitCommand() const
+// empty hides the control.
+QStringList UserConfigBackend::idleInhibitCommand() const
 {
     return m_idleInhibitCommand;
+}
+
+// Screen locker run by the power menu's Lock; empty uses gtklock, loginctl or swaylock.
+QStringList UserConfigBackend::lockCommand() const
+{
+    return m_lockCommand;
 }
 
 int UserConfigBackend::islandAutoHideDelayMs() const
@@ -561,10 +577,12 @@ void UserConfigBackend::loadConfig()
                 &UserConfigBackend::islandEdgeChanged);
     updateField(this, m_notificationTimeout, jsonBoundedInt(configObject, QLatin1String("notificationTimeout"), 8, 1, 600), &UserConfigBackend::notificationTimeoutChanged);
     updateField(this, m_notificationTimeoutLow, jsonBoundedInt(configObject, QLatin1String("notificationTimeoutLow"), 5, 1, 600), &UserConfigBackend::notificationTimeoutLowChanged);
-    QString idleCommand = jsonString(configObject, QLatin1String("idleInhibitCommand"), QString()).trimmed();
-    if (idleCommand == QLatin1String("~") || idleCommand.startsWith(QLatin1String("~/")))
-        idleCommand.replace(0, 1, QDir::homePath());
-    updateField(this, m_idleInhibitCommand, idleCommand, &UserConfigBackend::idleInhibitCommandChanged);
+    updateField(this, m_idleInhibitCommand,
+                commandArguments(jsonString(configObject, QLatin1String("idleInhibitCommand"), QString())),
+                &UserConfigBackend::idleInhibitCommandChanged);
+    updateField(this, m_lockCommand,
+                commandArguments(jsonString(configObject, QLatin1String("lockCommand"), QString())),
+                &UserConfigBackend::lockCommandChanged);
     updateField(this, m_dynamicIslandSecondaryAction, jsonString(configObject, QLatin1String("dynamicIslandSecondaryAction"), QStringLiteral("toggleControlCenter")), &UserConfigBackend::dynamicIslandSecondaryActionChanged);
     updateField(this, m_dynamicIslandMiddleButton, jsonInt(configObject, QLatin1String("dynamicIslandMiddleButton"), 2), &UserConfigBackend::dynamicIslandMiddleButtonChanged);
     updateField(this, m_dynamicIslandMiddleAction, jsonString(configObject, QLatin1String("dynamicIslandMiddleAction"), QStringLiteral("toggleClipboard")), &UserConfigBackend::dynamicIslandMiddleActionChanged);
