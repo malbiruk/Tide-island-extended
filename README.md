@@ -137,7 +137,7 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 
 - **Bluetooth Earphone & Headset Satellite Bubble**:
   - **Instant Connection Pop-Out**: A sleek satellite circular bubble automatically emerges alongside the island whenever Bluetooth earphones, headphones, or audio headsets connect.
-  - **Live Circular Battery Gauge**: Circular progress ring framing the centered device icon that smoothly depletes and dynamically shifts color based on battery level (`batteryHigh`, `batteryMedium`, `batteryLow` from your active Matugen theme).
+  - **Live Circular Battery Gauge**: Circular progress ring framing the centered device icon that smoothly depletes and dynamically shifts color based on battery level (`batteryHigh`, `batteryMedium`, `batteryLow` from your colors.json palette).
   - **Zero Clutter**: Automatically dismisses smoothly when the device disconnects.
 - **Redesigned Control Center 2×2 Drawer Grid**: Symmetrical 2-column drawer layout featuring:
   - **Row 1**: Battery power profile selector + quick Silent and Night mode toggles.
@@ -148,8 +148,8 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
   - **Dynamic Active Elevation**: When recording or when the instant replay buffer is active, a full-featured recorder banner automatically elevates into the main Control Center view with live timer, pause/resume, mic toggle, and instant clip saving (10s, 30s, 60s) without needing to open the drawer.
   - **Dynamic Island Status**: Real-time pulsing indicator dot directly in the island clock capsule.
   - **Bidirectional Sync**: Seamless PID and state tracking with external terminal scripts (`gsr`).
-- **Dynamic Color Palette & Matugen Integration**: Live hot-reloads of `colors.json` on disk via `QFileSystemWatcher` without service restarts. Ready-to-use Matugen template with preserved capsule translucency (`islandBackgroundOpacity`).
-- **Dynamic Battery Color Progression**: Battery pill smoothly shifts colors based on charge level (critical, warning, nominal, charging) with full Matugen color matching and an on/off toggle in settings.
+- **Dynamic Color Palette**: Live hot-reloads of `colors.json` on disk via `QFileSystemWatcher` without service restarts, with preserved capsule translucency (`islandBackgroundOpacity`).
+- **Dynamic Battery Color Progression**: Battery pill smoothly shifts colors based on charge level (critical, warning, nominal, charging) with palette color matching and an on/off toggle in settings.
 - **Marquee Track Title Scrolling**: Clean, smooth auto-scrolling for long song titles with an initial 1.8s reading pause and seamless looping, plus an instant toggle in the Config App to fall back to static ellipsis (`Title...`) for 0% CPU.
 - **Universal Keyboard Navigation & Dismissal**: Universal `Escape` key dismissal and keyboard navigation across all interactive panels (Control Center, Notification Center, File Shelf, Calendar, and Power Menu).
 - **Asynchronous Clipboard & Concurrency Safety**: Fast asynchronous decoding for image clipboard entries and race-condition guards during clip deletions.
@@ -182,13 +182,12 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
   - **Dynamic Island Activity Bubbles**: Independent circular satellite bubbles dynamically pop out on the right side of the island capsule when the camera (``) or microphone (`` / ``) are active, matching the File Shelf bubble aesthetic with pulsing status badges (green for camera, orange for active microphone, red when muted).
   - **Privacy & Media Activity HUD**: Interactive drop-down panel displaying applications currently capturing camera, microphone, or screen sharing with PID telemetry, quick one-click app mute/unmute or screen share stop controls, and a master hardware microphone mute toggle.
   - **Modal Dismissal & Focus**: Closes seamlessly via `Escape` key and click-outside dismissal, maintaining consistent focus behavior across Wayland compositors.
-  - **Full Theme Harmony**: Automatically styled using `StyleTokens` to inherit Pywal, Matugen, or custom theme palettes.
+  - **Full Theme Harmony**: Automatically styled using `StyleTokens` to inherit your colors.json palette.
 - **On-Demand System Glance Capsule & Dashboard**:
   - **Dynamic Island Mini Dashboard**: The island expands into a system glance dashboard displaying a circular avatar / profile picture (with auto-detection from ChillPill-Shell `displayPicture`, `userconfig.json` `"avatarPath"`, image drag-and-drop, or click-to-browse), hostname, system uptime, rich multi-metric battery telemetry (`⚡ 71% • 80% Cap • 100% Health` with power wattage and full diagnostics tooltip), real-time network throughput (`↓ 5.2 MB/s`, `↑ 240 KB/s`), CPU load & core temperature, RAM utilization (`GB` and `%`), and GPU / Storage meters.
   - **Kernel & Scheduler Telemetry Pill**: The bottom capsule displays live kernel release and CPU architecture (e.g. `Linux 7.2.7-1-cachyos-bore (x86_64)`), active CPU scaling governor (`powersave`), 1m/5m/15m system load averages (`Load: 1.25, 0.90, 0.84`), and live running/total scheduling task entities.
   - **100% On-Demand Sampling**: Sampling timers only run when the glance layer is visibly mounted; zero CPU overhead when hidden. No third-party monitor dependencies (e.g. `nusmon`), extracting metrics directly from standard Linux `/proc` and `/sys` interfaces.
   - **Intuitive Triggers & Controls**: Sleek modern aesthetic without intrusive close buttons — dismiss seamlessly with `Escape`, click outside, or shortcut toggle (`SUPER+G`).
-- **In-App Matugen Assistant**: Direct one-click template installation and TOML snippet copying right inside Tide Island Settings (`Color & Wallpaper` tab).
 
 ### Core Features
 
@@ -362,7 +361,7 @@ tide-island-config-app
 - **Screen Recorder & Instant Replay**:
   - Pull down the Control Center drawer to quickly start/stop recordings, toggle microphone capture, or browse saved clips.
   - While recording or buffering replay, the active recording card automatically elevates into the main Control Center view with a live timer and quick-save presets (60s, 30s, 10s).
-  - All button highlights and glowing border accents harmoniously blend with your wallpaper's palette via Matugen.
+  - All button highlights and glowing border accents harmoniously blend with your colors.json palette.
 - **System Tray (SNI)**:
   - Tucked inside the Control Center drawer with an item count pill badge and smooth horizontal wheel/touch scrolling.
   - Supports left-click activate, right-click context menus, wheel scrolling, and tooltip previews on hover.
@@ -374,16 +373,9 @@ tide-island-config-app
   - Click the `›` chevron on either the Sound or Microphone card in the Control Center to reveal the Audio flyout panel.
   - Instantly switch default output endpoints (Speakers, Headphones, HDMI, Bluetooth earbuds) and active microphone sources in real time.
   - Switch to the **Mixer** tab to adjust individual per-application volume sliders and toggle mute status, complete with freedesktop application icons.
-- **Color Palette & Matugen**: Tide Island supports dynamic system-wide color palettes generated by tools like [Matugen](https://github.com/InioX/matugen) or customized manually in `~/.config/tide-island/colors.json`.
+- **Color Palette**: Tide Island reads its palette from `~/.config/tide-island/colors.json` (any generator can write it).
   - **Live Auto-Reload**: Palette updates on disk are automatically detected and reloaded instantly via `QFileSystemWatcher` without restarting the service.
   - **Transparency Preserved**: Island capsule background transparency (`islandBackgroundOpacity`) continues to work seamlessly alongside dynamic palette tints.
-  - **In-App Template Installer**: Install the template directly to `~/.config/matugen/templates/` and copy configuration snippets with one click in **Tide Island Settings** under the Color & Wallpaper tab.
-  - **Matugen Template**: A template is provided in `templates/tide-island-colors.json`. Add this to your `~/.config/matugen/config.toml`:
-    ```toml
-    [templates.tide_island]
-    input_path = '~/.config/matugen/templates/tide-island-colors.json'
-    output_path = '~/.config/tide-island/colors.json'
-    ```
 
 
 ## Common Commands

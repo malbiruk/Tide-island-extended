@@ -405,7 +405,7 @@ pacman_install_dependencies() {
     wireplumber pipewire libpulse
     brightnessctl upower bluez bluez-utils
     polkit zenity networkmanager wl-clipboard cliphist power-profiles-daemon
-    python psmisc cava
+    psmisc cava
   )
   local packages=("${build_packages[@]}" "${runtime_packages[@]}")
 
@@ -469,7 +469,7 @@ apt_install_dependencies() {
     qt6-wayland libqt6svg6
     wireplumber pipewire pulseaudio-utils brightnessctl dbus upower bluez
     policykit-1 zenity network-manager wl-clipboard cliphist power-profiles-daemon
-    python3 psmisc cava
+    psmisc cava
   )
   local packages=("${build_packages[@]}" "${runtime_packages[@]}")
 
@@ -531,7 +531,7 @@ dnf_install_dependencies() {
     qt6-qt5compat
     wireplumber pipewire pulseaudio-utils brightnessctl dbus-daemon upower bluez bluez-tools
     polkit zenity NetworkManager wl-clipboard cliphist power-profiles-daemon
-    python3 psmisc cava
+    psmisc cava
   )
   local packages=("${build_packages[@]}" "${runtime_packages[@]}")
 
@@ -591,7 +591,7 @@ zypper_install_dependencies() {
     qt6-qt5compat-imports
     wireplumber pipewire pulseaudio-utils brightnessctl dbus-1 upower bluez
     polkit zenity NetworkManager wl-clipboard cliphist power-profiles-daemon
-    python3 psmisc cava
+    psmisc cava
   )
   local packages=("${build_packages[@]}" "${runtime_packages[@]}")
 
@@ -949,7 +949,6 @@ check_dependencies() {
   check_tool "wl-copy" "wl-clipboard" "Wayland clipboard copy command" 1
   check_tool "wl-paste" "wl-clipboard" "Wayland clipboard paste command" 1
   check_tool "cliphist" "cliphist" "Clipboard history manager daemon" 1
-  check_tool "python3" "python3" "Wallpaper color & palette extraction script runner" 1
 
   printf '\nFeature-Specific Dependencies (Optional):\n'
   check_feature "cava" "cava" "8-bar audio spectrum visualizer (Player)"

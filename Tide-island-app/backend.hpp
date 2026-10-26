@@ -38,11 +38,6 @@ public:
     Q_INVOKABLE bool hasPowerProfilesCtl() const;
     Q_INVOKABLE bool hasTlp() const;
     Q_INVOKABLE QString detectedPowerProfileDriver() const;
-    Q_INVOKABLE QString matugenTemplateContent() const;
-    Q_INVOKABLE QString matugenTemplatePath() const;
-    Q_INVOKABLE bool isMatugenTemplateInstalled() const;
-    Q_INVOKABLE bool installMatugenTemplate();
-    Q_INVOKABLE QString matugenTomlSnippet() const;
 
 signals:
     void errorStringChanged();

@@ -374,11 +374,6 @@ install(DIRECTORY qml
         PATTERN "*.ttf"
 )
 
-install(FILES
-    templates/tide-island-colors.json
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/tide-island/templates
-)
-
 # Install IslandBackend backing library to /usr/lib
 install(TARGETS IslandBackend
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
