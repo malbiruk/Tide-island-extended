@@ -22,6 +22,8 @@ export TIDE_ISLAND_LAUNCHER=1
 for name in MALLOC_CONF QML_IMPORT_PATH QUICKSHELL_LYRICS_BACKEND; do
   if [[ -v $name ]]; then
     export "TIDE_ISLAND_ORIGINAL_$name=${!name}"
+  else
+    unset "TIDE_ISLAND_ORIGINAL_$name"
   fi
 done
 

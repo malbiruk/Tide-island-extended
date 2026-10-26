@@ -31,6 +31,8 @@ inline const QStringList &serviceVariables()
         QStringLiteral("INVOCATION_ID"), QStringLiteral("JOURNAL_STREAM"), QStringLiteral("MANAGERPID"),
         QStringLiteral("MANAGERPIDFDID"), QStringLiteral("SYSTEMD_EXEC_PID"),
         QStringLiteral("MEMORY_PRESSURE_WATCH"), QStringLiteral("MEMORY_PRESSURE_WRITE"),
+        // Startup notification belongs to the shell's own start, never to what it launches.
+        QStringLiteral("XDG_ACTIVATION_TOKEN"), QStringLiteral("DESKTOP_STARTUP_ID"),
     };
     return names;
 }
