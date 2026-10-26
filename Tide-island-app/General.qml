@@ -129,7 +129,25 @@ PagePanel {
                     anchors.rightMargin: 18
                     spacing: 16
 
-                    IslandStyleRow { width: parent.width }
+                    IslandStyleRow {
+                        atBottom: edgeRow.selectedId === "bottom"
+                        width: parent.width
+                    }
+
+                    SplitLine { width: parent.width }
+
+                    ChoiceRow {
+                        id: edgeRow
+                        title: "Island Edge"
+                        description: "Screen edge the island is attached to"
+                        keyName: "islandEdge"
+                        options: [
+                            { id: "top", name: "Top" },
+                            { id: "bottom", name: "Bottom" }
+                        ]
+                        selectedId: String(ConfigStore.value("islandEdge", "top")).trim().toLowerCase() === "bottom" ? "bottom" : "top"
+                        width: parent.width
+                    }
 
                     SplitLine { width: parent.width }
 
@@ -240,6 +258,24 @@ PagePanel {
                     SplitLine { width: parent.width }
 
                     ClockFormatRow { width: parent.width }
+
+                    SplitLine { width: parent.width }
+
+                    ChoiceRow {
+                        title: "Island Battery"
+                        description: "When the island shows the battery (Low: below 40%)"
+                        keyName: "islandBatteryMode"
+                        options: [
+                            { id: "low", name: "Low" },
+                            { id: "always", name: "Always" },
+                            { id: "never", name: "Never" }
+                        ]
+                        selectedId: {
+                            const mode = String(ConfigStore.value("islandBatteryMode", "low")).trim().toLowerCase()
+                            return mode === "always" || mode === "never" ? mode : "low"
+                        }
+                        width: parent.width
+                    }
 
                     SplitLine { width: parent.width }
 
@@ -429,8 +465,8 @@ PagePanel {
             }
 
             Text {
-                id: customPageTitle
-                text: "Custom Page"
+                id: notificationsTitle
+                text: "Notifications"
                 anchors.top: lockscreenPanel.bottom
                 anchors.topMargin: 34
                 anchors.left: parent.left
@@ -442,21 +478,96 @@ PagePanel {
                 color: Theme.textColor
             }
 
-            CustomPage {
-                id: customPagePanel
-                anchors.top: customPageTitle.bottom
+            Rectangle {
+                id: notificationsPanel
+                color: Theme.cardBgColor
+                radius: 16
+                border.width: 1
+                border.color: Theme.splitLineColor
+
+                anchors.top: notificationsTitle.bottom
                 anchors.topMargin: 15
                 anchors.left: parent.left
                 anchors.leftMargin: 30
                 anchors.right: parent.right
                 anchors.rightMargin: 40
-                height: implicitHeight
+                height: notificationsColumn.implicitHeight + 36
+
+                Column {
+                    id: notificationsColumn
+
+                    anchors.top: parent.top
+                    anchors.topMargin: 18
+                    anchors.left: parent.left
+                    anchors.leftMargin: 18
+                    anchors.right: parent.right
+                    anchors.rightMargin: 18
+                    spacing: 16
+
+                    SwitchRow {
+                        title: "Do Not Disturb"
+                        description: "Silence notification pop-ups; the bell in the notification center toggles this too"
+                        keyName: "doNotDisturb"
+                        fallbackValue: false
+                        width: parent.width
+                    }
+                }
+            }
+
+            Text {
+                id: controlCenterTitle
+                text: "Control Center"
+                anchors.top: notificationsPanel.bottom
+                anchors.topMargin: 34
+                anchors.left: parent.left
+                anchors.leftMargin: 32
+                anchors.right: parent.right
+                anchors.rightMargin: 40
+                font.family: Theme.titleFontFamily
+                font.pixelSize: 23
+                color: Theme.textColor
+            }
+
+            Rectangle {
+                id: controlCenterPanel
+                color: Theme.cardBgColor
+                radius: 16
+                border.width: 1
+                border.color: Theme.splitLineColor
+
+                anchors.top: controlCenterTitle.bottom
+                anchors.topMargin: 15
+                anchors.left: parent.left
+                anchors.leftMargin: 30
+                anchors.right: parent.right
+                anchors.rightMargin: 40
+                height: controlCenterColumn.implicitHeight + 36
+
+                Column {
+                    id: controlCenterColumn
+
+                    anchors.top: parent.top
+                    anchors.topMargin: 18
+                    anchors.left: parent.left
+                    anchors.leftMargin: 18
+                    anchors.right: parent.right
+                    anchors.rightMargin: 18
+                    spacing: 16
+
+                    CommandRow {
+                        title: "Caffeine Command"
+                        description: "Adds a caffeine button to the Display card. The command must accept toggle and status; status prints on or off"
+                        keyName: "idleInhibitCommand"
+                        placeholderText: "Not set"
+                        width: parent.width
+                    }
+                }
             }
 
             Text {
                 id: tlpTitle
                 text: "Power Profiles"
-                anchors.top: customPagePanel.bottom
+                anchors.top: controlCenterPanel.bottom
                 anchors.topMargin: 34
                 anchors.left: parent.left
                 anchors.leftMargin: 32
@@ -578,7 +689,10 @@ PagePanel {
     component IslandStyleRow: Item {
         id: styleRow
 
+        property bool atBottom: false
         property string selectedStyle: String(ConfigStore.value("islandStyle", "island")).toLowerCase() === "notch" ? "notch" : "island"
+        // The shell forces the island style on the bottom edge.
+        readonly property string shownStyle: atBottom ? "island" : selectedStyle
 
         height: 49
 
@@ -593,7 +707,8 @@ PagePanel {
         }
 
         Text {
-            text: "Choose between floating Dynamic Island or top-attached Notch"
+            text: styleRow.atBottom ? "Notch is only available on the top edge"
+                                    : "Choose between floating Dynamic Island or top-attached Notch"
             font.family: Theme.textFontFamily
             font.pixelSize: 14
             anchors.top: styleTitle.bottom
@@ -615,8 +730,10 @@ PagePanel {
 
                 Rectangle {
                     id: styleButton
-                    readonly property bool selected: styleRow.selectedStyle === modelData.id
+                    readonly property bool selected: styleRow.shownStyle === modelData.id
 
+                    enabled: !(styleRow.atBottom && modelData.id === "notch")
+                    opacity: enabled ? 1 : 0.4
                     width: 82
                     height: 36
                     radius: 7
@@ -725,6 +842,171 @@ PagePanel {
                             ConfigStore.save()
                         }
                     }
+                }
+            }
+        }
+    }
+
+    component ChoiceRow: Item {
+        id: choiceRow
+
+        property string title: ""
+        property string description: ""
+        property string keyName: ""
+        property var options: []
+        property string selectedId: ""
+
+        height: 49
+
+        Text {
+            id: choiceTitle
+            text: choiceRow.title
+            font.family: Theme.textFontFamily
+            font.pixelSize: 18
+            color: Theme.textColor
+            anchors.top: parent.top
+            anchors.left: parent.left
+        }
+
+        Text {
+            text: choiceRow.description
+            font.family: Theme.textFontFamily
+            font.pixelSize: 14
+            anchors.top: choiceTitle.bottom
+            anchors.topMargin: 5
+            anchors.left: choiceTitle.left
+            width: Math.max(80, parent.width - choiceButtons.width - 28)
+            color: Theme.subtleTextColor
+            elide: Text.ElideRight
+        }
+
+        Row {
+            id: choiceButtons
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+
+            Repeater {
+                model: choiceRow.options
+
+                Rectangle {
+                    id: choiceButton
+                    readonly property bool selected: choiceRow.selectedId === modelData.id
+
+                    width: 82
+                    height: 36
+                    radius: 7
+                    color: selected ? Theme.cardBgColor
+                                    : choiceMouse.pressed ? Theme.controlPressedColor
+                                                          : Theme.componentBgColor
+                    border.width: 1
+                    border.color: Theme.inputBorderColor
+
+                    Behavior on color { ColorAnimation { duration: Theme.animationDuration } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.animationDuration } }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: modelData.name
+                        color: choiceButton.selected ? Theme.textColor : Theme.secondaryTextColor
+                        font.family: Theme.textFontFamily
+                        font.pixelSize: 14
+                        font.weight: choiceButton.selected ? Font.DemiBold : Font.Normal
+                    }
+
+                    MouseArea {
+                        id: choiceMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            choiceRow.selectedId = modelData.id
+                            ConfigStore.setValue(choiceRow.keyName, modelData.id)
+                            ConfigStore.save()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    component CommandRow: Item {
+        id: commandRow
+
+        property string title: ""
+        property string description: ""
+        property string keyName: ""
+        property string placeholderText: ""
+
+        height: Math.max(49, commandLabels.implicitHeight)
+
+        function savedText() {
+            return String(ConfigStore.value(commandRow.keyName, ""))
+        }
+
+        function commit() {
+            const val = commandField.text.trim()
+            if (val === commandRow.savedText())
+                return
+            if (val.length === 0)
+                ConfigStore.remove(commandRow.keyName)
+            else
+                ConfigStore.setValue(commandRow.keyName, val)
+            ConfigStore.save()
+        }
+
+        Column {
+            id: commandLabels
+            anchors.left: parent.left
+            anchors.right: commandControls.left
+            anchors.rightMargin: 18
+            anchors.top: parent.top
+            spacing: 5
+
+            Text {
+                text: commandRow.title
+                font.family: Theme.textFontFamily
+                font.pixelSize: 18
+                color: Theme.textColor
+            }
+
+            Text {
+                width: parent.width
+                text: commandRow.description
+                font.family: Theme.textFontFamily
+                font.pixelSize: 14
+                color: Theme.subtleTextColor
+                wrapMode: Text.Wrap
+            }
+        }
+
+        Row {
+            id: commandControls
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 8
+
+            ConfigTextField {
+                id: commandField
+                width: Math.max(160, Math.min(260, (commandRow.width - 320) / 2))
+                height: 36
+                placeholderText: commandRow.placeholderText
+                textPixelSize: 13
+
+                Component.onCompleted: {
+                    text = commandRow.savedText()
+                }
+
+                onAccepted: commandRow.commit()
+                onEditingFinished: commandRow.commit()
+            }
+
+            ButtonLike {
+                text: "Clear"
+                enabled: commandField.text.length > 0 || commandRow.savedText().length > 0
+                onClicked: {
+                    commandField.text = ""
+                    commandRow.commit()
                 }
             }
         }
