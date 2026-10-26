@@ -4,11 +4,15 @@
 #include <QtTest>
 #include <QProcess>
 #include <QSignalSpy>
+#include <QElapsedTimer>
+#include <QFileInfo>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
 
+#include <csignal>
 #include <sys/stat.h>
 
 class SystemServicesNotificationTests : public QObject
@@ -142,6 +146,38 @@ private slots:
         QCOMPARE(QString::fromUtf8(process.readAllStandardOutput()),
                  QStringLiteral("unset|$HOME a b|/home/someone"));
         QCOMPARE(process.exitCode(), 3);
+    }
+
+    void cavaFeedsFiveBarsAndStopsWithoutBlocking()
+    {
+        QTemporaryDir binDirectory;
+        QVERIFY(binDirectory.isValid());
+        const QString pidFile = binDirectory.path() + QStringLiteral("/cava.pid");
+        // Ignores SIGTERM, like a cava stuck on its audio backend.
+        QFile script(binDirectory.path() + QStringLiteral("/cava"));
+        QVERIFY(script.open(QIODevice::WriteOnly));
+        script.write("#!/bin/sh\ntrap '' TERM\necho $$ > '" + pidFile.toUtf8() + "'\n"
+                     "while true; do echo '7;0;7;0;7;'; /bin/sleep 0.05; done\n");
+        script.close();
+        QVERIFY(script.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner));
+        const QByteArray originalPath = qgetenv("PATH");
+        qputenv("PATH", binDirectory.path().toUtf8());
+        const auto restorePath = qScopeGuard([&originalPath] { qputenv("PATH", originalPath); });
+
+        SystemServices services;
+        services.setCavaClientActive(QStringLiteral("test"), true);
+        QTRY_COMPARE(services.cavaLevels(), (QVariantList{1.0, 0.0, 1.0, 0.0, 1.0}));
+        QTRY_VERIFY(QFileInfo(pidFile).size() > 0);
+        QFile pidSource(pidFile);
+        QVERIFY(pidSource.open(QIODevice::ReadOnly));
+        const pid_t pid = pidSource.readAll().trimmed().toInt();
+        QVERIFY(pid > 0);
+
+        QElapsedTimer elapsed;
+        elapsed.start();
+        services.setCavaClientActive(QStringLiteral("test"), false);
+        QVERIFY(elapsed.elapsed() < 100);
+        QTRY_VERIFY_WITH_TIMEOUT(::kill(pid, 0) != 0, 3000);
     }
 
     void onlyRegularFilesCountAsNotificationImages()

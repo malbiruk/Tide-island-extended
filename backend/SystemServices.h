@@ -229,6 +229,8 @@ private:
 
 
 
+    // The resting island draws five visualizer bars.
+    static constexpr int kCavaBars = 5;
     QVariantList m_cavaLevels;
     QSet<QString> m_cavaClients;
     bool m_cavaMissingWarned = false;

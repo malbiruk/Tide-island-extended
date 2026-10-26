@@ -53,7 +53,8 @@ static SystemServices *s_systemServicesInstance = nullptr;
 SystemServices::SystemServices(QObject *parent)
     : QObject(parent) {
     s_systemServicesInstance = this;
-    m_cavaLevels = QVariantList{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    for (int index = 0; index < kCavaBars; ++index)
+        m_cavaLevels.append(0.0);
 
     m_busMonitorRestartTimer.setSingleShot(true);
     m_busMonitorRestartTimer.setInterval(1200);
@@ -1976,17 +1977,17 @@ void SystemServices::startCava() {
         return;
     }
 
-    static const QByteArray config =
+    static const QByteArray config = QByteArray(
         "[general]\n"
         "framerate = 22\n"
-        "bars = 8\n"
+        "bars = " + QByteArray::number(kCavaBars) + "\n"
         "autosens = 1\n"
         "[output]\n"
         "method = raw\n"
         "raw_target = /dev/stdout\n"
         "data_format = ascii\n"
         "ascii_max_range = 7\n"
-        "channels = mono\n";
+        "channels = mono\n");
 
     m_cavaProcess = new QProcess(this);
     m_cavaProcess->setProgram(executable);
@@ -2011,9 +2012,26 @@ void SystemServices::startCava() {
     m_cavaProcess->start();
 }
 
+// Never waits on the GUI thread: cava gets SIGTERM, SIGKILL a second later if it lingers,
+// and its QProcess is deleted once it has exited.
 void SystemServices::stopCava() {
-    stopProcess(m_cavaProcess);
     m_cavaBuffer.clear();
+    if (!m_cavaProcess)
+        return;
+
+    QProcess *process = m_cavaProcess;
+    m_cavaProcess = nullptr;
+    process->disconnect(this);
+    if (process->state() == QProcess::NotRunning) {
+        process->deleteLater();
+        return;
+    }
+    connect(process, &QProcess::finished, process, &QObject::deleteLater);
+    process->terminate();
+    QTimer::singleShot(1000, process, [process]() {
+        if (process->state() != QProcess::NotRunning)
+            process->kill();
+    });
 }
 
 void SystemServices::handleCavaOutput() {
@@ -2025,13 +2043,13 @@ void SystemServices::handleCavaOutput() {
 
 void SystemServices::handleCavaLine(const QString &line) {
     const QStringList parts = line.split(QLatin1Char(';'));
-    if (parts.size() < 8) return;
+    if (parts.size() < kCavaBars) return;
 
     QVariantList nextLevels;
-    nextLevels.reserve(8);
-    bool changed = m_cavaLevels.size() != 8;
+    nextLevels.reserve(kCavaBars);
+    bool changed = m_cavaLevels.size() != kCavaBars;
 
-    for (int index = 0; index < 8; ++index) {
+    for (int index = 0; index < kCavaBars; ++index) {
         bool ok = false;
         const double value = std::clamp(parts.at(index).toDouble(&ok) / 7.0, 0.0, 1.0);
         const double nextValue = ok ? value : 0.0;

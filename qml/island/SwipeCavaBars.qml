@@ -4,8 +4,8 @@ import IslandBackend
 Item {
     id: root
 
-    property var levels: [0, 0, 0, 0, 0, 0, 0, 0]
-    property int barCount: Math.max(1, levelCount() > 0 ? levelCount() : 8)
+    property var levels: [0, 0, 0, 0, 0]
+    property int barCount: Math.max(1, levelCount() > 0 ? levelCount() : 5)
     property real barWidth: 4
     property real barSpacing: 3
     property real minimumBarHeight: 4

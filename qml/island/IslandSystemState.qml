@@ -40,7 +40,7 @@ Item {
     property real currentMicVolume: -1
     property bool isMicMuted: false
     property real currentBrightness: -1
-    property var cavaLevels: [0, 0, 0, 0, 0, 0, 0, 0]
+    property var cavaLevels: [0, 0, 0, 0, 0]
 
     property string _lastChargeStatus: SysBackend.batteryStatus
     property string _pendingVolType: ""
