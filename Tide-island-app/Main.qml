@@ -369,7 +369,7 @@ ApplicationWindow {
 
             anchors.left: parent.left
             anchors.leftMargin: 16
-            anchors.right: rewriteButton.left
+            anchors.right: retryButton.left
             anchors.rightMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             text: "Config file error: " + ConfigStore.errorString
@@ -382,7 +382,7 @@ ApplicationWindow {
         }
 
         Rectangle {
-            id: rewriteButton
+            id: retryButton
 
             width: 112
             height: 32
@@ -390,22 +390,22 @@ ApplicationWindow {
             anchors.rightMargin: 10
             anchors.verticalCenter: parent.verticalCenter
             radius: 6
-            color: rewriteMouse.pressed ? Theme.buttonPressedColor
-                                        : rewriteMouse.containsMouse ? Theme.buttonHoverColor
-                                                                    : Theme.buttonColor
+            color: retryMouse.pressed ? Theme.buttonPressedColor
+                                      : retryMouse.containsMouse ? Theme.buttonHoverColor
+                                                                 : Theme.buttonColor
 
             Behavior on color { ColorAnimation { duration: Theme.animationDuration } }
 
             Text {
                 anchors.centerIn: parent
-                text: "Rewrite"
+                text: "Retry"
                 color: Theme.buttonTextColor
                 font.family: Theme.textFontFamily
                 font.pixelSize: 13
             }
 
             MouseArea {
-                id: rewriteMouse
+                id: retryMouse
 
                 anchors.fill: parent
                 hoverEnabled: true

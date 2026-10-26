@@ -497,7 +497,25 @@ void Backend::setColorScheme(const QString &colorScheme){
     emit colorSchemeChanged();
 }
 
-bool Backend::save(const QVariantMap &userConfig){
+// Applies only the given keys on top of the file as it is now, so values written
+// by the shell since the app loaded (e.g. doNotDisturb) are not reverted.
+bool Backend::save(const QVariantMap &changes, const QStringList &removedKeys){
+    QJsonObject current;
+    if (!readUserConfigObject(current))
+        return false;
+
+    QJsonObject merged = current;
+    for (auto it = changes.cbegin(); it != changes.cend(); ++it)
+        merged.insert(it.key(), QJsonValue::fromVariant(it.value()));
+    for (const QString &key : removedKeys)
+        merged.remove(key);
+
+    if (merged == current) {
+        setUserConfig(current.toVariantMap());
+        setErrorString(QString());
+        return true;
+    }
+
     const QFileInfo configInfo(m_userConfigPath);
     QDir directory(configInfo.absolutePath());
     if (!directory.exists() && !QDir().mkpath(configInfo.absolutePath())) {
@@ -505,12 +523,7 @@ bool Backend::save(const QVariantMap &userConfig){
         return false;
     }
 
-    const QJsonDocument document = QJsonDocument::fromVariant(userConfig);
-    if (!document.isObject()) {
-        setErrorString(QStringLiteral("User config must be a JSON object."));
-        return false;
-    }
-
+    const QJsonDocument document(merged);
     QSaveFile file(m_userConfigPath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         setErrorString(QStringLiteral("Could not write %1: %2").arg(m_userConfigPath, file.errorString()));
@@ -523,7 +536,7 @@ bool Backend::save(const QVariantMap &userConfig){
         return false;
     }
 
-    setUserConfig(userConfig);
+    setUserConfig(merged.toVariantMap());
     setErrorString(QString());
     return true;
 }
@@ -672,10 +685,8 @@ bool Backend::applyShortcutBindings(const QVariantList &shortcutBindings){
         completeBindings,
         includeWorkspaceOverview);
 
-    QVariantMap data = toVariantMap();
-    data.insert(QString::fromLatin1(shortcutBindingsKey), completeBindings);
-
-    if (!save(data))
+    const QVariantMap changes{{QString::fromLatin1(shortcutBindingsKey), completeBindings}};
+    if (!save(changes))
         return false;
 
     if (currentCompositor() == QStringLiteral("niri"))
@@ -1128,45 +1139,50 @@ bool Backend::validateNiriConfig(const QString &configText){
 }
 
 void Backend::load(){
-    QFile file(m_userConfigPath);
-    if (!file.exists()) {
+    QJsonObject object;
+    if (!readUserConfigObject(object)) {
         setUserConfig({});
-        setErrorString(QString());
         return;
     }
+
+    setUserConfig(object.toVariantMap());
+    setErrorString(QString());
+}
+
+// A missing or empty file reads as an empty object; an unreadable or invalid one
+// sets the error string and returns false so callers never write over it.
+bool Backend::readUserConfigObject(QJsonObject &object){
+    object = QJsonObject();
+    QFile file(m_userConfigPath);
+    if (!file.exists())
+        return true;
 
     if (!file.open(QIODevice::ReadOnly)) {
-        setUserConfig({});
         setErrorString(QStringLiteral("Could not read %1: %2").arg(m_userConfigPath, file.errorString()));
-        return;
+        return false;
     }
 
-    const QByteArray contents = file.readAll();
-    if (contents.trimmed().isEmpty()) {
-        setUserConfig({});
-        setErrorString(QString());
-        return;
-    }
+    const QByteArray contents = JsonComments::strip(file.readAll());
+    if (contents.trimmed().isEmpty())
+        return true;
 
     QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(JsonComments::strip(contents), &parseError);
+    const QJsonDocument document = QJsonDocument::fromJson(contents, &parseError);
     if (parseError.error != QJsonParseError::NoError) {
-        setUserConfig({});
         setErrorString(QStringLiteral("Invalid JSON in %1 at offset %2: %3")
             .arg(m_userConfigPath)
             .arg(parseError.offset)
             .arg(parseError.errorString()));
-        return;
+        return false;
     }
 
     if (!document.isObject()) {
-        setUserConfig({});
         setErrorString(QStringLiteral("Invalid JSON in %1: root value must be an object.").arg(m_userConfigPath));
-        return;
+        return false;
     }
 
-    setUserConfig(document.object().toVariantMap());
-    setErrorString(QString());
+    object = document.object();
+    return true;
 }
 
 void Backend::setErrorString(const QString &errorString){
@@ -1186,6 +1202,7 @@ QVariantMap Backend::toVariantMap() const{
 
 void Backend::setUserConfig(const QVariantMap &userConfig){
     m_userConfig = toUserConfigMap(userConfig);
+    emit userConfigChanged();
 }
 
 bool Backend::hasPowerProfilesCtl() const
