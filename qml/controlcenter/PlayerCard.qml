@@ -151,7 +151,6 @@ Rectangle {
             }
         }
 
-        // Thin Glance-style progress bar
         Rectangle {
             anchors.left: parent.left
             anchors.right: parent.right
@@ -169,7 +168,6 @@ Rectangle {
         }
     }
 
-    // Close: hide the card until playback starts again or the track changes
     Item {
         anchors.top: parent.top
         anchors.right: parent.right

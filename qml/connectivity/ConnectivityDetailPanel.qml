@@ -799,7 +799,6 @@ Item {
                     }
                 }
 
-                // Charge limit
                 Rectangle {
                     visible: root.isPower && SystemServices.batteryThresholdSupported
                     width: parent.width

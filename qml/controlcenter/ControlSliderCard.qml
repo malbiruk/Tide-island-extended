@@ -171,7 +171,6 @@ Rectangle {
             }
         }
 
-        // 24px hit area, thin Glance-style bar centred inside it
         Item {
             id: sliderTrack
             anchors.left: parent.left

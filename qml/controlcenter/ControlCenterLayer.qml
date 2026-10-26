@@ -25,7 +25,6 @@ Item {
     // Shell-wide unread notifications: an accent dot on the header bell.
     property int unreadNotificationCount: 0
 
-    // Media card (fed by the window's MPRIS controller)
     property bool playerCardVisible: false
     property string playerTitle: ""
     property string playerArtist: ""
@@ -192,7 +191,6 @@ Item {
         : 0
     readonly property real playerCardExtraHeight: playerCard.visible ? playerCard.height + mainContent.spacing : 0
 
-    // The former drawer is now a fixed row (tray / recorder) with no handle.
     readonly property real controlCenterExtraHeight: 12 + batteryModeCardHeight
         + playerCardExtraHeight
         + activeRecorderExtraHeight
@@ -1623,7 +1621,6 @@ Item {
                 width: 220
                 height: parent.height
 
-                // The clock opens the timer.
                 Text {
                     id: timeLabel
                     anchors.left: parent.left
@@ -2181,7 +2178,6 @@ Item {
             }
             onCancelRequested: SystemServices.requestBrightness()
             onIconClicked: controlCenter.cycleBrightnessPreset()
-            // Idle inhibit: coffee cup, filled while inhibiting
             secondaryIconText: !controlCenter.idleInhibitConfigured
                 ? ""
                 : (controlCenter.idleInhibitOn ? "\u{F0176}" : "\u{F06CA}")

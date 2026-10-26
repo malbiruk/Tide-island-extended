@@ -1769,7 +1769,7 @@ PanelWindow {
         }
 
         // Store in notification history: an update of the same id replaces its entry; identical
-        // content is aggregated with a count (inspired by ChillPill).
+        // content is aggregated with a count.
         function addNotificationToHistory(record) {
             if (!notificationHistoryModel)
                 return;
@@ -2635,7 +2635,6 @@ PanelWindow {
                         islandContainer.forceActiveFocus();
                 }
 
-                // Loaded by URL, so the layer's type is compiled only when it first opens.
                 Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/NotificationCenterHost.qml"),
                     { host: root, island: islandContainer })
             }
@@ -2648,7 +2647,6 @@ PanelWindow {
                 visible: islandContainer.fileShelfLayerVisible
                 onLoaded: root.focusFileShelf()
 
-                // Loaded by URL, so the layer's type is compiled only when it first opens.
                 Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/FileShelfHost.qml"),
                     { host: root, island: islandContainer })
             }
@@ -2661,7 +2659,6 @@ PanelWindow {
                 visible: islandContainer.clipboardLayerVisible
                 onLoaded: root.focusClipboard()
 
-                // Loaded by URL, so the layer's type is compiled only when it first opens.
                 Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/ClipboardHost.qml"),
                     { host: root, island: islandContainer })
             }
@@ -2674,7 +2671,6 @@ PanelWindow {
                 visible: islandContainer.weatherLayerVisible
                 onLoaded: islandContainer.forceActiveFocus()
 
-                // Loaded by URL, so the layer's type is compiled only when it first opens.
                 Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/WeatherHost.qml"),
                     { host: root, island: islandContainer })
             }
@@ -2687,7 +2683,6 @@ PanelWindow {
                 visible: islandContainer.calendarLayerVisible
                 onLoaded: islandContainer.forceActiveFocus()
 
-                // Loaded by URL, so the layer's type is compiled only when it first opens.
                 Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/CalendarHost.qml"),
                     { host: root, island: islandContainer })
             }
@@ -2703,7 +2698,6 @@ PanelWindow {
                     if (item) item.forceActiveFocus();
                 }
 
-                // Loaded by URL, so the layer's type is compiled only when it first opens.
                 Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/PrivacyHudHost.qml"),
                     { host: root, island: islandContainer })
             }
@@ -2719,7 +2713,6 @@ PanelWindow {
                     if (item) item.forceActiveFocus();
                 }
 
-                // Loaded by URL, so the layer's type is compiled only when it first opens.
                 Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/GlanceHost.qml"),
                     { host: root, island: islandContainer })
             }

@@ -78,7 +78,6 @@ Item {
         text: root.timeText
     }
 
-    // --- Music: cover, current lyric (or title), visualizer ---
     Row {
         id: musicRow
         x: root.centerX - root.musicContentWidth
@@ -147,7 +146,6 @@ Item {
         }
     }
 
-    // --- Clock ---
     Text {
         x: root.centerX
         width: root.centerSectionWidth
@@ -162,7 +160,6 @@ Item {
         font.letterSpacing: -0.25
     }
 
-    // --- Unread notifications: bell with an accent dot ---
     Item {
         id: unreadBell
         x: root.centerX + root.centerSectionWidth
@@ -199,7 +196,6 @@ Item {
         }
     }
 
-    // --- Battery ---
     BatteryIndicator {
         id: battery
         x: root.centerX + root.centerSectionWidth + root.bellSlotWidth

@@ -33,7 +33,6 @@ PagePanel {
     }
 
     function normalizedHoverAction(value) {
-        // 1 was the removed music player.
         return Number(value) === 2 ? 2 : 0
     }
 
@@ -51,7 +50,6 @@ PagePanel {
 
     function normalizedAction(value) {
         const action = String(value === undefined || value === null ? "" : value).trim()
-        // toggleExpandedPlayer was the removed music player.
         return action === "" || action === "toggleExpandedPlayer" ? "none" : action
     }
 

@@ -47,7 +47,6 @@ Scope {
         }
     }
 
-    // --- Notification daemon ---------------------------------------------------------------
     // tide-island owns org.freedesktop.Notifications. Every notification stays tracked (and in
     // the history) until it is dismissed in tide or closed by the sending app; a popup timing
     // out only hides the popup. Transient notifications only pop up and then expire.

@@ -249,7 +249,6 @@ Item {
         return openAction ? [openAction].concat(picked) : picked;
     }
 
-    // Up to two of the non-default actions for the compact popup.
     function pickCompactActions(effectiveActions) {
         if (effectiveActions.length === 0) return [];
 
@@ -771,7 +770,6 @@ Item {
                 }
             }
 
-            // --- Expand: the body itself acts on the notification ---
             Item {
                 visible: root.hasOverflowContent
                 Layout.alignment: Qt.AlignVCenter
@@ -928,7 +926,6 @@ Item {
                     }
                 }
 
-                // Collapse back to the compact popup
                 Item {
                     Layout.preferredWidth: 18
                     Layout.preferredHeight: 28

@@ -265,8 +265,7 @@ void SystemServices::startBusMonitor() {
     m_busMonitor = new QProcess(this);
     m_busMonitor->setProcessChannelMode(QProcess::MergedChannels);
     m_busMonitor->setProgram(executable);
-    // Notifications are no longer eavesdropped: tide-island owns org.freedesktop.Notifications
-    // itself (Quickshell NotificationServer in shell.qml). Only the ScreenCast portal is watched.
+    // tide-island owns org.freedesktop.Notifications (shell.qml), so only the ScreenCast portal is watched.
     m_busMonitor->setArguments({
         QStringLiteral("--session"),
         QStringLiteral("type='method_call',interface='org.freedesktop.portal.ScreenCast'"),
