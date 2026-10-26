@@ -1273,6 +1273,13 @@ PanelWindow {
             }
         }
 
+        // A control center sliding away is still shown: clear its own panel state as hiding it
+        // would, so reopening it mid-slide starts clean.
+        onTransientSlideOutChanged: {
+            if (transientSlideOut && controlCenterLayerVisible && controlCenterLoader.item)
+                controlCenterLoader.item.closeConnectivityPanels();
+        }
+
         onFileShelfLayerVisibleChanged: {
             if (!fileShelfLayerVisible)
                 fileShelfOpenedManually = false;
@@ -1829,8 +1836,8 @@ PanelWindow {
         function smartRestoreState() {
             if (transientSlideOut)
                 return;
-            // The control center's connectivity popups close with it (it clears its own panel
-            // state once hidden); closed, they no longer keep the island up.
+            // The control center's connectivity popups close with it; closed, they no longer keep
+            // the island up.
             if (islandState === "control_center")
                 root.closeAllConnectivityDetails();
             if (islandState !== "normal" && root.transientCanSlideOut())
