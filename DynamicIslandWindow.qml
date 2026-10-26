@@ -1328,10 +1328,6 @@ PanelWindow {
             case "openExpandedPlayer":
                 showExpandedPlayer(false);
                 return;
-            case "closeExpandedPlayer":
-                if (islandState === "expanded")
-                    smartRestoreState();
-                return;
             case "toggleNotificationCenter":
                 if (islandState === "notification_center")
                     smartRestoreState();
@@ -1341,10 +1337,6 @@ PanelWindow {
             case "openNotificationCenter":
                 showNotificationCenter();
                 return;
-            case "closeNotificationCenter":
-                if (islandState === "notification_center")
-                    smartRestoreState();
-                return;
             case "toggleControlCenter":
                 if (islandState === "control_center")
                     smartRestoreState();
@@ -1353,10 +1345,6 @@ PanelWindow {
                 return;
             case "openControlCenter":
                 showControlCenter();
-                return;
-            case "closeControlCenter":
-                if (islandState === "control_center")
-                    smartRestoreState();
                 return;
             case "toggleRecording":
                 ScreenRecorder.toggleRecording();
@@ -1377,10 +1365,6 @@ PanelWindow {
             case "showClipboard":
                 showClipboard();
                 return;
-            case "closeClipboard":
-                if (islandState === "clipboard")
-                    smartRestoreState();
-                return;
             case "toggleWeather":
                 if (islandState === "weather")
                     smartRestoreState();
@@ -1390,10 +1374,6 @@ PanelWindow {
             case "openWeather":
             case "showWeather":
                 showWeather();
-                return;
-            case "closeWeather":
-                if (islandState === "weather")
-                    smartRestoreState();
                 return;
             case "toggleCalendar":
                 if (islandState === "calendar")
@@ -1405,10 +1385,6 @@ PanelWindow {
             case "showCalendar":
                 showCalendar();
                 return;
-            case "closeCalendar":
-                if (islandState === "calendar")
-                    smartRestoreState();
-                return;
             case "togglePrivacyHud":
                 if (islandState === "privacy_hud")
                     smartRestoreState();
@@ -1418,10 +1394,6 @@ PanelWindow {
             case "openPrivacyHud":
             case "showPrivacyHud":
                 showPrivacyHud();
-                return;
-            case "closePrivacyHud":
-                if (islandState === "privacy_hud")
-                    smartRestoreState();
                 return;
             case "toggleGlance":
             case "toggleDashboard":
@@ -1435,11 +1407,6 @@ PanelWindow {
             case "openDashboard":
             case "showDashboard":
                 showGlance();
-                return;
-            case "closeGlance":
-            case "closeDashboard":
-                if (islandState === "glance")
-                    smartRestoreState();
                 return;
             default:
             }
