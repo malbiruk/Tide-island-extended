@@ -962,6 +962,7 @@ check_dependencies() {
   check_feature "brightnessctl" "brightnessctl" "Backlight brightness adjustment"
   check_power_profile
   check_feature "bluetoothctl" "bluez" "Bluetooth device pairing & control"
+  check_feature "rfkill" "util-linux" "Turns Bluetooth on when it is rfkill soft-blocked"
   check_feature "nmcli" "networkmanager" "Wi-Fi scanning & connection manager"
   check_feature "pkexec" "polkit" "Privileged elevation (battery limit)"
   check_feature "zenity" "zenity" "GUI dialog fallback prompt"

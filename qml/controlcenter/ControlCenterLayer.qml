@@ -153,6 +153,7 @@ Item {
     property string bluetoothError: ""
     property string bluetoothPairAndConnectPath: ""
     property string bluetoothPendingSecretValue: ""
+    property bool bluetoothPowerOnPending: false
     readonly property var wifiController: WifiController
     readonly property var bluetoothPairingAgent: BluetoothPairingAgent
     readonly property var wifiNetworks: wifiController ? wifiController.networks : null
@@ -217,7 +218,9 @@ Item {
         if (wifiSupported && !wifiAvailable) return "No Wi-Fi device is available.";
         return "";
     }
-    readonly property bool bluetoothEnabled: bluetoothAdapter ? bluetoothAdapter.enabled : false
+    readonly property bool bluetoothEnabled: bluetoothAdapter
+        ? bluetoothAdapter.enabled && bluetoothAdapter.state !== BluetoothAdapterState.Blocked
+        : false
     readonly property bool bluetoothBusy: bluetoothAdapter
         ? bluetoothAdapter.state === BluetoothAdapterState.Enabling
             || bluetoothAdapter.state === BluetoothAdapterState.Disabling
@@ -1026,7 +1029,22 @@ Item {
         if (bluetoothAdapter.discovering)
             bluetoothAdapter.discovering = false;
 
-        bluetoothAdapter.enabled = !bluetoothAdapter.enabled;
+        if (bluetoothEnabled) {
+            bluetoothAdapter.enabled = false;
+        } else if (bluetoothAdapter.state === BluetoothAdapterState.Blocked) {
+            bluetoothPowerOnPending = true;
+            bluetoothUnblockProcess.running = true;
+        } else {
+            bluetoothAdapter.enabled = true;
+        }
+    }
+
+    function powerOnBluetoothIfUnblocked() {
+        if (!bluetoothPowerOnPending || !bluetoothAdapter
+                || bluetoothAdapter.state === BluetoothAdapterState.Blocked)
+            return;
+        bluetoothPowerOnPending = false;
+        bluetoothAdapter.enabled = true;
     }
 
     function toggleBluetoothScan() {
@@ -1322,6 +1340,21 @@ Item {
         }
     }
 
+    // BlueZ ignores power-on while the adapter is rfkill soft-blocked (systemd-rfkill restores a
+    // saved block at boot): lift the block, then power on once BlueZ no longer reports it blocked.
+    Process {
+        id: bluetoothUnblockProcess
+        command: ["rfkill", "unblock", "bluetooth"]
+        running: false
+        onExited: function(exitCode) {
+            if (exitCode !== 0) {
+                controlCenter.bluetoothPowerOnPending = false;
+                controlCenter.bluetoothError = "Could not unblock Bluetooth (rfkill).";
+                return;
+            }
+            controlCenter.powerOnBluetoothIfUnblocked();
+        }
+    }
     Process {
         id: shutdownProcess
         command: ["systemctl", "poweroff"]
@@ -1533,6 +1566,10 @@ Item {
         function onDiscoveringChanged() {
             if (!controlCenter.bluetoothAdapter.discovering)
                 bluetoothScanStopTimer.stop();
+        }
+
+        function onStateChanged() {
+            controlCenter.powerOnBluetoothIfUnblocked();
         }
     }
 
