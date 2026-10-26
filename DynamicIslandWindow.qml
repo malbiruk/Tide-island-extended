@@ -281,7 +281,7 @@ PanelWindow {
     // shelf is excluded so drags out of it can still drop onto other windows.
     readonly property bool outsideClickDismissActive: !root.connectivityPromptActive
         && (["control_center", "notification_center", "calendar", "weather", "glance",
-            "clipboard", "application_launcher", "wallpaper_picker", "privacy_hud"]
+            "clipboard", "privacy_hud"]
             .indexOf(islandContainer.islandState) !== -1
             || (root.powerDetailStandalone && root.powerConnectivityDetailMounted))
     readonly property real outsideClickDismissWindowHeight: root.outsideClickDismissActive && root.screen
@@ -323,9 +323,7 @@ PanelWindow {
     Component.onCompleted: root.retainedWindowHeight = root.requestedWindowHeight
 
     exclusiveZone: Math.ceil(root.baseExclusiveZone * root.exclusiveZoneProgress)
-    WlrLayershell.layer: islandContainer.wallpaperPickerLayerVisible
-        || islandContainer.applicationLauncherLayerVisible
-        || islandContainer.fileShelfLayerVisible
+    WlrLayershell.layer: islandContainer.fileShelfLayerVisible
         || islandContainer.clipboardLayerVisible
         || islandContainer.weatherLayerVisible
         || islandContainer.calendarLayerVisible
@@ -337,8 +335,6 @@ PanelWindow {
     WlrLayershell.keyboardFocus: {
         if (islandContainer.controlCenterLayerVisible
                 || islandContainer.notificationCenterLayerVisible
-                || islandContainer.wallpaperPickerLayerVisible
-                || islandContainer.applicationLauncherLayerVisible
                 || islandContainer.fileShelfLayerVisible
                 || islandContainer.clipboardLayerVisible
                 || islandContainer.weatherLayerVisible
@@ -449,7 +445,6 @@ PanelWindow {
         : 0
     readonly property real connectivityDetailGap: 12
     readonly property int connectivityDetailAnimationDuration: 220
-    property string wallpaperPickerActiveWallpaper: userConfig.wallpaperPath
 
     Behavior on autoHideProgress {
         NumberAnimation {
@@ -692,10 +687,6 @@ PanelWindow {
         setConnectivityDetailVisible("audio_input", false);
     }
 
-    function handleWallpaperApplySucceeded(filePath) {
-        wallpaperPickerActiveWallpaper = filePath;
-    }
-
     // Called by the notification daemon in shell.qml with a record and a mode:
     // "popup" (show + history), "update" (refresh in place), "history" (record only).
     function presentNotificationRecord(record, mode) {
@@ -829,20 +820,6 @@ PanelWindow {
             islandContainer.smartRestoreState();
         else
             islandContainer.showNotificationCenter();
-    }
-
-    function toggleWallpaperPickerWindow() {
-        if (islandContainer.islandState === "wallpaper_picker")
-            islandContainer.smartRestoreState();
-        else
-            islandContainer.showWallpaperPicker();
-    }
-
-    function toggleApplicationLauncherWindow() {
-        if (islandContainer.islandState === "application_launcher")
-            islandContainer.smartRestoreState();
-        else
-            islandContainer.showApplicationLauncher();
     }
 
     function toggleFileShelfWindow() {
@@ -984,22 +961,10 @@ PanelWindow {
         onTriggered: root.hideAutoHiddenIsland(false)
     }
 
-    function focusWallpaperPicker() {
-        islandContainer.forceActiveFocus();
-        if (wallpaperPickerLoader.item && wallpaperPickerLoader.item.grabKeyboardFocus)
-            wallpaperPickerLoader.item.grabKeyboardFocus();
-    }
-
     function focusExpandedPlayer() {
         islandContainer.requestExpandedPlayerKeyboardFocus();
         if (expandedPlayerLoader.item && expandedPlayerLoader.item.grabKeyboardFocus)
             expandedPlayerLoader.item.grabKeyboardFocus();
-    }
-
-    function focusApplicationLauncher() {
-        islandContainer.forceActiveFocus();
-        if (applicationLauncherLoader.item && applicationLauncherLoader.item.grabKeyboardFocus)
-            applicationLauncherLoader.item.grabKeyboardFocus();
     }
 
     function focusFileShelf() {
@@ -1083,8 +1048,6 @@ PanelWindow {
         anchors.fill: parent
         focus: controlCenterLayerVisible
             || notificationCenterLayerVisible
-            || wallpaperPickerLayerVisible
-            || applicationLauncherLayerVisible
             || fileShelfLayerVisible
             || clipboardLayerVisible
             || weatherLayerVisible
@@ -1308,8 +1271,6 @@ PanelWindow {
         readonly property bool blocksTransientSplit: islandState === "expanded"
             || islandState === "control_center"
             || islandState === "notification"
-            || islandState === "wallpaper_picker"
-            || islandState === "application_launcher"
             || islandState === "file_shelf"
             || islandState === "clipboard"
             || islandState === "weather"
@@ -1351,8 +1312,6 @@ PanelWindow {
         readonly property bool notificationLayerVisible: islandState === "notification"
         readonly property bool controlCenterLayerVisible: islandState === "control_center"
         readonly property bool notificationCenterLayerVisible: islandState === "notification_center"
-        readonly property bool wallpaperPickerLayerVisible: islandState === "wallpaper_picker"
-        readonly property bool applicationLauncherLayerVisible: islandState === "application_launcher"
         readonly property bool fileShelfLayerVisible: islandState === "file_shelf"
         readonly property bool clipboardLayerVisible: islandState === "clipboard"
         readonly property bool weatherLayerVisible: islandState === "weather"
@@ -2210,24 +2169,6 @@ PanelWindow {
         }
 
 
-        function showWallpaperPicker() {
-            cancelSideSwipeSettle();
-            abortSideTransientMode();
-            clearTransientCapsule();
-            islandState = "wallpaper_picker";
-            mainCapsule.displayedWidth = mainCapsule.baseTargetWidth;
-            stopAutoHideTimer();
-        }
-
-        function showApplicationLauncher() {
-            cancelSideSwipeSettle();
-            abortSideTransientMode();
-            clearTransientCapsule();
-            islandState = "application_launcher";
-            mainCapsule.displayedWidth = mainCapsule.baseTargetWidth;
-            stopAutoHideTimer();
-        }
-
         function showFileShelf(manuallyOpened) {
             const manual = manuallyOpened === true;
             if (islandState === "file_shelf") {
@@ -2434,8 +2375,6 @@ PanelWindow {
                     return 420;
                 case "notification_center":
                     return 410;
-                case "wallpaper_picker":
-                case "application_launcher":
                 case "file_shelf":
                     return 1100;
                 case "clipboard":
@@ -2468,8 +2407,6 @@ PanelWindow {
                         : 406 + (controlCenterLoader.item ? controlCenterLoader.item.controlCenterExtraHeight : root.defaultControlCenterExtraHeight);
                 case "notification_center":
                     return notificationCenterLoader.item ? notificationCenterLoader.item.contentHeight : 200;
-                case "wallpaper_picker":
-                case "application_launcher":
                 case "file_shelf":
                     return 260;
                 case "clipboard":
@@ -3236,45 +3173,6 @@ PanelWindow {
                             root.activateNotification({ id: id }, true);
                             islandContainer.smartRestoreState();
                         }
-                        onCloseRequested: islandContainer.smartRestoreState()
-                    }
-                }
-            }
-
-            Loader {
-                id: wallpaperPickerLoader
-                anchors.fill: parent
-                active: islandContainer.wallpaperPickerLayerVisible
-                asynchronous: false
-                visible: islandContainer.wallpaperPickerLayerVisible
-                onLoaded: root.focusWallpaperPicker()
-
-                sourceComponent: Component {
-                    WallpaperPickerLayer {
-                        iconFontFamily: root.iconFontFamily
-                        textFontFamily: root.textFontFamily
-                        activeWallpaper: root.wallpaperPickerActiveWallpaper
-                        showCondition: islandContainer.wallpaperPickerLayerVisible
-                        onWallpaperApplied: filePath => root.wallpaperPickerActiveWallpaper = filePath
-                        onWallpaperApplySucceeded: filePath => root.handleWallpaperApplySucceeded(filePath)
-                        onCloseRequested: islandContainer.smartRestoreState()
-                    }
-                }
-            }
-
-            Loader {
-                id: applicationLauncherLoader
-                anchors.fill: parent
-                active: islandContainer.applicationLauncherLayerVisible
-                asynchronous: false
-                visible: islandContainer.applicationLauncherLayerVisible
-                onLoaded: root.focusApplicationLauncher()
-
-                sourceComponent: Component {
-                    ApplicationLauncherLayer {
-                        iconFontFamily: root.iconFontFamily
-                        textFontFamily: root.textFontFamily
-                        showCondition: islandContainer.applicationLauncherLayerVisible
                         onCloseRequested: islandContainer.smartRestoreState()
                     }
                 }

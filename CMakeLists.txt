@@ -80,12 +80,6 @@ add_test(NAME wifi_controller
 )
 set_tests_properties(wifi_controller PROPERTIES TIMEOUT 40)
 
-find_program(PYTHON3_EXECUTABLE NAMES python3 REQUIRED)
-add_test(
-    NAME wallpaper_apply
-    COMMAND "${PYTHON3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/wallpaper_apply_tests.py"
-)
-
 add_executable(battery_status_utils_tests
     tests/battery_status_utils_tests.cpp
 )
@@ -97,22 +91,6 @@ target_link_libraries(battery_status_utils_tests PRIVATE
     Qt6::Test
 )
 add_test(NAME battery_status_utils COMMAND battery_status_utils_tests)
-
-add_executable(application_search_tests
-    tests/application_search_tests.cpp
-)
-
-target_compile_definitions(application_search_tests PRIVATE
-    APPLICATION_SEARCH_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/qml/common/ApplicationSearch.js"
-)
-
-target_link_libraries(application_search_tests PRIVATE
-    Qt6::Core
-    Qt6::Qml
-    Qt6::Test
-)
-
-add_test(NAME application_search COMMAND application_search_tests)
 
 add_executable(bluetooth_formatting_tests
     tests/bluetooth_formatting_tests.cpp

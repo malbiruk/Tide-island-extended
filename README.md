@@ -114,14 +114,6 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
   </tr>
   <tr>
     <td width="50%">
-      <img src="docs/preview/app_launcher.png" width="100%" alt="Application Launcher" />
-    </td>
-    <td width="50%">
-      <img src="docs/preview/wallpaper_switcher.png" width="100%" alt="Wallpaper Switcher" />
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
       <img src="docs/preview/weather.png" width="100%" alt="Weather & Forecast" />
     </td>
     <td width="50%">
@@ -238,12 +230,10 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 - Battery health & charge limit (conservation mode)
 - Timer
 - Lyrics displayer
-- Application launcher
 - File shelf
 - Clipboard history manager
 - Weather & Forecast
 - Calendar
-- Wallpaper switcher
 - Custom page
 - Notification Center
 - Power menu
@@ -494,8 +484,6 @@ You can control Tide Island remotely using `quickshell ipc call`:
 | `quickshell ipc call tide toggleControlCenter` | Open or close control center |
 | `quickshell ipc call tide togglePowerMenu` | Open or close power menu |
 | `quickshell ipc call tide toggleFileShelf` | Open or close file shelf |
-| `quickshell ipc call tide toggleWallpaperPicker` | Open or close wallpaper switcher |
-| `quickshell ipc call tide toggleApplicationLauncher` | Open or close application launcher |
 | `quickshell ipc call tide toggleCalendar` | Open or close calendar view |
 | `quickshell ipc call tide openCalendar` | Open calendar view |
 | `quickshell ipc call tide closeCalendar` | Close calendar view |

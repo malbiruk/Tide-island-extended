@@ -477,34 +477,6 @@ Scope {
             shellRoot.forFocusedWindow((window) => window.toggleNotificationCenterWindow());
         }
 
-        function toggleWallpaperPicker() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
-        }
-
-        function showWallpaperPicker() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
-        }
-
-        function toggleWallpaperSwitcher() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
-        }
-
-        function toggleApplicationLauncher() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-
-        function showApplicationLauncher() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-
-        function toggleLauncher() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-
-        function toggleAppLauncher() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-
         function toggleFileShelf() {
             shellRoot.forFocusedWindow((window) => window.toggleFileShelfWindow());
         }
@@ -896,46 +868,6 @@ Scope {
     }
 
     IpcHandler {
-        target: "launcher"
-
-        function toggle() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-
-        function show() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-
-        function open() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-
-        function close() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-    }
-
-    IpcHandler {
-        target: "appLauncher"
-
-        function toggle() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-
-        function show() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-
-        function open() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-
-        function close() {
-            shellRoot.forFocusedWindow((window) => window.toggleApplicationLauncherWindow());
-        }
-    }
-
-    IpcHandler {
         target: "fileShelf"
 
         function toggle() {
@@ -952,46 +884,6 @@ Scope {
 
         function close() {
             shellRoot.forFocusedWindow((window) => window.toggleFileShelfWindow());
-        }
-    }
-
-    IpcHandler {
-        target: "wallpaperPicker"
-
-        function toggle() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
-        }
-
-        function show() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
-        }
-
-        function open() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
-        }
-
-        function close() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
-        }
-    }
-
-    IpcHandler {
-        target: "wallpaperSwitcher"
-
-        function toggle() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
-        }
-
-        function show() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
-        }
-
-        function open() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
-        }
-
-        function close() {
-            shellRoot.forFocusedWindow((window) => window.toggleWallpaperPickerWindow());
         }
     }
 

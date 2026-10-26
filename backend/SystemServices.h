@@ -77,12 +77,6 @@ public:
 
     Q_INVOKABLE void requestScreenRecordingSnapshot();
     Q_INVOKABLE void requestPrivacySnapshot();
-    Q_INVOKABLE void generateWallpaperThumbnail(const QString &sourcePath,
-                                                const QString &cachePath,
-                                                const QString &cacheDir,
-                                                int targetWidth,
-                                                int targetHeight,
-                                                int quality);
     Q_INVOKABLE void requestBrightness();
     Q_INVOKABLE void setBrightness(double value);
     Q_INVOKABLE void requestVolume();
@@ -125,11 +119,6 @@ public:
 signals:
     void screenRecordingActiveChanged();
     void privacyIndicatorsChanged();
-    void wallpaperThumbnailFinished(const QString &sourcePath,
-                                    const QString &cachePath,
-                                    bool cacheAvailable,
-                                    bool updated,
-                                    const QString &errorString);
     void brightnessSnapshotReady(double value, const QString &errorString);
     void brightnessSetFinished(double value, bool success, const QString &errorString);
     void volumeSnapshotReady(double value, bool muted, const QString &errorString);
@@ -243,7 +232,6 @@ private:
 
     QVariantList m_cavaLevels;
     QSet<QString> m_cavaClients;
-    QSet<QString> m_wallpaperThumbnailRequests;
     bool m_cavaMissingWarned = false;
     int m_tlpCommandGeneration = 0;
     bool m_configAppLaunchRequested = false;

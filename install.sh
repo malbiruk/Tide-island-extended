@@ -925,25 +925,6 @@ check_feature() {
   fi
 }
 
-check_wallpaper_backend() {
-  local found=""
-  local b
-  for b in awww swww hyprpaper mpvpaper; do
-    if command -v "$b" >/dev/null 2>&1; then
-      found="$b"
-      break
-    fi
-  done
-  if [[ -n "$found" ]]; then
-    printf '  [✓] %-22s - %s (%s)\n' "wallpaper engine" "Wallpaper transition daemon" "$found"
-  else
-    local pkg="swww"
-    [[ "$DISTRO_FAMILY" == "arch" ]] && pkg="awww"
-    printf '  [ ] %-22s - %s (Optional, package: %s)\n' "wallpaper engine" "Wallpaper transition daemon" "$pkg"
-    missing_optional+=("$pkg")
-  fi
-}
-
 check_power_profile() {
   if command -v powerprofilesctl >/dev/null 2>&1; then
     printf '  [✓] %-22s - %s\n' "powerprofilesctl" "Power profile management & battery conservation"
@@ -974,7 +955,6 @@ check_dependencies() {
   check_feature "cava" "cava" "8-bar audio spectrum visualizer (Player & Lockscreen)"
   check_feature "fuser" "psmisc" "Camera & video device privacy tracking (/dev/video*)"
   check_feature "gpu-screen-recorder" "gpu-screen-recorder" "Hardware accelerated screen & replay recorder"
-  check_wallpaper_backend
   check_feature "brightnessctl" "brightnessctl" "Backlight brightness adjustment"
   check_power_profile
   check_feature "bluetoothctl" "bluez" "Bluetooth device pairing & control"

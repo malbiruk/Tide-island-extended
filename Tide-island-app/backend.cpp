@@ -20,8 +20,6 @@
 
 namespace {
 constexpr auto colorSchemeKey = "appearance/colorScheme";
-constexpr auto quickshellPath = "/usr/bin/quickshell";
-constexpr auto tideQmlPath = "/usr/share/tide-island";
 
 QString configHome()
 {
@@ -42,73 +40,6 @@ QString normalizedColorScheme(const QString &colorScheme)
     return colorScheme.trimmed().compare(QStringLiteral("dark"), Qt::CaseInsensitive) == 0
         ? QStringLiteral("dark")
         : QStringLiteral("light");
-}
-
-QString dataHome()
-{
-    const QByteArray xdgDataHome = qgetenv("XDG_DATA_HOME");
-    if (!xdgDataHome.isEmpty())
-        return QString::fromLocal8Bit(xdgDataHome);
-
-    return QDir::homePath() + QStringLiteral("/.local/share");
-}
-
-QStringList dataDirectories()
-{
-    QStringList directories{dataHome()};
-    const QString configured = QString::fromLocal8Bit(qgetenv("XDG_DATA_DIRS"));
-    const QStringList systemDirectories = (configured.isEmpty()
-        ? QStringLiteral("/usr/local/share:/usr/share")
-        : configured).split(u':', Qt::SkipEmptyParts);
-
-    for (const QString &directory : systemDirectories) {
-        if (!directories.contains(directory))
-            directories.append(directory);
-    }
-    return directories;
-}
-
-QString desktopFileForId(QString desktopId)
-{
-    desktopId = desktopId.trimmed();
-    if (desktopId.isEmpty())
-        return QString();
-    if (!desktopId.endsWith(QStringLiteral(".desktop")))
-        desktopId.append(QStringLiteral(".desktop"));
-
-    for (const QString &directory : dataDirectories()) {
-        const QString candidate = QDir(directory).filePath(QStringLiteral("applications/") + desktopId);
-        if (QFileInfo(candidate).isFile())
-            return candidate;
-    }
-    return QString();
-}
-
-QString desktopEntryName(const QString &desktopId)
-{
-    const QString desktopFile = desktopFileForId(desktopId);
-    if (desktopFile.isEmpty())
-        return desktopId;
-
-    QSettings settings(desktopFile, QSettings::IniFormat);
-    settings.beginGroup(QStringLiteral("Desktop Entry"));
-    const QString name = settings.value(QStringLiteral("Name")).toString().trimmed();
-    return name.isEmpty() ? desktopId : name;
-}
-
-QVariantList applicationLauncherFavoriteIds(const QString &path)
-{
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-        return {};
-
-    QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !document.isObject())
-        return {};
-
-    const QVariant value = document.object().value(QStringLiteral("favoriteIds")).toVariant();
-    return value.toList();
 }
 
 QString expandedPath(const QString &path)
@@ -227,81 +158,6 @@ bool Backend::copyToClipboard(const QString &text){
     clipboard->setText(text);
     setErrorString(QString());
     return true;
-}
-
-QString Backend::applicationLauncherFavoritesPath() const{
-    return configHome() + QStringLiteral("/tide-island/application-launcher.json");
-}
-
-QVariantList Backend::applicationLauncherFavoriteEntries() const{
-    QVariantList entries;
-    QStringList seenIds;
-    for (const QVariant &value : applicationLauncherFavoriteIds(applicationLauncherFavoritesPath())) {
-        const QString id = value.toString().trimmed();
-        if (id.isEmpty() || seenIds.contains(id))
-            continue;
-
-        seenIds.append(id);
-        entries.append(QVariantMap{
-            {QStringLiteral("id"), id},
-            {QStringLiteral("name"), desktopEntryName(id)},
-        });
-    }
-    return entries;
-}
-
-bool Backend::saveApplicationLauncherFavorites(const QVariantList &favoriteIds){
-    QVariantList normalizedIds;
-    QStringList seenIds;
-    for (const QVariant &value : favoriteIds) {
-        const QString id = value.toString().trimmed();
-        if (id.isEmpty() || seenIds.contains(id))
-            continue;
-        seenIds.append(id);
-        normalizedIds.append(id);
-    }
-
-    const QFileInfo configInfo(applicationLauncherFavoritesPath());
-    if (!QDir().mkpath(configInfo.absolutePath())) {
-        setErrorString(QStringLiteral("Could not create %1").arg(configInfo.absolutePath()));
-        return false;
-    }
-
-    const QJsonDocument document = QJsonDocument::fromVariant(QVariantMap{
-        {QStringLiteral("favoriteIds"), normalizedIds},
-    });
-    QSaveFile file(configInfo.absoluteFilePath());
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        setErrorString(QStringLiteral("Could not write %1: %2")
-            .arg(configInfo.absoluteFilePath(), file.errorString()));
-        return false;
-    }
-
-    file.write(document.toJson(QJsonDocument::Indented));
-    if (!file.commit()) {
-        setErrorString(QStringLiteral("Could not save %1: %2")
-            .arg(configInfo.absoluteFilePath(), file.errorString()));
-        return false;
-    }
-
-    setErrorString(QString());
-    return true;
-}
-
-bool Backend::toggleApplicationLauncher(){
-    const bool started = QProcess::startDetached(
-        QString::fromLatin1(quickshellPath),
-        {
-            QStringLiteral("ipc"),
-            QStringLiteral("--any-display"),
-            QStringLiteral("-p"),
-            QString::fromLatin1(tideQmlPath),
-            QStringLiteral("call"),
-            QStringLiteral("tide"),
-            QStringLiteral("toggleApplicationLauncher"),
-        });
-    setErrorString(started ? QString() : QStringLiteral("Could not start the application launcher command."));
-    return started;
 }
 
 void Backend::load(){

@@ -57,15 +57,15 @@ private slots:
         QTest::addColumn<QByteArray>("input");
         QTest::addColumn<QString>("command");
         QTest::newRow("literal-block-comment")
-            << QByteArray(R"json({"wallpaperCustomCommand":"printf '/*literal*/'"})json")
+            << QByteArray(R"json({"weatherLocation":"printf '/*literal*/'"})json")
             << QStringLiteral("printf '/*literal*/'");
         QTest::newRow("even-backslashes-before-quote")
-            << QByteArray("{\"wallpaperCustomCommand\":\"C:\\\\\", // real comment\r\n\"wallpaperPath\":\"https://example.com/a/*b*/\"}")
+            << QByteArray("{\"weatherLocation\":\"C:\\\\\", // real comment\r\n\"wallpaperPath\":\"https://example.com/a/*b*/\"}")
             << QStringLiteral("C:\\");
         for (const auto &command : {QStringLiteral("printf \"quoted // /* text */\""),
                                    QStringLiteral("\\\\\"// still a string /* */\\\\"),
                                    QStringLiteral("第一行\n第二行\t/*文字*/ https://example.com/😀")}) {
-            auto input = QJsonDocument(QJsonObject {{"wallpaperCustomCommand", command}}).toJson();
+            auto input = QJsonDocument(QJsonObject {{"weatherLocation", command}}).toJson();
             input.prepend("/* heading\r\n comment */\r\n// line comment\r\n");
             input.append("// trailing comment without newline");
             QTest::newRow(qPrintable(command)) << input << command;
@@ -84,14 +84,14 @@ private slots:
         Backend settings;
         QVERIFY2(runtime.configError().isEmpty(), qPrintable(runtime.configError()));
         QVERIFY2(settings.errorString().isEmpty(), qPrintable(settings.errorString()));
-        QCOMPARE(runtime.wallpaperCustomCommand(), command);
-        QCOMPARE(settings.userConfig().value("wallpaperCustomCommand").toString(), command);
+        QCOMPARE(runtime.weatherLocation(), command);
+        QCOMPARE(settings.userConfig().value("weatherLocation").toString(), command);
 
         // A settings save and live runtime reload must retain the same bytes.
         QVERIFY(settings.save(settings.userConfig()));
         runtime.reload();
         QCOMPARE(runtime.configError(), QString());
-        QCOMPARE(runtime.wallpaperCustomCommand(), command);
+        QCOMPARE(runtime.weatherLocation(), command);
     }
 
     void commentMaskPreservesStringsWhitespaceAndByteOffsets() {
@@ -118,7 +118,7 @@ private slots:
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
         qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
-        const QByteArray input = "/* 注释\r\n保留位置 */\r\n{\"wallpaperCustomCommand\": #}\r\n";
+        const QByteArray input = "/* 注释\r\n保留位置 */\r\n{\"weatherLocation\": #}\r\n";
         QVERIFY(writeConfig(directory.path(), input));
         UserConfigBackend runtime;
         Backend settings;
@@ -127,7 +127,7 @@ private slots:
         QCOMPARE(runtime.configError(), settings.errorString());
         QVERIFY2(runtime.configError().contains(QStringLiteral("offset %1:").arg(input.indexOf('#'))),
                  qPrintable(runtime.configError()));
-        QCOMPARE(runtime.wallpaperCustomCommand(), QString());
+        QCOMPARE(runtime.weatherLocation(), QString());
     }
 
     void doNotDisturbPersistsAcrossRestartsAndSettingsSaves() {

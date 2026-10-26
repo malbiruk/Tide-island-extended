@@ -40,7 +40,6 @@ class ConfigAppTests : public QObject {
 
 private slots:
     void configAppColorSchemePersists();
-    void applicationLauncherFavoritesPersistAndResolveNames();
     void powerProfileDetectionResolvesCorrectly();
     void saveWritesOnlyChangedKeysOverCurrentFile();
     void saveRefusesToOverwriteInvalidConfig();
@@ -61,40 +60,6 @@ void ConfigAppTests::configAppColorSchemePersists()
     QCOMPARE(reloaded.colorScheme(), QStringLiteral("dark"));
     reloaded.setColorScheme(QStringLiteral("unsupported"));
     QCOMPARE(reloaded.colorScheme(), QStringLiteral("light"));
-}
-
-void ConfigAppTests::applicationLauncherFavoritesPersistAndResolveNames()
-{
-    QTemporaryDir configHome;
-    QTemporaryDir dataHome;
-    QVERIFY(configHome.isValid());
-    QVERIFY(dataHome.isValid());
-    qputenv("XDG_CONFIG_HOME", configHome.path().toLocal8Bit());
-    qputenv("XDG_DATA_HOME", dataHome.path().toLocal8Bit());
-
-    QVERIFY(writeTextFile(
-        dataHome.path() + QStringLiteral("/applications/org.example.Editor.desktop"),
-        "[Desktop Entry]\nName=Example Editor\nType=Application\n"));
-
-    Backend backend;
-    QVERIFY(backend.saveApplicationLauncherFavorites({
-        QStringLiteral("org.example.Editor"),
-        QString(),
-        QStringLiteral("org.example.Editor"),
-    }));
-
-    QCOMPARE(
-        backend.applicationLauncherFavoritesPath(),
-        configHome.path() + QStringLiteral("/tide-island/application-launcher.json"));
-    QVERIFY(readTextFile(backend.applicationLauncherFavoritesPath())
-        .contains(QStringLiteral("\"favoriteIds\"")));
-
-    const QVariantList entries = backend.applicationLauncherFavoriteEntries();
-    QCOMPARE(entries.size(), 1);
-    QCOMPARE(entries.first().toMap().value(QStringLiteral("id")).toString(),
-        QStringLiteral("org.example.Editor"));
-    QCOMPARE(entries.first().toMap().value(QStringLiteral("name")).toString(),
-        QStringLiteral("Example Editor"));
 }
 
 void ConfigAppTests::powerProfileDetectionResolvesCorrectly()

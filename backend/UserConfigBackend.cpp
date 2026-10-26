@@ -4,8 +4,6 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QProcess>
-#include <QStandardPaths>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -116,141 +114,23 @@ QString UserConfigBackend::configError() const
     return m_configError;
 }
 
-QString UserConfigBackend::defaultWallpaperPath() const
-{
-    return m_defaultWallpaperPath;
-}
-
 QString UserConfigBackend::defaultTlpSudoPassword() const
 {
     return m_defaultTlpSudoPassword;
 }
 
-QString UserConfigBackend::wallpaperPath() const
-{
-    if (!m_wallpaperPath.isEmpty() && QFile::exists(m_wallpaperPath))
-        return m_wallpaperPath;
 
-    if (!m_resolvedWallpaperPath.isEmpty() && QFile::exists(m_resolvedWallpaperPath))
-        return m_resolvedWallpaperPath;
 
-    // Check cached wallpaper file first
-    const QString cachePath = QDir::homePath() + QStringLiteral("/.cache/tide-island/last_wallpaper");
-    QFile cacheFile(cachePath);
-    if (cacheFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        const QString cached = QString::fromUtf8(cacheFile.readLine()).trimmed();
-        if (!cached.isEmpty() && QFile::exists(cached)) {
-            m_resolvedWallpaperPath = cached;
-            return m_resolvedWallpaperPath;
-        }
-    }
 
-    // Try detecting from active wallpaper managers once
-    if (!m_probedActiveWallpaper) {
-        m_probedActiveWallpaper = true;
 
-        const QString awwwBin = QStandardPaths::findExecutable(QStringLiteral("awww"));
-        if (!awwwBin.isEmpty()) {
-            QProcess proc;
-            proc.start(awwwBin, {QStringLiteral("query")});
-            if (proc.waitForFinished(150)) {
-                const QString output = QString::fromUtf8(proc.readAllStandardOutput());
-                const int idx = output.indexOf(QStringLiteral("image: "));
-                if (idx != -1) {
-                    QString path = output.mid(idx + 7).split(u'\n').first().trimmed();
-                    if (!path.isEmpty() && QFile::exists(path)) {
-                        m_resolvedWallpaperPath = path;
-                        return m_resolvedWallpaperPath;
-                    }
-                }
-            }
-        }
 
-        const QString swwwBin = QStandardPaths::findExecutable(QStringLiteral("swww"));
-        if (!swwwBin.isEmpty()) {
-            QProcess proc;
-            proc.start(swwwBin, {QStringLiteral("query")});
-            if (proc.waitForFinished(150)) {
-                const QString output = QString::fromUtf8(proc.readAllStandardOutput());
-                const int idx = output.indexOf(QStringLiteral("image: "));
-                if (idx != -1) {
-                    QString path = output.mid(idx + 7).split(u'\n').first().trimmed();
-                    if (!path.isEmpty() && QFile::exists(path)) {
-                        m_resolvedWallpaperPath = path;
-                        return m_resolvedWallpaperPath;
-                    }
-                }
-            }
-        }
-    }
 
-    return m_wallpaperPath;
-}
 
-QString UserConfigBackend::wallpaperLibraryPath() const
-{
-    return m_wallpaperLibraryPath;
-}
 
-bool UserConfigBackend::wallpaperPywalEnabled() const
-{
-    return m_wallpaperPywalEnabled;
-}
 
-bool UserConfigBackend::wallpaperCustomCommandEnabled() const
-{
-    return m_wallpaperCustomCommandEnabled;
-}
 
-QString UserConfigBackend::wallpaperCustomCommand() const
-{
-    return m_wallpaperCustomCommand;
-}
 
-QString UserConfigBackend::wallpaperTransitionType() const
-{
-    return m_wallpaperTransitionType;
-}
 
-int UserConfigBackend::wallpaperTransitionStep() const
-{
-    return m_wallpaperTransitionStep;
-}
-
-double UserConfigBackend::wallpaperTransitionDuration() const
-{
-    return m_wallpaperTransitionDuration;
-}
-
-int UserConfigBackend::wallpaperTransitionFps() const
-{
-    return m_wallpaperTransitionFps;
-}
-
-int UserConfigBackend::wallpaperTransitionAngle() const
-{
-    return m_wallpaperTransitionAngle;
-}
-
-QString UserConfigBackend::wallpaperTransitionPosition() const
-{
-    return m_wallpaperTransitionPosition;
-}
-
-QString UserConfigBackend::wallpaperTransitionBezier() const
-{
-    return m_wallpaperTransitionBezier;
-}
-
-QString UserConfigBackend::wallpaperTransitionWave() const
-{
-    return m_wallpaperTransitionWave;
-}
-
-bool UserConfigBackend::wallpaperTransitionInvertY() const
-{
-    return m_wallpaperTransitionInvertY;
-}
 
 QString UserConfigBackend::iconFontFamily() const
 {
@@ -581,16 +461,6 @@ void UserConfigBackend::setLockscreenBlur(bool enabled)
     writeConfigValue(QStringLiteral("lockscreenBlur"), enabled);
 }
 
-void UserConfigBackend::setDefaultWallpaperPath(const QString &path)
-{
-    if (m_defaultWallpaperPath == path)
-        return;
-
-    m_defaultWallpaperPath = path;
-    emit defaultWallpaperPathChanged();
-    loadConfig();
-}
-
 void UserConfigBackend::setDefaultTlpSudoPassword(const QString &password)
 {
     if (m_defaultTlpSudoPassword == password)
@@ -695,9 +565,6 @@ void UserConfigBackend::loadConfig()
 {
     updateWatchedPaths();
 
-    m_probedActiveWallpaper = false;
-    m_resolvedWallpaperPath.clear();
-
     QJsonObject configObject;
     QString nextConfigError;
 
@@ -730,20 +597,6 @@ void UserConfigBackend::loadConfig()
     if (!nextConfigError.isEmpty())
         return;
 
-    updateField(this, m_wallpaperPath, jsonString(configObject, QLatin1String("wallpaperPath"), m_defaultWallpaperPath), &UserConfigBackend::wallpaperPathChanged);
-    updateField(this, m_wallpaperLibraryPath, jsonString(configObject, QLatin1String("wallpaperLibraryPath"), QString()), &UserConfigBackend::wallpaperLibraryPathChanged);
-    updateField(this, m_wallpaperPywalEnabled, jsonBool(configObject, QLatin1String("wallpaperPywalEnabled"), false), &UserConfigBackend::wallpaperPywalEnabledChanged);
-    updateField(this, m_wallpaperCustomCommandEnabled, jsonBool(configObject, QLatin1String("wallpaperCustomCommandEnabled"), false), &UserConfigBackend::wallpaperCustomCommandEnabledChanged);
-    updateField(this, m_wallpaperCustomCommand, jsonString(configObject, QLatin1String("wallpaperCustomCommand"), QString()), &UserConfigBackend::wallpaperCustomCommandChanged);
-    updateField(this, m_wallpaperTransitionType, jsonString(configObject, QLatin1String("wallpaperTransitionType"), QStringLiteral("center")), &UserConfigBackend::wallpaperTransitionTypeChanged);
-    updateField(this, m_wallpaperTransitionStep, jsonInt(configObject, QLatin1String("wallpaperTransitionStep"), 5), &UserConfigBackend::wallpaperTransitionStepChanged);
-    updateField(this, m_wallpaperTransitionDuration, jsonDouble(configObject, QLatin1String("wallpaperTransitionDuration"), 3.0), &UserConfigBackend::wallpaperTransitionDurationChanged);
-    updateField(this, m_wallpaperTransitionFps, jsonInt(configObject, QLatin1String("wallpaperTransitionFps"), 60), &UserConfigBackend::wallpaperTransitionFpsChanged);
-    updateField(this, m_wallpaperTransitionAngle, jsonInt(configObject, QLatin1String("wallpaperTransitionAngle"), 45), &UserConfigBackend::wallpaperTransitionAngleChanged);
-    updateField(this, m_wallpaperTransitionPosition, jsonString(configObject, QLatin1String("wallpaperTransitionPosition"), QStringLiteral("center")), &UserConfigBackend::wallpaperTransitionPositionChanged);
-    updateField(this, m_wallpaperTransitionBezier, jsonString(configObject, QLatin1String("wallpaperTransitionBezier"), QStringLiteral(".54,0,.34,.99")), &UserConfigBackend::wallpaperTransitionBezierChanged);
-    updateField(this, m_wallpaperTransitionWave, jsonString(configObject, QLatin1String("wallpaperTransitionWave"), QStringLiteral("20,20")), &UserConfigBackend::wallpaperTransitionWaveChanged);
-    updateField(this, m_wallpaperTransitionInvertY, jsonBool(configObject, QLatin1String("wallpaperTransitionInvertY"), false), &UserConfigBackend::wallpaperTransitionInvertYChanged);
     updateField(this, m_iconFontFamily, jsonString(configObject, QLatin1String("iconFontFamily"), QStringLiteral("JetBrainsMono Nerd Font")), &UserConfigBackend::iconFontFamilyChanged);
     updateField(this, m_textFontFamily, jsonString(configObject, QLatin1String("textFontFamily"), QStringLiteral("Sans Serif")), &UserConfigBackend::textFontFamilyChanged);
     updateField(this, m_heroFontFamily, jsonString(configObject, QLatin1String("heroFontFamily"), QStringLiteral("Sans Serif")), &UserConfigBackend::heroFontFamilyChanged);

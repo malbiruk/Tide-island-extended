@@ -167,14 +167,14 @@ ApplicationWindow {
             anchors.horizontalCenter: parent.horizontalCenter
             y: 265
             color: currentPage === 2 ? Theme.selectedColor : Theme.textColor
-            text: wallpaperButtonText.width > mainSplitLine.x ? "W" : "Wallpaper"
+            text: wallpaperButtonText.width > mainSplitLine.x ? "C" : "Colors"
             font.family: Theme.titleFontFamily
             font.pixelSize: 23
 
             TextMetrics {
                 id: wallpaperButtonText
                 font: wallpaperButton.font
-                text: "Wallpaper"
+                text: "Colors"
             }
 
             Behavior on color {ColorAnimation{ duration:Theme.animationDuration}}

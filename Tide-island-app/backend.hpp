@@ -35,10 +35,6 @@ public:
     Q_INVOKABLE bool save(const QVariantMap &changes, const QStringList &removedKeys = QStringList());
     Q_INVOKABLE void setColorScheme(const QString &colorScheme);
     Q_INVOKABLE bool copyToClipboard(const QString &text);
-    Q_INVOKABLE QString applicationLauncherFavoritesPath() const;
-    Q_INVOKABLE QVariantList applicationLauncherFavoriteEntries() const;
-    Q_INVOKABLE bool saveApplicationLauncherFavorites(const QVariantList &favoriteIds);
-    Q_INVOKABLE bool toggleApplicationLauncher();
     Q_INVOKABLE bool hasPowerProfilesCtl() const;
     Q_INVOKABLE bool hasTlp() const;
     Q_INVOKABLE QString detectedPowerProfileDriver() const;

@@ -35,29 +35,18 @@ PagePanel {
             Text {
                 id: title
                 font.family: Theme.titleFontFamily
-                text: "Wallpaper"
+                text: "Colors"
                 color: Theme.textColor
                 font.pixelSize: 30
                 x: 60
                 y: 50
             }
 
-            Wallpaper {
-                id: wallpaperPanel
-                anchors.top: title.bottom
-                anchors.topMargin: 40
-                anchors.left: parent.left
-                anchors.leftMargin: 30
-                anchors.right: parent.right
-                anchors.rightMargin: 40
-                height: implicitHeight
-            }
-
             Text {
                 id: paletteTitle
                 text: "Color Palette"
-                anchors.top: wallpaperPanel.bottom
-                anchors.topMargin: 34
+                anchors.top: title.bottom
+                anchors.topMargin: 40
                 anchors.left: parent.left
                 anchors.leftMargin: 32
                 anchors.right: parent.right
