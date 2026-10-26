@@ -1,7 +1,9 @@
 #include <QTest>
 #include <QDir>
 #include <QFile>
+#include <QCoreApplication>
 #include <QFileInfo>
+#include <QProcess>
 #include <QScopeGuard>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -18,15 +20,34 @@ private slots:
     void testPropertySetters();
     void testAvailabilityFollowsWfRecorder();
     void testWfRecorderArgumentsAndStartFailure();
+    void constructionCreatesNoDirectories();
+    void staleStateFilesAreRemoved();
+    void aRunningRecorderIsAdoptedAndSavesItsFile();
+    void aRecorderExitingOnItsOwnEndsTheRecording();
 
 private:
+    QString stateDir() const { return m_tempDir->path() + QStringLiteral("/tide-island-recorder"); }
+    void writeState(qint64 pid, const QString &output) const;
+
     std::unique_ptr<QTemporaryDir> m_tempDir;
 };
 
+// HOME and the runtime dir point into the temporary dir: tests never touch the real ones.
 void ScreenRecorderTests::initTestCase() {
     m_tempDir = std::make_unique<QTemporaryDir>();
     QVERIFY(m_tempDir->isValid());
     qputenv("XDG_RUNTIME_DIR", m_tempDir->path().toUtf8());
+    qputenv("HOME", (m_tempDir->path() + QStringLiteral("/home")).toUtf8());
+}
+
+void ScreenRecorderTests::writeState(qint64 pid, const QString &output) const {
+    QVERIFY(QDir().mkpath(stateDir()));
+    QFile pidFile(stateDir() + QStringLiteral("/record.pid"));
+    QVERIFY(pidFile.open(QIODevice::WriteOnly));
+    pidFile.write(QByteArray::number(pid) + '\n');
+    QFile outputFile(stateDir() + QStringLiteral("/record.output"));
+    QVERIFY(outputFile.open(QIODevice::WriteOnly));
+    outputFile.write(output.toUtf8() + '\n');
 }
 
 void ScreenRecorderTests::testInitialState() {
@@ -136,6 +157,81 @@ void ScreenRecorderTests::testWfRecorderArgumentsAndStartFailure() {
     QTRY_COMPARE(controller.isRecording(), false);
     QVERIFY(!notificationSpy.isEmpty());
     QCOMPARE(notificationSpy.last().at(0).toString(), QStringLiteral("Recording Failed"));
+}
+
+void ScreenRecorderTests::constructionCreatesNoDirectories() {
+    QVERIFY(QDir(stateDir()).removeRecursively());
+    ScreenRecorderController controller;
+    QVERIFY(!QFileInfo::exists(m_tempDir->path() + QStringLiteral("/home/Videos")));
+    QVERIFY(!QFileInfo::exists(stateDir()));
+}
+
+void ScreenRecorderTests::staleStateFilesAreRemoved() {
+    // Our own pid: running, but not a wf-recorder.
+    writeState(QCoreApplication::applicationPid(), m_tempDir->path() + QStringLiteral("/stale.mp4"));
+
+    ScreenRecorderController controller;
+    QVERIFY(!controller.isRecording());
+    QVERIFY(!QFileInfo::exists(stateDir() + QStringLiteral("/record.pid")));
+    QVERIFY(!QFileInfo::exists(stateDir() + QStringLiteral("/record.output")));
+}
+
+void ScreenRecorderTests::aRunningRecorderIsAdoptedAndSavesItsFile() {
+    const QString binDir = m_tempDir->path() + QStringLiteral("/adopt-bin");
+    QVERIFY(QDir().mkpath(binDir));
+    const QString recorder = binDir + QStringLiteral("/wf-recorder");
+    QVERIFY(writeFakeExecutable(recorder,
+        "#!/bin/sh\ntrap 'kill $child 2>/dev/null; exit 0' INT TERM\n/bin/sleep 30 & child=$!\nwait $child\n"));
+    const QString output = m_tempDir->path() + QStringLiteral("/adopted.mp4");
+    QFile outputFile(output);
+    QVERIFY(outputFile.open(QIODevice::WriteOnly));
+    outputFile.close();
+
+    QProcess process;
+    process.start(recorder, {});
+    QVERIFY(process.waitForStarted());
+    const auto cleanup = qScopeGuard([&process] { process.kill(); process.waitForFinished(); });
+    QTRY_COMPARE(QString::fromUtf8([&process] {
+        QFile comm(QStringLiteral("/proc/%1/comm").arg(process.processId()));
+        return comm.open(QIODevice::ReadOnly) ? comm.readAll().trimmed() : QByteArray();
+    }()), QStringLiteral("wf-recorder"));
+    writeState(process.processId(), output);
+
+    ScreenRecorderController controller;
+    QVERIFY(controller.isRecording());
+    QSignalSpy notificationSpy(&controller, &ScreenRecorderController::notificationRequested);
+    controller.stopRecording();
+    QVERIFY(!controller.isRecording());
+
+    QTRY_VERIFY(!notificationSpy.isEmpty());
+    QCOMPARE(notificationSpy.last().at(0).toString(), QStringLiteral("Recording Saved"));
+    QCOMPARE(notificationSpy.last().at(1).toString(), output);
+    QCOMPARE(controller.lastSavedFile(), output);
+    QVERIFY(!QFileInfo::exists(stateDir() + QStringLiteral("/record.pid")));
+}
+
+void ScreenRecorderTests::aRecorderExitingOnItsOwnEndsTheRecording() {
+    const QByteArray originalPath = qgetenv("PATH");
+    const auto restorePath = qScopeGuard([&originalPath] { qputenv("PATH", originalPath); });
+    const QString binDir = m_tempDir->path() + QStringLiteral("/exit-bin");
+    QVERIFY(QDir().mkpath(binDir));
+    // Outlives the start check, then exits like a recorder whose output went away.
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/wf-recorder"), "#!/bin/sh\n/bin/sleep 2\n"));
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/pactl"), "#!/bin/sh\nexit 1\n"));
+    qputenv("PATH", binDir.toUtf8());
+
+    ScreenRecorderController controller;
+    controller.setRecordingsDir(m_tempDir->path() + QStringLiteral("/exit-recordings"));
+    QSignalSpy notificationSpy(&controller, &ScreenRecorderController::notificationRequested);
+    controller.startRecording(false);
+    QVERIFY(controller.isRecording());
+    QTest::qWait(1200);
+    QVERIFY(controller.isRecording());
+
+    QTRY_VERIFY_WITH_TIMEOUT(!controller.isRecording(), 6000);
+    QCOMPARE(notificationSpy.last().at(0).toString(), QStringLiteral("Recording Stopped"));
+    QVERIFY(!QFileInfo::exists(stateDir() + QStringLiteral("/record.pid")));
+    QVERIFY(!QFileInfo::exists(stateDir() + QStringLiteral("/record.output")));
 }
 
 QTEST_GUILESS_MAIN(ScreenRecorderTests)

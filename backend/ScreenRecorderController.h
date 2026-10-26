@@ -68,9 +68,14 @@ private:
     void ensureDirectories();
     QString stateDir() const;
     QString recordPidFilePath() const;
+    QString recordOutputFilePath() const;
     qint64 readPidFromFile(const QString &path) const;
     void writePidToFile(const QString &path, qint64 pid) const;
-    void removePidFile(const QString &path) const;
+    void writeRecordingState(qint64 pid, const QString &outputFile) const;
+    QString readRecordingOutput() const;
+    void clearRecordingState() const;
+    void adoptRunningRecorder();
+    QString processName(qint64 pid) const;
     bool isProcessRunning(qint64 pid) const;
     QString outputName() const;
     QString uniqueRecordingPath() const;

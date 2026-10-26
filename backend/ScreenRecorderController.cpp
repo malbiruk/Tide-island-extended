@@ -11,6 +11,7 @@
 #include <QScreen>
 #include <QStandardPaths>
 
+#include <algorithm>
 #include <csignal>
 #include <sys/types.h>
 #include <unistd.h>
@@ -27,20 +28,37 @@ ScreenRecorderController::ScreenRecorderController(QObject *parent)
     const QString home = QDir::homePath();
     m_recordingsDir = home + QStringLiteral("/Videos/ScreenRecordings/Recordings");
 
-    ensureDirectories();
-
     connect(&m_tickTimer, &QTimer::timeout, this, &ScreenRecorderController::onTick);
     m_tickTimer.setInterval(1000);
 
+    // Only while recording: notices a recorder that exits on its own.
     connect(&m_pollTimer, &QTimer::timeout, this, &ScreenRecorderController::pollExternalState);
     m_pollTimer.setInterval(1200);
-    m_pollTimer.start();
 
     connect(&m_stopPollTimer, &QTimer::timeout, this, &ScreenRecorderController::pollStoppingRecorder);
     m_stopPollTimer.setInterval(250);
 
-    // Initial check for already-running instances
-    pollExternalState();
+    adoptRunningRecorder();
+}
+
+// A recording started before the shell (re)started keeps going: pick it up from the state
+// files, or remove them if that recorder is gone.
+void ScreenRecorderController::adoptRunningRecorder() {
+    const qint64 pid = readPidFromFile(recordPidFilePath());
+    if (pid <= 0)
+        return;
+    if (!isProcessRunning(pid)) {
+        clearRecordingState();
+        return;
+    }
+
+    m_recordPid = pid;
+    m_currentRecordingFile = readRecordingOutput();
+    const QDateTime startedAt = QFileInfo(recordPidFilePath()).lastModified();
+    m_recordingSeconds = startedAt.isValid() ? std::max<qint64>(0, startedAt.secsTo(QDateTime::currentDateTime())) : 0;
+    m_isRecording = true;
+    m_tickTimer.start();
+    m_pollTimer.start();
 }
 
 ScreenRecorderController::~ScreenRecorderController() {
@@ -114,7 +132,6 @@ void ScreenRecorderController::setRecordingsDir(const QString &dir) {
     if (m_recordingsDir == dir)
         return;
     m_recordingsDir = dir;
-    ensureDirectories();
     emit recordingsDirChanged();
 }
 
@@ -131,9 +148,34 @@ QString ScreenRecorderController::recordPidFilePath() const {
     return stateDir() + QStringLiteral("/record.pid");
 }
 
+// The output file of the running recorder, kept beside its pid for a shell that adopts it.
+QString ScreenRecorderController::recordOutputFilePath() const {
+    return stateDir() + QStringLiteral("/record.output");
+}
+
 void ScreenRecorderController::ensureDirectories() {
     QDir().mkpath(m_recordingsDir);
     QDir().mkpath(stateDir());
+}
+
+void ScreenRecorderController::writeRecordingState(qint64 pid, const QString &outputFile) const {
+    QDir().mkpath(stateDir());
+    writePidToFile(recordPidFilePath(), pid);
+    QFile file(recordOutputFilePath());
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+        file.write(outputFile.toUtf8() + '\n');
+}
+
+QString ScreenRecorderController::readRecordingOutput() const {
+    QFile file(recordOutputFilePath());
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return QString();
+    return QString::fromUtf8(file.readAll()).trimmed();
+}
+
+void ScreenRecorderController::clearRecordingState() const {
+    QFile::remove(recordPidFilePath());
+    QFile::remove(recordOutputFilePath());
 }
 
 qint64 ScreenRecorderController::readPidFromFile(const QString &path) const {
@@ -154,27 +196,26 @@ void ScreenRecorderController::writePidToFile(const QString &path, qint64 pid) c
     }
 }
 
-void ScreenRecorderController::removePidFile(const QString &path) const {
-    QFile::remove(path);
+// The process name, empty when there is no such process or it has already exited (zombie).
+QString ScreenRecorderController::processName(qint64 pid) const {
+    if (pid <= 0 || kill(static_cast<pid_t>(pid), 0) != 0)
+        return QString();
+    QFile stat(QStringLiteral("/proc/%1/stat").arg(pid));
+    if (!stat.open(QIODevice::ReadOnly))
+        return QString();
+    const QByteArray fields = stat.readAll();
+    const qsizetype nameEnd = fields.lastIndexOf(')');
+    if (nameEnd < 0 || nameEnd + 2 >= fields.size() || fields.at(nameEnd + 2) == 'Z')
+        return QString();
+    QFile comm(QStringLiteral("/proc/%1/comm").arg(pid));
+    if (!comm.open(QIODevice::ReadOnly | QIODevice::Text))
+        return QString();
+    return QString::fromUtf8(comm.readAll()).trimmed();
 }
 
+// Only a process named wf-recorder counts: the pid may have been reused.
 bool ScreenRecorderController::isProcessRunning(qint64 pid) const {
-    if (pid <= 0)
-        return false;
-    if (kill(static_cast<pid_t>(pid), 0) != 0)
-        return false;
-
-    // Verify it is actually wf-recorder (the pid may have been reused)
-    QFile file(QStringLiteral("/proc/%1/comm").arg(pid));
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text)
-            && QString::fromUtf8(file.readAll()).trimmed() == QStringLiteral("wf-recorder"))
-        return true;
-
-    QFile cmdFile(QStringLiteral("/proc/%1/cmdline").arg(pid));
-    if (cmdFile.open(QIODevice::ReadOnly) && QString::fromUtf8(cmdFile.readAll()).contains(QStringLiteral("wf-recorder")))
-        return true;
-
-    return false;
+    return processName(pid) == QLatin1String("wf-recorder");
 }
 
 // wf-recorder output: the configured screen, else the current wl_output name as Qt sees it
@@ -275,11 +316,12 @@ void ScreenRecorderController::startRecording(bool withMic) {
     }
 
     m_recordPid = pid;
-    writePidToFile(recordPidFilePath(), pid);
+    writeRecordingState(pid, m_currentRecordingFile);
 
     m_isRecording = true;
     m_recordingSeconds = 0;
     m_tickTimer.start();
+    m_pollTimer.start();
 
     emit recordingStateChanged();
     emit recordingSecondsChanged();
@@ -302,15 +344,23 @@ void ScreenRecorderController::startRecording(bool withMic) {
 void ScreenRecorderController::checkRecorderStarted(qint64 pid, const QString &screen) {
     if (m_startCheckPid != pid)
         return;
+
+    // Still on its way through systemd-run and env (a slow user manager): look again.
+    const QString name = processName(pid);
+    if (m_recordPid == pid && (name == QLatin1String("systemd-run") || name == QLatin1String("env"))) {
+        QTimer::singleShot(500, this, [this, pid, screen]() { checkRecorderStarted(pid, screen); });
+        return;
+    }
     m_startCheckPid = 0;
 
-    if (m_recordPid != pid || isProcessRunning(pid))
+    if (m_recordPid != pid || name == QLatin1String("wf-recorder"))
         return;
 
     m_isRecording = false;
     m_recordPid = 0;
-    removePidFile(recordPidFilePath());
+    clearRecordingState();
     m_tickTimer.stop();
+    m_pollTimer.stop();
     emit recordingStateChanged();
     if (SystemServices::instance())
         SystemServices::instance()->updateScreenRecordingActive();
@@ -328,10 +378,11 @@ void ScreenRecorderController::stopRecording() {
     if (pid <= 0)
         pid = readPidFromFile(recordPidFilePath());
 
+    m_pollTimer.stop();
     if (pid <= 0 || !isProcessRunning(pid)) {
         m_isRecording = false;
         m_recordPid = 0;
-        removePidFile(recordPidFilePath());
+        clearRecordingState();
         m_tickTimer.stop();
         emit recordingStateChanged();
         if (SystemServices::instance())
@@ -387,7 +438,7 @@ void ScreenRecorderController::pollStoppingRecorder() {
 void ScreenRecorderController::finishStoppedRecording(bool forced) {
     m_stopPollTimer.stop();
     if (readPidFromFile(recordPidFilePath()) == m_stoppingPid)
-        removePidFile(recordPidFilePath());
+        clearRecordingState();
     m_stoppingPid = 0;
 
     const QString file = m_stoppingFile;
@@ -434,22 +485,28 @@ void ScreenRecorderController::onTick() {
     emit recordingSecondsChanged();
 }
 
+// The recorder exited on its own (crash, output gone, killed): end the recording here too.
 void ScreenRecorderController::pollExternalState() {
-    // Recording started elsewhere or ended (unless a start check or a stop is tracking it)
-    const qint64 recPid = readPidFromFile(recordPidFilePath());
-    const bool recRunning = isProcessRunning(recPid);
-
-    if (m_startCheckPid <= 0 && m_stoppingPid <= 0 && recRunning != m_isRecording) {
-        m_isRecording = recRunning;
-        m_recordPid = recRunning ? recPid : 0;
-        if (m_isRecording) {
-            if (!m_tickTimer.isActive())
-                m_tickTimer.start();
-        } else {
-            m_tickTimer.stop();
-        }
-        emit recordingStateChanged();
-        if (SystemServices::instance())
-            SystemServices::instance()->updateScreenRecordingActive();
+    if (!m_isRecording || m_startCheckPid > 0 || m_stoppingPid > 0) {
+        if (!m_isRecording)
+            m_pollTimer.stop();
+        return;
     }
+    if (isProcessRunning(m_recordPid))
+        return;
+
+    const QString file = m_currentRecordingFile;
+    m_isRecording = false;
+    m_recordPid = 0;
+    clearRecordingState();
+    m_tickTimer.stop();
+    m_pollTimer.stop();
+    emit recordingStateChanged();
+    if (SystemServices::instance())
+        SystemServices::instance()->updateScreenRecordingActive();
+
+    emit notificationRequested(QStringLiteral("Recording Stopped"),
+        !file.isEmpty() && QFileInfo::exists(file)
+            ? QStringLiteral("wf-recorder exited on its own; what was recorded is in %1.").arg(file)
+            : QStringLiteral("wf-recorder exited on its own."));
 }
