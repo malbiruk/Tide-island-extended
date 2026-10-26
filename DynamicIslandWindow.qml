@@ -1473,12 +1473,21 @@ PanelWindow {
             transientSlideOut = false;
         }
 
-        // Something to show while the island slides away: it stays up for that instead.
+        // Shows a panel, popup or OSD; an island sliding away stays up for it instead. The state
+        // changes first, so the content sliding away never counts as open again.
+        function enterState(nextState) {
+            islandState = nextState;
+            stopTransientSlideOut();
+        }
+
+        // Once islandState holds what replaces the sliding content. As when that opens from rest,
+        // auto-hide keeps the island revealed afterwards; without auto-hide a hide by IPC stands.
         function stopTransientSlideOut() {
             if (!transientSlideOut)
                 return;
             transientSlideOut = false;
-            root.showAutoHiddenIsland("state");
+            if (root.autoHideEnabled)
+                root.showAutoHiddenIsland("state");
         }
 
         function restartAutoHideTimer(duration) {
@@ -1585,14 +1594,13 @@ PanelWindow {
                     && icon !== systemState.brightnessStatusIcon(progress)) return;
             if (blocksTransientSplit) return;
 
-            stopTransientSlideOut();
             const nextProgress = progress >= 0 ? progress : -1.0;
             const animateProgress = islandState === "split" && osdProgress >= 0 && nextProgress >= 0;
 
             splitIcon = icon;
             osdCustomText = customText;
             setOsdProgress(nextProgress, animateProgress);
-            islandState = "split";
+            enterState("split");
             restartAutoHideTimer();
         }
 
@@ -1654,11 +1662,10 @@ PanelWindow {
             if (popupBlocked)
                 return;
 
-            stopTransientSlideOut();
             clearTransientCapsule();
             setNotificationPopupContent(record);
             notificationExpanded = false;
-            islandState = "notification";
+            enterState("notification");
             startNotificationTimeout();
         }
 
@@ -1833,32 +1840,28 @@ PanelWindow {
         }
 
         function showExpandedPlayer(autoOpened) {
-            stopTransientSlideOut();
             clearTransientCapsule();
-            islandState = "expanded";
+            enterState("expanded");
             if (autoOpened) restartAutoHideTimer();
             else stopAutoHideTimer();
         }
 
         function showControlCenter() {
-            stopTransientSlideOut();
             clearTransientCapsule();
-            islandState = "control_center";
+            enterState("control_center");
             stopAutoHideTimer();
         }
 
         function showNotificationCenter() {
-            stopTransientSlideOut();
             clearTransientCapsule();
-            islandState = "notification_center";
+            enterState("notification_center");
             stopAutoHideTimer();
         }
 
 
         function showFileShelf(manuallyOpened) {
             const manual = manuallyOpened === true;
-            stopTransientSlideOut();
-            if (islandState === "file_shelf") {
+            if (openState === "file_shelf") {
                 if (manual)
                     fileShelfOpenedManually = true;
                 return;
@@ -1866,7 +1869,7 @@ PanelWindow {
 
             clearTransientCapsule();
             fileShelfOpenedManually = manual;
-            islandState = "file_shelf";
+            enterState("file_shelf");
             stopAutoHideTimer();
         }
 
@@ -1876,37 +1879,32 @@ PanelWindow {
         }
 
         function showClipboard() {
-            stopTransientSlideOut();
             clearTransientCapsule();
-            islandState = "clipboard";
+            enterState("clipboard");
             stopAutoHideTimer();
         }
 
         function showWeather() {
-            stopTransientSlideOut();
             clearTransientCapsule();
-            islandState = "weather";
+            enterState("weather");
             stopAutoHideTimer();
         }
 
         function showCalendar() {
-            stopTransientSlideOut();
             clearTransientCapsule();
-            islandState = "calendar";
+            enterState("calendar");
             stopAutoHideTimer();
         }
 
         function showPrivacyHud() {
-            stopTransientSlideOut();
             clearTransientCapsule();
-            islandState = "privacy_hud";
+            enterState("privacy_hud");
             stopAutoHideTimer();
         }
 
         function showGlance() {
-            stopTransientSlideOut();
             clearTransientCapsule();
-            islandState = "glance";
+            enterState("glance");
             stopAutoHideTimer();
         }
 
