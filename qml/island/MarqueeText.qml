@@ -13,6 +13,8 @@ Item {
     property int fontWeight: Font.Bold
     property real letterSpacing: 0
     property real maxWidth: -1
+    // Always maxWidth wide, so changing text never resizes what is laid out around it.
+    property bool fixedWidth: false
     property real gap: 40
     property real scrollSpeed: 32
     property int pauseDuration: 1800
@@ -23,7 +25,7 @@ Item {
     readonly property real naturalWidth: measureText.implicitWidth
     readonly property real naturalHeight: measureText.implicitHeight
     readonly property bool needsMarquee: marqueeEnabled && maxWidth > 0 && naturalWidth > maxWidth
-    readonly property real displayWidth: (maxWidth > 0) ? Math.min(naturalWidth, maxWidth) : naturalWidth
+    readonly property real displayWidth: maxWidth > 0 ? (fixedWidth ? maxWidth : Math.min(naturalWidth, maxWidth)) : naturalWidth
     readonly property real loopDistance: Math.round(naturalWidth + gap)
     readonly property int scrollDuration: Math.max(1000, Math.round((loopDistance / scrollSpeed) * 1000))
     readonly property bool shouldAnimate: needsMarquee && active

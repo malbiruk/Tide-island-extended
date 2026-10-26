@@ -131,6 +131,8 @@ Item {
             fontWeight: Font.DemiBold
             letterSpacing: -0.15
             maxWidth: root.musicTextMaxWidth
+            // Lyric lines change every few seconds; the capsule keeps its size.
+            fixedWidth: true
             active: root.musicVisible && root.showCondition
         }
 
