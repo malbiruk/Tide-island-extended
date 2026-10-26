@@ -1,6 +1,8 @@
 #include <QTest>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QScopeGuard>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <memory>
@@ -15,6 +17,7 @@ private slots:
     void testTimeFormatting();
     void testPropertySetters();
     void testBackendCapabilities();
+    void testWfRecorderArgumentsAndStartFailure();
 
 private:
     std::unique_ptr<QTemporaryDir> m_tempDir;
@@ -67,17 +70,18 @@ void ScreenRecorderTests::testPropertySetters() {
     QCOMPARE(screenSpy.count(), 1);
 }
 
-static bool writeFakeExecutable(const QString &path) {
+static bool writeFakeExecutable(const QString &path, const QByteArray &script = "#!/bin/sh\nexit 0\n") {
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly))
         return false;
-    file.write("#!/bin/sh\nexit 0\n");
+    file.write(script);
     file.close();
     return file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
 }
 
 void ScreenRecorderTests::testBackendCapabilities() {
     const QByteArray originalPath = qgetenv("PATH");
+    const auto restorePath = qScopeGuard([&originalPath] { qputenv("PATH", originalPath); });
     const QString binDir = m_tempDir->path() + QStringLiteral("/bin");
     QVERIFY(QDir().mkpath(binDir));
     qputenv("PATH", binDir.toUtf8());
@@ -111,9 +115,55 @@ void ScreenRecorderTests::testBackendCapabilities() {
         QCOMPARE(controller.canPause(), true);
         QCOMPARE(controller.canReplay(), true);
     }
-
-    qputenv("PATH", originalPath);
 }
 
-QTEST_MAIN(ScreenRecorderTests)
+void ScreenRecorderTests::testWfRecorderArgumentsAndStartFailure() {
+    const QByteArray originalPath = qgetenv("PATH");
+    const auto restorePath = qScopeGuard([&originalPath] { qputenv("PATH", originalPath); });
+    const QString binDir = m_tempDir->path() + QStringLiteral("/wf-bin");
+    const QString argsFile = m_tempDir->path() + QStringLiteral("/wf-args.txt");
+    const QString recordingsDir = m_tempDir->path() + QStringLiteral("/recordings");
+    QVERIFY(QDir().mkpath(binDir));
+
+    // The fake recorder records its arguments and exits at once, like a failed start.
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/wf-recorder"),
+                                "#!/bin/sh\nprintf '%s\\n' \"$@\" > '" + argsFile.toUtf8() + "'\n"));
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/pactl"), "#!/bin/sh\necho fake_sink\n"));
+    qputenv("PATH", binDir.toUtf8());
+
+    ScreenRecorderController controller;
+    controller.setRecordingsDir(recordingsDir);
+    QSignalSpy notificationSpy(&controller, &ScreenRecorderController::notificationRequested);
+
+    controller.startRecording(false);
+    QVERIFY(controller.isRecording());
+
+    QTRY_VERIFY(QFileInfo(argsFile).size() > 0);
+    QFile file(argsFile);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    const QStringList args = QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+
+    const auto valueAfter = [&args](const QString &flag) {
+        const qsizetype index = args.indexOf(flag);
+        return index >= 0 && index + 1 < args.size() ? args.at(index + 1) : QString();
+    };
+    QVERIFY(valueAfter(QStringLiteral("-f")).startsWith(recordingsDir + QStringLiteral("/recording_")));
+    QVERIFY(valueAfter(QStringLiteral("-f")).endsWith(QStringLiteral(".mp4")));
+    QCOMPARE(valueAfter(QStringLiteral("-r")), QStringLiteral("60"));
+    QCOMPARE(valueAfter(QStringLiteral("-c")), QStringLiteral("libx264"));
+    QCOMPARE(valueAfter(QStringLiteral("-p")), QStringLiteral("preset=veryfast"));
+    QCOMPARE(valueAfter(QStringLiteral("-x")), QStringLiteral("yuv420p"));
+    QVERIFY(args.contains(QStringLiteral("--audio-backend=pulse")));
+    QVERIFY(args.contains(QStringLiteral("--audio=fake_sink.monitor")));
+    QVERIFY(!args.contains(QStringLiteral("-y")));
+    // No screens without a GUI application, so the output is left to wf-recorder.
+    QVERIFY(!args.contains(QStringLiteral("-o")));
+
+    // The recorder is already gone: the start check resets the state and reports it.
+    QTRY_COMPARE(controller.isRecording(), false);
+    QVERIFY(!notificationSpy.isEmpty());
+    QCOMPARE(notificationSpy.last().at(0).toString(), QStringLiteral("Recording Failed"));
+}
+
+QTEST_GUILESS_MAIN(ScreenRecorderTests)
 #include "screen_recorder_tests.moc"

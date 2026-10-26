@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QElapsedTimer>
 #include <QObject>
 #include <QProcess>
 #include <QString>
@@ -85,6 +86,7 @@ signals:
 private slots:
     void onTick();
     void pollExternalState();
+    void pollStoppingRecorder();
 
 private:
     void ensureDirectories();
@@ -96,6 +98,10 @@ private:
     void removePidFile(const QString &path) const;
     bool isProcessRunning(qint64 pid) const;
     QString detectDefaultScreen() const;
+    QString wfRecorderOutputName() const;
+    QString uniqueRecordingPath() const;
+    void checkRecorderStarted(qint64 pid, const QString &program, const QString &screen);
+    void finishStoppedRecording(bool forced);
     QString resolveAudioSource(bool withMic) const;
     QString resolveWfRecorderAudioDevice(bool withMic) const;
 
@@ -125,4 +131,13 @@ private:
 
     QTimer m_tickTimer;
     QTimer m_pollTimer;
+
+    // A recorder that was just started is checked once shortly afterwards (m_startCheckPid);
+    // a stopped one is tracked until it exits so "Recording Saved" means the file is final.
+    qint64 m_startCheckPid = 0;
+    qint64 m_stoppingPid = 0;
+    int m_stopEscalation = 0;
+    QString m_stoppingFile;
+    QElapsedTimer m_stopElapsed;
+    QTimer m_stopPollTimer;
 };

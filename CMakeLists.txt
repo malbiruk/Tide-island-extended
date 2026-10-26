@@ -161,8 +161,9 @@ target_link_libraries(screen_recorder_tests PRIVATE
     Qt6::Test
 )
 
+# Qt6::Gui only provides QGuiApplication::screens() for the controller; the test itself runs
+# without a GUI application, where that list is simply empty.
 add_test(NAME screen_recorder COMMAND screen_recorder_tests)
-set_tests_properties(screen_recorder PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/lyricsmpris_core_tests.cpp")
     add_executable(lyricsmpris_tests
