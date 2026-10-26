@@ -1378,6 +1378,7 @@ PanelWindow {
         property var notificationActions: []
         property string notificationImagePath: ""
         property int notificationUrgency: 1
+        property int notificationExpireTimeoutMs: -1
         property var notificationSenderPid: 0
         property bool notificationExpanded: false
         property bool isEmergencyAlert: false
@@ -1468,7 +1469,6 @@ PanelWindow {
         property real timerCompletionFlash: 0
         property bool fileShelfOpenedManually: false
         readonly property int defaultAutoHideInterval: 1250
-        readonly property int notificationAutoHideInterval: 4200
         readonly property int swipeAnimationDuration: 130
         readonly property bool showsMediaInNormal: restingState === "lyrics"
             || (restingState === "normal" && !!currentTrack)
@@ -2264,6 +2264,7 @@ PanelWindow {
                 actions: actions,
                 imagePath: raw.imagePath || "",
                 urgency: typeof raw.urgency === "number" ? raw.urgency : 1,
+                expireTimeoutMs: typeof raw.expireTimeoutMs === "number" ? raw.expireTimeoutMs : -1,
                 senderPid: (typeof raw.senderPid === "number" && raw.senderPid > 0) ? raw.senderPid : 0,
                 transient: !!raw.transient
             };
@@ -2298,11 +2299,25 @@ PanelWindow {
             setNotificationPopupContent(record);
             notificationExpanded = false;
             islandState = "notification";
-            restartAutoHideTimer(notificationTimeout(record.urgency));
+            startNotificationTimeout();
         }
 
-        function notificationTimeout(urgency) {
-            return urgency === 2 ? 10000 : (urgency === 0 ? 3000 : notificationAutoHideInterval);
+        // How long the popup stays: never for critical urgency, the app's expire_timeout when it
+        // gives one (0 = never), otherwise the configured default for its urgency. 0 = no timeout.
+        function notificationTimeoutMs(urgency, expireTimeoutMs) {
+            if (urgency === 2 || expireTimeoutMs === 0)
+                return 0;
+            if (expireTimeoutMs > 0)
+                return expireTimeoutMs;
+            return (urgency === 0 ? userConfig.notificationTimeoutLow : userConfig.notificationTimeout) * 1000;
+        }
+
+        function startNotificationTimeout() {
+            const timeout = notificationTimeoutMs(notificationUrgency, notificationExpireTimeoutMs);
+            if (timeout > 0)
+                restartAutoHideTimer(timeout);
+            else
+                stopAutoHideTimer();
         }
 
         function setNotificationPopupContent(record) {
@@ -2314,6 +2329,7 @@ PanelWindow {
             notificationActions = record.actions;
             notificationImagePath = record.imagePath;
             notificationUrgency = record.urgency;
+            notificationExpireTimeoutMs = record.expireTimeoutMs;
             notificationSenderPid = record.senderPid;
         }
 
@@ -2342,7 +2358,7 @@ PanelWindow {
             if (islandState === "notification" && notificationId === record.id) {
                 setNotificationPopupContent(record);
                 if (!notificationExpanded)
-                    restartAutoHideTimer(notificationTimeout(record.urgency));
+                    startNotificationTimeout();
             }
         }
 
@@ -2411,7 +2427,7 @@ PanelWindow {
 
             if (notificationExpanded) {
                 notificationExpanded = false;
-                restartAutoHideTimer(notificationAutoHideInterval);
+                startNotificationTimeout();
                 return true;
             }
 
@@ -3186,11 +3202,11 @@ PanelWindow {
                         if (mouse.button !== Qt.LeftButton)
                             return;
 
-                        // Body click: the app's "default" action (if any) and focus its window.
-                        // Expanding the popup is the chevron's job.
-                        root.activateNotification(islandContainer.notificationDetails(), false);
-                        if (islandContainer.islandState === "notification")
-                            islandContainer.smartRestoreState();
+                        // Body click: just close the popup; the entry stays in the history, read.
+                        // Opening is the Open pill's job, expanding the chevron's.
+                        if (root.shellRootController && root.shellRootController.setNotificationUnread)
+                            root.shellRootController.setNotificationUnread(islandContainer.notificationId, false);
+                        islandContainer.smartRestoreState();
                         return;
                     }
 
@@ -3486,7 +3502,6 @@ PanelWindow {
                         actions: islandContainer.notificationActions
                         imagePath: islandContainer.notificationImagePath
                         urgency: islandContainer.notificationUrgency
-                        senderPid: islandContainer.notificationSenderPid
                         expanded: islandContainer.notificationExpanded
                         iconText: root.notificationStatusIcon
                         iconFontFamily: root.iconFontFamily

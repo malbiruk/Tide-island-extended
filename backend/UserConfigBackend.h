@@ -56,6 +56,9 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(bool islandShowWorkspaceOnAutoHide READ islandShowWorkspaceOnAutoHide NOTIFY islandShowWorkspaceOnAutoHideChanged FINAL)
     Q_PROPERTY(QString islandBatteryMode READ islandBatteryMode NOTIFY islandBatteryModeChanged FINAL)
     Q_PROPERTY(bool islandAutoHideKeepActivities READ islandAutoHideKeepActivities NOTIFY islandAutoHideKeepActivitiesChanged FINAL)
+    // Popup timeouts in seconds for normal and low urgency (critical popups stay until dismissed).
+    Q_PROPERTY(int notificationTimeout READ notificationTimeout NOTIFY notificationTimeoutChanged FINAL)
+    Q_PROPERTY(int notificationTimeoutLow READ notificationTimeoutLow NOTIFY notificationTimeoutLowChanged FINAL)
     Q_PROPERTY(QString idleInhibitCommand READ idleInhibitCommand NOTIFY idleInhibitCommandChanged FINAL)
     Q_PROPERTY(QString islandStyle READ islandStyle NOTIFY islandStyleChanged FINAL)
 
@@ -134,6 +137,8 @@ public:
     bool islandShowWorkspaceOnAutoHide() const;
     QString islandBatteryMode() const;
     bool islandAutoHideKeepActivities() const;
+    int notificationTimeout() const;
+    int notificationTimeoutLow() const;
     QString idleInhibitCommand() const;
     bool islandAutoHideEnabled() const;
     int islandAutoHideDelayMs() const;
@@ -223,6 +228,8 @@ signals:
     void islandShowWorkspaceOnAutoHideChanged();
     void islandBatteryModeChanged();
     void islandAutoHideKeepActivitiesChanged();
+    void notificationTimeoutChanged();
+    void notificationTimeoutLowChanged();
     void idleInhibitCommandChanged();
     void hoverExpandActionChanged();
     void islandAutoHideEnabledChanged();
@@ -304,6 +311,8 @@ private:
     bool m_islandShowWorkspaceOnAutoHide = true;
     QString m_islandBatteryMode = QStringLiteral("low");
     bool m_islandAutoHideKeepActivities = true;
+    int m_notificationTimeout = 8;
+    int m_notificationTimeoutLow = 5;
     QString m_idleInhibitCommand;
     QString m_islandStyle = QStringLiteral("island");
     int m_hoverExpandAction = 0;

@@ -18,7 +18,6 @@ Item {
     property var actions: []
     property string imagePath: ""
     property int urgency: 1
-    property var senderPid: 0
     property string iconText: ""
     property bool expanded: false
     property var configSource: null
@@ -177,14 +176,24 @@ Item {
     }
 
     readonly property bool hasActions: filteredActions.length > 0
-    readonly property var effectiveActions: {
-        if (hasActions) return filteredActions;
-        if (isAgentNotification || senderPid > 0 || (appName !== "" && appName.toLowerCase() !== "notification")) {
-            return [{ id: "focus", text: "Focus" }];
-        }
-        return [];
-    }
+    readonly property var effectiveActions: filteredActions
     readonly property bool hasEffectiveActions: effectiveActions.length > 0
+
+    // The "default" action is always offered as an explicit Open pill (a body click only closes
+    // the popup).
+    function openActionLabel(action) {
+        const text = cleanActionText(action.text || "");
+        if (text === "" || text.toLowerCase() === "default" || text.length > 12)
+            return "Open";
+        return text;
+    }
+    readonly property var openAction: {
+        for (let i = 0; i < filteredActions.length; i++) {
+            if (filteredActions[i].id === "default")
+                return { id: "default", text: openActionLabel(filteredActions[i]), rawText: filteredActions[i].text || "" };
+        }
+        return null;
+    }
 
     function cleanActionText(rawText) {
         if (!rawText) return "";
@@ -232,7 +241,14 @@ Item {
     }
 
     readonly property var compactActions: {
-        if (!hasEffectiveActions) return [];
+        const otherActions = effectiveActions.filter(a => a.id !== "default");
+        const picked = pickCompactActions(otherActions);
+        return openAction ? [openAction].concat(picked) : picked;
+    }
+
+    // Up to two of the non-default actions for the compact popup.
+    function pickCompactActions(effectiveActions) {
+        if (effectiveActions.length === 0) return [];
 
         if (effectiveActions.length <= 2) {
             const list = [];
@@ -344,7 +360,7 @@ Item {
         } else if (hasCompactActions) {
             for (let i = 0; i < compactActions.length; i++) {
                 const a = compactActions[i];
-                if (a.text === "Focus" || a.id === "focus" || a.id === "default") {
+                if (a.text === "Focus" || a.id === "focus") {
                     extraW += 36;
                 } else {
                     extraW += 82;
@@ -672,12 +688,16 @@ Item {
                         delegate: Rectangle {
                             id: inlineBtn
                             readonly property string btnText: modelData.text || modelData.id
-                            readonly property bool isFocusAction: btnText === "Focus" || modelData.id === "focus" || modelData.id === "default"
+                            readonly property bool isOpenAction: modelData.id === "default"
+                            readonly property bool isFocusAction: !isOpenAction && (btnText === "Focus" || modelData.id === "focus")
+                            readonly property bool isAccented: isOpenAction || isFocusAction
                             readonly property bool isPositive: {
+                                if (isOpenAction) return false;
                                 const t = (modelData.rawText || btnText).toLowerCase();
                                 return btnText === "Allow" || t.includes("allow") || t.includes("approve") || t.includes("yes") || t.includes("proceed") || t.includes("run");
                             }
                             readonly property bool isNegative: {
+                                if (isOpenAction) return false;
                                 const t = (modelData.rawText || btnText).toLowerCase();
                                 return btnText === "Deny" || t.includes("deny") || t.includes("reject") || t.includes("no") || t.includes("cancel") || t.includes("abort");
                             }
@@ -689,16 +709,16 @@ Item {
                             color: inlineMouse.pressed
                                 ? StyleTokens.accentPressed
                                 : (inlineMouse.containsMouse
-                                    ? (isFocusAction ? StyleTokens.withAlpha(StyleTokens.accent, 0.32)
+                                    ? (isAccented ? StyleTokens.withAlpha(StyleTokens.accent, 0.32)
                                         : (isPositive ? StyleTokens.withAlpha(StyleTokens.success, 0.30)
                                         : (isNegative ? StyleTokens.withAlpha(StyleTokens.danger, 0.28)
                                         : StyleTokens.cardFillHover)))
-                                    : (isFocusAction ? StyleTokens.withAlpha(StyleTokens.accent, 0.18)
+                                    : (isAccented ? StyleTokens.withAlpha(StyleTokens.accent, 0.18)
                                         : (isPositive ? StyleTokens.withAlpha(StyleTokens.success, 0.18)
                                         : (isNegative ? StyleTokens.withAlpha(StyleTokens.danger, 0.14)
                                         : StyleTokens.cardFillActive))))
 
-                            border.color: isFocusAction
+                            border.color: isAccented
                                 ? (inlineMouse.containsMouse ? StyleTokens.accent : StyleTokens.withAlpha(StyleTokens.accent, 0.55))
                                 : (isPositive
                                     ? StyleTokens.withAlpha(StyleTokens.success, 0.55)
@@ -1114,13 +1134,19 @@ Item {
                         width: expandedActionLabel.implicitWidth + 24
                         radius: 15
 
-                        readonly property string btnText: root.shortenActionText(modelData.text || modelData.id)
-                        readonly property bool isFocusAction: btnText === "Focus" || modelData.id === "focus" || modelData.id === "default"
+                        readonly property bool isOpenAction: modelData.id === "default"
+                        readonly property string btnText: isOpenAction
+                            ? root.openActionLabel(modelData)
+                            : root.shortenActionText(modelData.text || modelData.id)
+                        readonly property bool isFocusAction: !isOpenAction && (btnText === "Focus" || modelData.id === "focus")
+                        readonly property bool isAccented: isOpenAction || isFocusAction
                         readonly property bool isPositive: {
+                            if (isOpenAction) return false;
                             const t = (modelData.rawText || modelData.text || btnText).toLowerCase();
                             return btnText === "Allow" || t.includes("allow") || t.includes("approve") || t.includes("yes") || t.includes("proceed") || t.includes("run");
                         }
                         readonly property bool isNegative: {
+                            if (isOpenAction) return false;
                             const t = (modelData.rawText || modelData.text || btnText).toLowerCase();
                             return btnText === "Deny" || t.includes("deny") || t.includes("reject") || t.includes("no") || t.includes("cancel") || t.includes("abort");
                         }
@@ -1129,17 +1155,17 @@ Item {
                             ? StyleTokens.accentPressed
                             : (expandedActionMouse.containsMouse
                                 ? (isPositive ? StyleTokens.withAlpha(StyleTokens.success, 0.35)
-                                    : (isFocusAction ? StyleTokens.withAlpha(StyleTokens.accent, 0.35)
+                                    : (isAccented ? StyleTokens.withAlpha(StyleTokens.accent, 0.35)
                                     : (isNegative ? StyleTokens.withAlpha(StyleTokens.danger, 0.30)
                                     : StyleTokens.cardFillHover)))
                                 : (isPositive ? StyleTokens.withAlpha(StyleTokens.success, 0.22)
-                                    : (isFocusAction ? StyleTokens.withAlpha(StyleTokens.accent, 0.22)
+                                    : (isAccented ? StyleTokens.withAlpha(StyleTokens.accent, 0.22)
                                     : (isNegative ? StyleTokens.withAlpha(StyleTokens.danger, 0.16)
                                     : StyleTokens.cardFillActive))))
 
                         border.color: isPositive
                             ? StyleTokens.withAlpha(StyleTokens.success, 0.6)
-                            : (isFocusAction
+                            : (isAccented
                                 ? StyleTokens.withAlpha(StyleTokens.accent, 0.6)
                                 : (isNegative ? StyleTokens.withAlpha(StyleTokens.danger, 0.55) : StyleTokens.withAlpha(StyleTokens.textMuted, 0.3)))
                         border.width: 1
@@ -1151,14 +1177,14 @@ Item {
 
                             Text {
                                 textFormat: Text.PlainText
-                                visible: expandedActionBtn.isPositive || expandedActionBtn.isNegative || expandedActionBtn.isFocusAction
-                                text: expandedActionBtn.isFocusAction ? "↗" : (expandedActionBtn.isPositive ? "✓" : "✕")
-                                font.pixelSize: expandedActionBtn.isFocusAction ? 13 : 11
+                                visible: expandedActionBtn.isPositive || expandedActionBtn.isNegative || expandedActionBtn.isAccented
+                                text: expandedActionBtn.isAccented ? "↗" : (expandedActionBtn.isPositive ? "✓" : "✕")
+                                font.pixelSize: expandedActionBtn.isAccented ? 13 : 11
                                 font.family: root.textFontFamily
                                 font.weight: Font.Bold
                                 color: expandedActionBtn.isPositive
                                     ? StyleTokens.success
-                                    : (expandedActionBtn.isFocusAction ? StyleTokens.accent : (expandedActionBtn.isNegative ? StyleTokens.danger : StyleTokens.textPrimaryBright))
+                                    : (expandedActionBtn.isAccented ? StyleTokens.accent : (expandedActionBtn.isNegative ? StyleTokens.danger : StyleTokens.textPrimaryBright))
                                 anchors.verticalCenter: parent.verticalCenter
                             }
 
@@ -1167,7 +1193,7 @@ Item {
                                 text: expandedActionBtn.isFocusAction ? "Focus Window" : expandedActionBtn.btnText
                                 color: expandedActionBtn.isPositive
                                     ? StyleTokens.success
-                                    : (expandedActionBtn.isFocusAction ? StyleTokens.accent : (expandedActionBtn.isNegative ? StyleTokens.danger : StyleTokens.textPrimaryBright))
+                                    : (expandedActionBtn.isAccented ? StyleTokens.accent : (expandedActionBtn.isNegative ? StyleTokens.danger : StyleTokens.textPrimaryBright))
                                 font.pixelSize: 11
                                 font.family: root.textFontFamily
                                 font.weight: Font.Bold

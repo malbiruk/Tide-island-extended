@@ -260,6 +260,22 @@ private slots:
         QCOMPARE(runtime.dynamicIslandPrimaryAction(), QStringLiteral("toggleClipboard"));
         QCOMPARE(runtime.hoverExpandAction(), 2);
     }
+
+    void notificationTimeoutsDefaultToEightAndFiveSeconds() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{}"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.notificationTimeout(), 8);
+        QCOMPARE(runtime.notificationTimeoutLow(), 5);
+
+        QVERIFY(writeConfig(directory.path(), "{\"notificationTimeout\": 12, \"notificationTimeoutLow\": 0}"));
+        runtime.reload();
+        QCOMPARE(runtime.notificationTimeout(), 12);
+        QCOMPARE(runtime.notificationTimeoutLow(), 1);
+    }
 };
 
 QTEST_GUILESS_MAIN(UserConfigBackendTests)

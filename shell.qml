@@ -135,6 +135,12 @@ Scope {
         return -internalNotificationSerial;
     }
 
+    // The app's expire_timeout (D-Bus milliseconds; -1 = server default, 0 = never).
+    function notificationExpireTimeoutMs(notification) {
+        const value = Number(notification.expireTimeout);
+        return Number.isFinite(value) ? Math.round(value) : -1;
+    }
+
     function notificationRecord(notification) {
         const actions = [];
         const notificationActions = notification.actions || [];
@@ -152,6 +158,7 @@ Scope {
             actions: actions,
             imagePath: notification.image,
             urgency: Number(notification.urgency),
+            expireTimeoutMs: notificationExpireTimeoutMs(notification),
             senderPid: Number.isFinite(senderPid) && senderPid > 0 ? Math.floor(senderPid) : 0,
             transient: !!notification.transient
         };

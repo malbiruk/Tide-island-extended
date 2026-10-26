@@ -363,6 +363,16 @@ bool UserConfigBackend::islandAutoHideKeepActivities() const
     return m_islandAutoHideKeepActivities;
 }
 
+int UserConfigBackend::notificationTimeout() const
+{
+    return m_notificationTimeout;
+}
+
+int UserConfigBackend::notificationTimeoutLow() const
+{
+    return m_notificationTimeoutLow;
+}
+
 // Command implementing `toggle` and `status` (prints "on"/"off") for idle inhibition;
 // empty hides the control. A leading "~" is expanded.
 QString UserConfigBackend::idleInhibitCommand() const
@@ -786,6 +796,8 @@ void UserConfigBackend::loadConfig()
                 (batteryMode == QLatin1String("always") || batteryMode == QLatin1String("never")) ? batteryMode : QStringLiteral("low"),
                 &UserConfigBackend::islandBatteryModeChanged);
     updateField(this, m_islandAutoHideKeepActivities, jsonBool(configObject, QLatin1String("islandAutoHideKeepActivities"), true), &UserConfigBackend::islandAutoHideKeepActivitiesChanged);
+    updateField(this, m_notificationTimeout, jsonBoundedInt(configObject, QLatin1String("notificationTimeout"), 8, 1, 600), &UserConfigBackend::notificationTimeoutChanged);
+    updateField(this, m_notificationTimeoutLow, jsonBoundedInt(configObject, QLatin1String("notificationTimeoutLow"), 5, 1, 600), &UserConfigBackend::notificationTimeoutLowChanged);
     QString idleCommand = jsonString(configObject, QLatin1String("idleInhibitCommand"), QString()).trimmed();
     if (idleCommand == QLatin1String("~") || idleCommand.startsWith(QLatin1String("~/")))
         idleCommand.replace(0, 1, QDir::homePath());
