@@ -129,13 +129,6 @@ PagePanel {
                     anchors.rightMargin: 18
                     spacing: 16
 
-                    IslandStyleRow {
-                        atBottom: edgeRow.selectedId === "bottom"
-                        width: parent.width
-                    }
-
-                    SplitLine { width: parent.width }
-
                     ChoiceRow {
                         id: edgeRow
                         title: "Island Edge"
@@ -708,91 +701,6 @@ PagePanel {
         function commit() {
             if (numeric) {
                 field.text = String(root.saveInt(row.keyName, field.text, Number(row.fallbackText), row.minimumValue, row.maximumValue))
-            }
-        }
-    }
-
-    component IslandStyleRow: Item {
-        id: styleRow
-
-        property bool atBottom: false
-        property string selectedStyle: String(ConfigStore.value("islandStyle", "island")).toLowerCase() === "notch" ? "notch" : "island"
-        // The shell forces the island style on the bottom edge.
-        readonly property string shownStyle: atBottom ? "island" : selectedStyle
-
-        height: 49
-
-        Text {
-            id: styleTitle
-            text: "Island Style"
-            font.family: Theme.textFontFamily
-            font.pixelSize: 18
-            color: Theme.textColor
-            anchors.top: parent.top
-            anchors.left: parent.left
-        }
-
-        Text {
-            text: styleRow.atBottom ? "Notch is only available on the top edge"
-                                    : "Choose between floating Dynamic Island or top-attached Notch"
-            font.family: Theme.textFontFamily
-            font.pixelSize: 14
-            anchors.top: styleTitle.bottom
-            anchors.topMargin: 5
-            anchors.left: styleTitle.left
-            color: Theme.subtleTextColor
-        }
-
-        Row {
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 6
-
-            Repeater {
-                model: [
-                    { id: "island", name: "Island" },
-                    { id: "notch", name: "Notch" }
-                ]
-
-                Rectangle {
-                    id: styleButton
-                    readonly property bool selected: styleRow.shownStyle === modelData.id
-
-                    enabled: !(styleRow.atBottom && modelData.id === "notch")
-                    opacity: enabled ? 1 : 0.4
-                    width: 82
-                    height: 36
-                    radius: 7
-                    color: selected ? Theme.cardBgColor
-                                    : styleMouse.pressed ? Theme.controlPressedColor
-                                                         : Theme.componentBgColor
-                    border.width: 1
-                    border.color: Theme.inputBorderColor
-
-                    Behavior on color { ColorAnimation { duration: Theme.animationDuration } }
-                    Behavior on border.color { ColorAnimation { duration: Theme.animationDuration } }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: modelData.name
-                        color: styleButton.selected ? Theme.textColor : Theme.secondaryTextColor
-                        font.family: Theme.textFontFamily
-                        font.pixelSize: 14
-                        font.weight: styleButton.selected ? Font.DemiBold : Font.Normal
-                    }
-
-                    MouseArea {
-                        id: styleMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            styleRow.selectedStyle = modelData.id
-                            ConfigStore.setValue("islandStyle", modelData.id)
-                            ConfigStore.save()
-                        }
-                    }
-                }
             }
         }
     }

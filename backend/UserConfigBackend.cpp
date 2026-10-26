@@ -382,10 +382,6 @@ int UserConfigBackend::islandAutoHideDelayMs() const
     return m_islandAutoHideDelayMs;
 }
 
-QString UserConfigBackend::islandStyle() const
-{
-    return m_islandStyle;
-}
 
 int UserConfigBackend::islandWidth() const
 {
@@ -511,22 +507,6 @@ void UserConfigBackend::setAvatarPath(const QString &path)
     writeConfigValue(QStringLiteral("avatarPath"), clean.isEmpty() ? QJsonValue(QJsonValue::Undefined) : QJsonValue(clean));
 }
 
-void UserConfigBackend::setIslandStyle(const QString &style)
-{
-    QString normalized = style.trimmed().toLower();
-    if (normalized != QLatin1String("notch"))
-        normalized = QLatin1String("island");
-
-    if (m_islandStyle == normalized)
-        return;
-
-    m_islandStyle = normalized;
-    emit islandStyleChanged();
-
-    // Persist to userconfig.json
-    writeConfigValue(QStringLiteral("islandStyle"), normalized);
-}
-
 bool UserConfigBackend::doNotDisturb() const { return m_doNotDisturb; }
 void UserConfigBackend::setDoNotDisturb(bool enabled)
 {
@@ -599,11 +579,6 @@ void UserConfigBackend::setLockscreenBlur(bool enabled)
     m_lockscreenBlur = enabled;
     emit lockscreenBlurChanged();
     writeConfigValue(QStringLiteral("lockscreenBlur"), enabled);
-}
-
-void UserConfigBackend::toggleIslandStyle()
-{
-    setIslandStyle(m_islandStyle == QLatin1String("notch") ? QStringLiteral("island") : QStringLiteral("notch"));
 }
 
 void UserConfigBackend::setDefaultWallpaperPath(const QString &path)
@@ -813,10 +788,6 @@ void UserConfigBackend::loadConfig()
                 &UserConfigBackend::hoverExpandActionChanged);
     updateField(this, m_islandAutoHideEnabled, jsonBool(configObject, QLatin1String("islandAutoHideEnabled"), true), &UserConfigBackend::islandAutoHideEnabledChanged);
     updateField(this, m_islandAutoHideDelayMs, jsonBoundedInt(configObject, QLatin1String("islandAutoHideDelayMs"), 1000, 100, 10000), &UserConfigBackend::islandAutoHideDelayMsChanged);
-    QString loadedIslandStyle = jsonString(configObject, QLatin1String("islandStyle"), QStringLiteral("island")).toLower();
-    if (loadedIslandStyle != QLatin1String("notch"))
-        loadedIslandStyle = QLatin1String("island");
-    updateField(this, m_islandStyle, loadedIslandStyle, &UserConfigBackend::islandStyleChanged);
     updateField(this, m_islandWidth, jsonInt(configObject, QLatin1String("islandWidth"), 140), &UserConfigBackend::islandWidthChanged);
     updateField(this, m_islandBackgroundOpacity, jsonBoundedInt(configObject, QLatin1String("islandBackgroundOpacity"), 60, 0, 100), &UserConfigBackend::islandBackgroundOpacityChanged);
     updateField(this, m_islandBlurEnabled, jsonBool(configObject, QLatin1String("islandBlurEnabled"), true), &UserConfigBackend::islandBlurEnabledChanged);

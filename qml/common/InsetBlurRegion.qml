@@ -12,7 +12,6 @@ Region {
     property Item surface: null
     property real surfaceRadius: 0
     property bool active: false
-    property bool flatTop: false
     property var transformDependencies: []
     property int roundedRadius: 0
 
@@ -27,18 +26,17 @@ Region {
             readonly property int cutout: Math.ceil(root.roundedRadius - Math.sqrt(
                 Math.max(0, root.roundedRadius * root.roundedRadius
                     - Math.pow(root.roundedRadius - index, 2))))
-            readonly property int topCutout: root.flatTop ? 0 : cutout
 
             intersection: Intersection.Subtract
             x: root.x
             y: root.y + index
-            width: topCutout
+            width: cutout
             height: 1
 
             Region {
-                x: root.x + root.width - strip.topCutout
+                x: root.x + root.width - strip.cutout
                 y: strip.y
-                width: strip.topCutout
+                width: strip.cutout
                 height: 1
             }
             Region {

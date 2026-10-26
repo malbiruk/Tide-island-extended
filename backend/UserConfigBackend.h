@@ -60,7 +60,6 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(int notificationTimeout READ notificationTimeout NOTIFY notificationTimeoutChanged FINAL)
     Q_PROPERTY(int notificationTimeoutLow READ notificationTimeoutLow NOTIFY notificationTimeoutLowChanged FINAL)
     Q_PROPERTY(QString idleInhibitCommand READ idleInhibitCommand NOTIFY idleInhibitCommandChanged FINAL)
-    Q_PROPERTY(QString islandStyle READ islandStyle NOTIFY islandStyleChanged FINAL)
 
     Q_PROPERTY(int islandWidth READ islandWidth NOTIFY islandWidthChanged FINAL)
     Q_PROPERTY(int islandHeight READ islandHeight NOTIFY islandHeightChanged FINAL)
@@ -132,7 +131,6 @@ public:
     QString dynamicIslandMiddleAction() const;
     const QVariantList &dynamicIslandLeftSwipeItems() const;
     int hoverExpandAction() const;
-    QString islandStyle() const;
     QString islandBatteryMode() const;
     bool islandAutoHideKeepActivities() const;
     int notificationTimeout() const;
@@ -185,8 +183,6 @@ public:
     Q_INVOKABLE int mouseButton(const QVariant &button) const;
     Q_INVOKABLE int mouseButtonsMask(const QVariant &buttons) const;
     Q_INVOKABLE void reload();
-    Q_INVOKABLE void toggleIslandStyle();
-    Q_INVOKABLE void setIslandStyle(const QString &style);
 
 signals:
     void configErrorChanged();
@@ -222,7 +218,6 @@ signals:
     void dynamicIslandMiddleButtonChanged();
     void dynamicIslandMiddleActionChanged();
     void dynamicIslandLeftSwipeItemsChanged();
-    void islandStyleChanged();
     void islandBatteryModeChanged();
     void islandAutoHideKeepActivitiesChanged();
     void notificationTimeoutChanged();
@@ -311,7 +306,6 @@ private:
     QString m_islandEdge = QStringLiteral("top");
     int m_notificationTimeoutLow = 5;
     QString m_idleInhibitCommand;
-    QString m_islandStyle = QStringLiteral("island");
     int m_hoverExpandAction = 0;
     bool m_islandAutoHideEnabled = true;
     int m_islandAutoHideDelayMs = 1000;

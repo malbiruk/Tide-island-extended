@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Mpris
@@ -97,7 +96,6 @@ PanelWindow {
             active: mainCapsule.opacity > 0.01 && root.userConfig.islandBackgroundOpacity > 0
                 && root.userConfig.islandBackgroundOpacity < 100
             surfaceRadius: mainCapsule.radius
-            flatTop: islandContainer.isNotchMode
         }
         InsetBlurRegion {
             surface: fileShelfBubble
@@ -1294,12 +1292,11 @@ PanelWindow {
         readonly property var connectedEarphoneDevice: bluetoothConnectionTracker.activeEarphoneDevice
         readonly property bool bluetoothEarphoneBubbleWanted: !!connectedEarphoneDevice
             && (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
-        readonly property bool isNotchMode: userConfig.islandStyle === "notch" && !root.atBottom
-        readonly property real effectiveTopMargin: isNotchMode ? 0 : userConfig.islandTopMargin
+        readonly property real effectiveTopMargin: userConfig.islandTopMargin
         readonly property int privacyBubbleSize: 36
         readonly property int privacyBubbleGap: 8
         readonly property int privacyBubbleStep: privacyBubbleSize + privacyBubbleGap
-        readonly property real bubblesBaseX: mainCapsule.x + mainCapsule.width + privacyBubbleGap + (isNotchMode ? 10 : 0)
+        readonly property real bubblesBaseX: mainCapsule.x + mainCapsule.width + privacyBubbleGap
         readonly property bool cameraBubbleWanted: userConfig.privacyCameraBubbleEnabled
             && cameraActive
             && (islandState === "normal" || islandState === "lyrics" || islandState === "custom")
@@ -2399,7 +2396,7 @@ PanelWindow {
             property int morphDuration: 170
             readonly property bool notificationHistorySurface: islandContainer.islandState === "notification_center"
             readonly property bool isCriticalNotification: islandContainer.islandState === "notification" && islandContainer.notificationUrgency === 2
-            property real outlineWidth: islandContainer.isNotchMode ? 0 : 2
+            property real outlineWidth: 2
             property color outlineColor: isCriticalNotification ? StyleTokens.danger : StyleTokens.surfaceBorder
             property real displayedWidth: baseTargetWidth
             // At rest the clock sits on the island anchor and the capsule extends left for music
@@ -2494,32 +2491,7 @@ PanelWindow {
                     return userConfig.islandHeight;
                 }
             }
-            readonly property real targetRadius: {
-                if (!islandContainer.isNotchMode) return 10;
-
-                switch (islandContainer.islandState) {
-                case "control_center":
-                    return 28;
-                case "notification_center":
-                    return 28;
-                case "wallpaper_picker":
-                case "application_launcher":
-                case "file_shelf":
-                case "clipboard":
-                case "weather":
-                case "calendar":
-                    return 28;
-                case "privacy_hud":
-                case "glance":
-                    return 28;
-                case "expanded":
-                    return 32;
-                case "notification":
-                    return islandContainer.notificationExpanded ? 28 : mainCapsule.targetHeight / 2;
-                default:
-                    return islandContainer.isNotchMode ? 16 : userConfig.islandHeight / 2;
-                }
-            }
+            readonly property real targetRadius: 10
             function sideSwipeWidthForProgress(progressValue) {
                 const restingW = islandContainer.restingCapsuleWidth;
                 if (progressValue < 0)
@@ -2541,12 +2513,12 @@ PanelWindow {
             width: displayedWidth
             height: targetHeight
             radius: targetRadius
-            topLeftRadius: islandContainer.isNotchMode ? 0 : targetRadius
-            topRightRadius: islandContainer.isNotchMode ? 0 : targetRadius
+            topLeftRadius: targetRadius
+            topRightRadius: targetRadius
             bottomLeftRadius: targetRadius
             bottomRightRadius: targetRadius
             opacity: root.autoHideProgress
-            scale: islandContainer.isNotchMode ? 1.0 : (0.96 + root.autoHideProgress * 0.04)
+            scale: 0.96 + root.autoHideProgress * 0.04
             transformOrigin: Item.Top
 
             onBaseTargetWidthChanged: {
@@ -2583,12 +2555,12 @@ PanelWindow {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: Math.max(parent.radius - 2, 0)
-                topLeftRadius: islandContainer.isNotchMode ? 0 : Math.max(parent.topLeftRadius - 2, 0)
-                topRightRadius: islandContainer.isNotchMode ? 0 : Math.max(parent.topRightRadius - 2, 0)
+                topLeftRadius: Math.max(parent.topLeftRadius - 2, 0)
+                topRightRadius: Math.max(parent.topRightRadius - 2, 0)
                 bottomLeftRadius: Math.max(parent.bottomLeftRadius - 2, 0)
                 bottomRightRadius: Math.max(parent.bottomRightRadius - 2, 0)
                 color: StyleTokens.transparent
-                border.width: islandContainer.isNotchMode ? 0 : 1
+                border.width: 1
                 border.color: StyleTokens.overviewInnerBorder
                 antialiasing: true
             }
@@ -3473,58 +3445,6 @@ PanelWindow {
 
         }
 
-        // Left concave wing for MacBook Notch mode
-        Shape {
-            id: notchLeftEar
-            z: 5
-            visible: islandContainer.isNotchMode && root.autoHideProgress > 0.05
-            opacity: root.autoHideProgress
-            x: mainCapsule.x - width
-            y: mainCapsule.y
-            width: 10
-            height: 10
-
-            ShapePath {
-                fillColor: mainCapsule.color
-                strokeColor: StyleTokens.transparent
-                startX: 0
-                startY: 0
-                PathLine { x: notchLeftEar.width; y: 0 }
-                PathLine { x: notchLeftEar.width; y: notchLeftEar.height }
-                PathArc {
-                    x: 0; y: 0
-                    radiusX: notchLeftEar.width; radiusY: notchLeftEar.height
-                    direction: PathArc.Clockwise
-                }
-            }
-        }
-
-        // Right concave wing for MacBook Notch mode
-        Shape {
-            id: notchRightEar
-            z: 5
-            visible: islandContainer.isNotchMode && root.autoHideProgress > 0.05
-            opacity: root.autoHideProgress
-            x: mainCapsule.x + mainCapsule.width
-            y: mainCapsule.y
-            width: 10
-            height: 10
-
-            ShapePath {
-                fillColor: mainCapsule.color
-                strokeColor: StyleTokens.transparent
-                startX: 0
-                startY: 0
-                PathLine { x: notchRightEar.width; y: 0 }
-                PathArc {
-                    x: 0; y: notchRightEar.height
-                    radiusX: notchRightEar.width; radiusY: notchRightEar.height
-                    direction: PathArc.Clockwise
-                }
-                PathLine { x: 0; y: 0 }
-            }
-        }
-
         BluetoothEarphoneBubble {
             id: bluetoothEarphoneBubble
 
@@ -3533,7 +3453,7 @@ PanelWindow {
             iconFontFamily: root.iconFontFamily
             textFontFamily: root.textFontFamily
             bubbleSize: 36
-            shownX: mainCapsule.x - bubbleSize - 8 - (islandContainer.isNotchMode ? 10 : 0)
+            shownX: mainCapsule.x - bubbleSize - 8
             hiddenX: mainCapsule.x + 8
             centerY: mainCapsule.y + mainCapsule.height / 2 - height / 2
             autoHideProgress: root.autoHideProgress
