@@ -5,8 +5,11 @@
 #include <QProcess>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
+
+#include <sys/stat.h>
 
 class SystemServicesNotificationTests : public QObject
 {
@@ -206,6 +209,31 @@ private slots:
         QCOMPARE(QString::fromUtf8(process.readAllStandardOutput()),
                  QStringLiteral("unset|$HOME a b|/home/someone"));
         QCOMPARE(process.exitCode(), 3);
+    }
+
+    void onlyRegularFilesCountAsNotificationImages()
+    {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString image = directory.path() + QStringLiteral("/image.png");
+        QFile file(image);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("png");
+        file.close();
+        const QString link = directory.path() + QStringLiteral("/link.png");
+        QVERIFY(QFile::link(image, link));
+        const QString fifo = directory.path() + QStringLiteral("/fifo");
+        QCOMPARE(::mkfifo(QFile::encodeName(fifo).constData(), 0600), 0);
+
+        SystemServices services;
+        QVERIFY(services.isRegularFile(image));
+        QVERIFY(services.isRegularFile(QUrl::fromLocalFile(image).toString()));
+        QVERIFY(services.isRegularFile(link));
+        QVERIFY(!services.isRegularFile(fifo));
+        QVERIFY(!services.isRegularFile(directory.path()));
+        QVERIFY(!services.isRegularFile(QStringLiteral("/dev/zero")));
+        QVERIFY(!services.isRegularFile(directory.path() + QStringLiteral("/missing.png")));
+        QVERIFY(!services.isRegularFile(QString()));
     }
 
     void testQueryDiskUsagePercent()

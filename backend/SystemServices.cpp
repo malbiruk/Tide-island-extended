@@ -25,6 +25,7 @@
 
 #ifdef Q_OS_UNIX
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/statvfs.h>
 #endif
 
@@ -2106,6 +2107,12 @@ QStringList SystemServices::scopedCommand(const QStringList &argv) const {
 
 bool SystemServices::launchDetached(const QStringList &argv) const {
     return ScopedLaunch::startDetached(argv);
+}
+
+bool SystemServices::isRegularFile(const QString &pathOrUrl) const {
+    const QString path = pathOrUrl.startsWith(QLatin1String("file://")) ? QUrl(pathOrUrl).toLocalFile() : pathOrUrl;
+    struct stat info {};
+    return !path.isEmpty() && ::stat(QFile::encodeName(path).constData(), &info) == 0 && S_ISREG(info.st_mode);
 }
 
 QStringList SystemServices::wrapTerminalCommand(const QStringList &command) const {

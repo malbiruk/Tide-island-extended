@@ -118,6 +118,9 @@ public:
     // User-facing programs run in their own systemd scope (common/ScopedLaunch.h).
     Q_INVOKABLE QStringList scopedCommand(const QStringList &argv) const;
     Q_INVOKABLE bool launchDetached(const QStringList &argv) const;
+    // An existing regular file (symlinks followed), given as a path or file:// URL. Notification
+    // images must not point the image loader at FIFOs, devices or directories.
+    Q_INVOKABLE bool isRegularFile(const QString &pathOrUrl) const;
 
 signals:
     void screenRecordingActiveChanged();

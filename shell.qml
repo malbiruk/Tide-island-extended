@@ -149,6 +149,14 @@ Scope {
         return Number.isFinite(value) ? Math.round(value) : -1;
     }
 
+    // Local image paths only when they are regular files; icon names and image:// stay.
+    function notificationImageSource(value) {
+        const source = value || "";
+        if (source.startsWith("/") || source.startsWith("file://"))
+            return SystemServices.isRegularFile(source) ? source : "";
+        return source;
+    }
+
     function notificationRecord(notification) {
         const actions = [];
         const notificationActions = notification.actions || [];
@@ -158,11 +166,11 @@ Scope {
         return {
             id: notification.id,
             appName: notification.appName,
-            appIcon: notification.appIcon,
+            appIcon: notificationImageSource(notification.appIcon),
             summary: notification.summary,
             body: notification.body,
             actions: actions,
-            imagePath: notification.image,
+            imagePath: notificationImageSource(notification.image),
             urgency: Number(notification.urgency),
             expireTimeoutMs: notificationExpireTimeoutMs(notification),
             transient: !!notification.transient
