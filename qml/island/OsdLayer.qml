@@ -17,7 +17,7 @@ Item {
     property string slideDirection: "none"
     property real transitionProgress: 0
     readonly property bool showProgress: progress >= 0
-    // Muted volume: the bar and text are dimmed (the icon is the mute glyph).
+    // Muted volume: the bar is dimmed (the icon is the mute glyph).
     property bool muted: false
     readonly property bool showText: progress < 0 && customText !== ""
     property bool showCondition: false
@@ -61,7 +61,7 @@ Item {
             anchors.leftMargin: 18
             anchors.verticalCenter: parent.verticalCenter
             text: iconText
-            color: root.muted ? StyleTokens.textMuted : StyleTokens.textPrimary
+            color: StyleTokens.textPrimary
             font.pixelSize: userConfig.iconFontSize
             font.family: iconFontFamily
         }
@@ -80,7 +80,7 @@ Item {
             width: Math.ceil(percentMetrics.advanceWidth)
             horizontalAlignment: Text.AlignRight
             text: Math.round(Math.max(0, Math.min(1, progress)) * 100) + "%"
-            color: root.muted ? StyleTokens.textMuted : StyleTokens.textPrimary
+            color: StyleTokens.textPrimary
             font.pixelSize: userConfig.bodyFontSize
             font.family: heroFontFamily
             font.weight: Font.Bold
