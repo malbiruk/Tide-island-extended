@@ -16,6 +16,16 @@ Item {
     readonly property color buttonBgHover: StyleTokens.cardFillHover
     readonly property color buttonBgPressed: StyleTokens.cardFillActive
 
+    // Mean luminance of each icon source's opaque pixels (-1 = unmeasurable), kept across delegate rebuilds
+    property var iconLuma: ({})
+
+    function rememberIconLuma(source, luma) {
+        // Pixmap icons get a fresh URL on every update, so keep the cache bounded
+        if (Object.keys(iconLuma).length >= 64)
+            iconLuma = {};
+        iconLuma[source] = luma;
+    }
+
     width: parent ? parent.width : 180
     height: 80
 
@@ -142,6 +152,12 @@ Item {
                             height: 34
                             scale: trayMouse.pressed ? 0.90 : (trayMouse.containsMouse ? 1.08 : 1.0)
 
+                            readonly property string iconSource: modelData.icon || ""
+                            // Light glyphs (made for dark panels) get a dark tile; the last verdict holds while a new source is measured
+                            property bool lightIcon: root.iconLuma[iconSource] > 0.75
+
+                            onIconSourceChanged: lumaProbe.requestPaint()
+
                             Behavior on scale {
                                 NumberAnimation {
                                     duration: 70
@@ -164,16 +180,70 @@ Item {
                                     ColorAnimation { duration: 70 }
                                 }
 
+                                Rectangle {
+                                    visible: trayDelegate.lightIcon
+                                    anchors.centerIn: parent
+                                    width: trayIcon.width + 6
+                                    height: trayIcon.height + 6
+                                    radius: 6
+                                    color: StyleTokens.surfaceBorder
+                                }
+
                                 Image {
+                                    id: trayIcon
                                     anchors.centerIn: parent
                                     width: 20
                                     height: 20
                                     sourceSize: Qt.size(40, 40)
-                                    source: modelData.icon || ""
+                                    source: trayDelegate.iconSource
                                     fillMode: Image.PreserveAspectFit
                                     asynchronous: true
                                     smooth: true
                                     mipmap: true
+                                }
+                            }
+
+                            // Hidden probe: measures each new icon source once at the rendered size
+                            Canvas {
+                                id: lumaProbe
+                                visible: false
+                                width: trayIcon.width
+                                height: trayIcon.height
+
+                                onAvailableChanged: requestPaint()
+                                onImageLoaded: requestPaint()
+
+                                onPaint: {
+                                    const source = trayDelegate.iconSource;
+                                    let luma = source === "" ? -1 : root.iconLuma[source];
+                                    if (luma === undefined) {
+                                        if (!isImageLoaded(source) && !isImageError(source)) {
+                                            loadImage(source, Qt.size(width, height));
+                                            if (!isImageLoaded(source) && !isImageError(source))
+                                                return; // async load; onImageLoaded repaints
+                                        }
+
+                                        luma = -1;
+                                        if (isImageLoaded(source)) {
+                                            const ctx = getContext("2d");
+                                            ctx.clearRect(0, 0, width, height);
+                                            ctx.drawImage(source, 0, 0, width, height);
+                                            const px = ctx.getImageData(0, 0, width, height).data;
+                                            let sum = 0;
+                                            let count = 0;
+                                            for (let i = 0; i < px.length; i += 4) {
+                                                if (px[i + 3] < 77) // ignore pixels under ~30% alpha
+                                                    continue;
+                                                sum += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
+                                                count++;
+                                            }
+                                            if (count > 0)
+                                                luma = sum / count / 255;
+                                        }
+                                        unloadImage(source);
+                                        root.rememberIconLuma(source, luma);
+                                    }
+                                    trayDelegate.lightIcon = luma > 0.75;
                                 }
                             }
 
