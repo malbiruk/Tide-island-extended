@@ -135,10 +135,6 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 
 ### Extended Enhancements
 
-- **Bluetooth Earphone & Headset Satellite Bubble**:
-  - **Instant Connection Pop-Out**: A sleek satellite circular bubble automatically emerges alongside the island whenever Bluetooth earphones, headphones, or audio headsets connect.
-  - **Live Circular Battery Gauge**: Circular progress ring framing the centered device icon that smoothly depletes and dynamically shifts color based on battery level (`batteryHigh`, `batteryMedium`, `batteryLow` from your colors.json palette).
-  - **Zero Clutter**: Automatically dismisses smoothly when the device disconnects.
 - **Sleek Horizontal Scrolling System Tray (SNI)**: Embedded StatusNotifierItem tray widget with item count badge pill, smooth horizontal flick/wheel scrolling, 34×34 squircle icon tiles, edge fade gradient masks when overflowed, tooltips on hover, and full click/context menu interaction.
 - **Screen Recorder**: Records the screen with `wf-recorder` (H.264 MP4, desktop audio or the microphone):
   - **Dynamic Active Elevation**: While recording, a recorder banner with a live timer appears in the Control Center.
@@ -185,7 +181,6 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
 
 - Clock
 - System Glance & Dashboard (drag the island toward the screen, or IPC)
-- Bluetooth earphone connection bubble with dynamic battery gauge ring
 - Music player
 - Control Center
 - Audio device switcher & per-app volume mixer

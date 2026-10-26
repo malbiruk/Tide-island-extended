@@ -104,12 +104,6 @@ PanelWindow {
             surfaceRadius: fileShelfBubble.width / 2
         }
         InsetBlurRegion {
-            surface: bluetoothEarphoneBubble
-            active: bluetoothEarphoneBubble.visible && bluetoothEarphoneBubble.opacity > 0.01
-            surfaceRadius: bluetoothEarphoneBubble.width / 2
-            transformDependencies: [bluetoothEarphoneBubble.x, bluetoothEarphoneBubble.y, bluetoothEarphoneBubble.scale]
-        }
-        InsetBlurRegion {
             surface: cameraBubble
             active: cameraBubble.visible && cameraBubble.opacity > 0.01
             surfaceRadius: cameraBubble.width / 2
@@ -195,14 +189,6 @@ PanelWindow {
             y: Math.floor(fileShelfBubble.y)
             width: fileShelfBubble.visible ? Math.ceil(fileShelfBubble.width) : 0
             height: fileShelfBubble.visible ? Math.ceil(fileShelfBubble.height) : 0
-        }
-
-        Region {
-            intersection: Intersection.Combine
-            x: Math.floor(bluetoothEarphoneBubble.x)
-            y: Math.floor(bluetoothEarphoneBubble.y)
-            width: bluetoothEarphoneBubble.visible ? Math.ceil(bluetoothEarphoneBubble.width) : 0
-            height: bluetoothEarphoneBubble.visible ? Math.ceil(bluetoothEarphoneBubble.height) : 0
         }
 
         Region {
@@ -1193,9 +1179,6 @@ PanelWindow {
             && islandState === "normal"
         readonly property bool fileShelfBubbleWanted: FileShelf.count > 0
             && islandState === "normal"
-        readonly property var connectedEarphoneDevice: bluetoothConnectionTracker.activeEarphoneDevice
-        readonly property bool bluetoothEarphoneBubbleWanted: !!connectedEarphoneDevice
-            && islandState === "normal"
         readonly property real effectiveTopMargin: userConfig.islandTopMargin
         readonly property int privacyBubbleSize: 36
         readonly property int privacyBubbleGap: 8
@@ -1246,7 +1229,6 @@ PanelWindow {
         readonly property bool micActive: root.micActive
         readonly property bool cameraActive: root.cameraActive
         readonly property bool privacyActive: root.privacyActive
-        readonly property var bluetoothDevices: bluetoothConnectionTracker.devices
 
         onExpandedLayerVisibleChanged: {
             if (expandedLayerVisible)
@@ -1276,10 +1258,6 @@ PanelWindow {
             expanded: islandContainer.islandState === "expanded"
                 || (islandContainer.controlCenterLayerVisible && islandContainer.playerCardVisible)
             clientId: "island-mpris-" + root.screenOutputName
-        }
-
-        BluetoothConnectionTracker {
-            id: bluetoothConnectionTracker
         }
 
         IslandSystemState {
@@ -2758,31 +2736,6 @@ PanelWindow {
 
         }
 
-        BluetoothEarphoneBubble {
-            id: bluetoothEarphoneBubble
-
-            device: islandContainer.connectedEarphoneDevice
-            active: islandContainer.bluetoothEarphoneBubbleWanted
-            iconFontFamily: root.iconFontFamily
-            textFontFamily: root.textFontFamily
-            bubbleSize: 36
-            shownX: mainCapsule.x - bubbleSize - 8
-            hiddenX: mainCapsule.x + 8
-            centerY: mainCapsule.y + mainCapsule.height / 2 - height / 2
-            autoHideProgress: root.autoHideProgress
-            autoHideEnabled: root.autoHideEnabled
-            onEntered: {
-                if (root.autoHideEnabled) {
-                    root.showAutoHiddenIsland();
-                }
-            }
-            onExited: {
-                if (root.autoHideEnabled) {
-                    root.scheduleAutoHide();
-                }
-            }
-        }
-
         Item {
             id: fileShelfBubble
 
@@ -2790,13 +2743,7 @@ PanelWindow {
 
             width: bubbleSize
             height: bubbleSize
-            x: mainCapsule.x - width - 8 - (bluetoothEarphoneBubble.mounted ? (bluetoothEarphoneBubble.bubbleSize + 6) : 0)
-            Behavior on x {
-                NumberAnimation {
-                    duration: 190
-                    easing.type: Easing.OutQuint
-                }
-            }
+            x: mainCapsule.x - width - 8
             y: mainCapsule.y + mainCapsule.height / 2 - height / 2
             z: 6
             visible: islandContainer.fileShelfBubbleWanted
@@ -3279,7 +3226,7 @@ PanelWindow {
 
     // True if (x, y) in window coordinates lies on a visible island surface (capsule, bubbles, side panels).
     function islandSurfaceAt(x, y) {
-        const surfaces = [mainCapsule, fileShelfBubble, bluetoothEarphoneBubble, cameraBubble, micBubble,
+        const surfaces = [mainCapsule, fileShelfBubble, cameraBubble, micBubble,
             timerBubble, wifiConnectivityDetailShell, bluetoothConnectivityDetailShell,
             powerConnectivityDetailShell, audioConnectivityDetailShell, calendarNoteShell];
         return surfaces.some(s => s.visible
