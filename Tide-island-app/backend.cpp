@@ -1,5 +1,6 @@
 #include "backend.hpp"
 #include "../common/JsonComments.h"
+#include "../common/UserConfigFile.h"
 
 #include <QClipboard>
 #include <QDir>
@@ -69,7 +70,24 @@ Backend::Backend(QObject *parent)
     QSettings settings(configAppSettingsPath(), QSettings::IniFormat);
     m_colorScheme = normalizedColorScheme(
         settings.value(QString::fromLatin1(colorSchemeKey), QStringLiteral("light")).toString());
+
+    // The shell writes some keys itself (doNotDisturb, avatarPath): follow the file so the
+    // pages never show stale values. Saves replace the file, so its directory is watched too.
+    m_reloadTimer.setSingleShot(true);
+    m_reloadTimer.setInterval(150);
+    connect(&m_reloadTimer, &QTimer::timeout, this, &Backend::reload);
+    connect(&m_watcher, &QFileSystemWatcher::fileChanged, &m_reloadTimer, qOverload<>(&QTimer::start));
+    connect(&m_watcher, &QFileSystemWatcher::directoryChanged, &m_reloadTimer, qOverload<>(&QTimer::start));
+    reload();
+}
+
+void Backend::reload(){
     load();
+    const QFileInfo configInfo(m_userConfigPath);
+    if (configInfo.dir().exists() && !m_watcher.directories().contains(configInfo.absolutePath()))
+        m_watcher.addPath(configInfo.absolutePath());
+    if (configInfo.exists() && !m_watcher.files().contains(configInfo.absoluteFilePath()))
+        m_watcher.addPath(configInfo.absoluteFilePath());
 }
 
 QString Backend::userConfigPath() const{
@@ -137,6 +155,7 @@ bool Backend::save(const QVariantMap &changes, const QStringList &removedKeys){
         return false;
     }
 
+    UserConfigFile::restrictIfSecret(file, merged);
     file.write(document.toJson(QJsonDocument::Indented));
     if (!file.commit()) {
         setErrorString(QStringLiteral("Could not save %1: %2").arg(m_userConfigPath, file.errorString()));

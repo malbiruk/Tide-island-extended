@@ -1,9 +1,11 @@
 #pragma once
 
+#include <QFileSystemWatcher>
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QTimer>
 #include <QVariantMap>
 #include <QVariantList>
 
@@ -33,6 +35,8 @@ public:
     QString colorScheme() const;
 
     Q_INVOKABLE bool save(const QVariantMap &changes, const QStringList &removedKeys = QStringList());
+    // Re-reads userconfig.json (also done on every change to it).
+    Q_INVOKABLE void reload();
     Q_INVOKABLE void setColorScheme(const QString &colorScheme);
     Q_INVOKABLE bool copyToClipboard(const QString &text);
     Q_INVOKABLE bool hasPowerProfilesCtl() const;
@@ -55,4 +59,6 @@ private:
     QString m_errorString;
     QString m_colorScheme;
     UserConfigMap m_userConfig;
+    QFileSystemWatcher m_watcher;
+    QTimer m_reloadTimer;
 };

@@ -22,6 +22,11 @@ ApplicationWindow {
 
     property int currentPage: 1
 
+    onActiveChanged: {
+        if (active)
+            backend.reload()
+    }
+
     Behavior on color {
         ColorAnimation { duration: Theme.animationDuration }
     }

@@ -1229,10 +1229,8 @@ PagePanel {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: {
-                control.checked = !control.checked
-                control.toggled(control.checked)
-            }
+            // checked stays bound to the config; it follows once the change is saved.
+            onClicked: control.toggled(!control.checked)
         }
     }
 

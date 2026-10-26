@@ -1,5 +1,6 @@
 #include "UserConfigBackend.h"
 #include "../common/JsonComments.h"
+#include "../common/UserConfigFile.h"
 
 #include <QDir>
 #include <QFile>
@@ -502,7 +503,10 @@ bool UserConfigBackend::writeConfigValue(const QString &key, const QJsonValue &v
 
     QDir().mkpath(QFileInfo(m_userConfigPath).absolutePath());
     QSaveFile file(m_userConfigPath);
-    if (!file.open(QIODevice::WriteOnly)
+    const bool opened = file.open(QIODevice::WriteOnly);
+    if (opened)
+        UserConfigFile::restrictIfSecret(file, object);
+    if (!opened
             || file.write(QJsonDocument(object).toJson(QJsonDocument::Indented)) < 0
             || !file.commit()) {
         qWarning().noquote() << QStringLiteral("[UserConfig] Could not save \"%1\" to %2: %3")

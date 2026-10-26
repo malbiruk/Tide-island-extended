@@ -298,6 +298,24 @@ private slots:
         runtime.reload();
         QCOMPARE(runtime.islandEdge(), QStringLiteral("top"));
     }
+
+    void savingKeepsAFileWithAPasswordOwnerOnly() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{\"tlpSudoPassword\": \"secret\"}"));
+        const QString path = directory.path() + QStringLiteral("/tide-island/userconfig.json");
+        QVERIFY(QFile::setPermissions(path, QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                                                | QFileDevice::ReadGroup | QFileDevice::ReadOther));
+
+        UserConfigBackend runtime;
+        runtime.setDoNotDisturb(!runtime.doNotDisturb());
+
+        const QFileDevice::Permissions permissions = QFile::permissions(path);
+        QVERIFY(permissions & QFileDevice::ReadOwner);
+        QVERIFY(!(permissions & (QFileDevice::ReadGroup | QFileDevice::ReadOther
+                                 | QFileDevice::WriteGroup | QFileDevice::WriteOther)));
+    }
 };
 
 QTEST_GUILESS_MAIN(UserConfigBackendTests)

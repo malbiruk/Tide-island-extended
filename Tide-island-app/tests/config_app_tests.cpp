@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSaveFile>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -43,6 +44,8 @@ private slots:
     void powerProfileDetectionResolvesCorrectly();
     void saveWritesOnlyChangedKeysOverCurrentFile();
     void saveRefusesToOverwriteInvalidConfig();
+    void followsChangesToTheFile();
+    void saveKeepsAFileWithAPasswordOwnerOnly();
 };
 
 void ConfigAppTests::configAppColorSchemePersists()
@@ -149,6 +152,52 @@ void ConfigAppTests::saveRefusesToOverwriteInvalidConfig()
     QVERIFY(!backend.save(changes));
     QCOMPARE(readTextFile(configPath), QString::fromUtf8(broken));
     QVERIFY(!backend.errorString().isEmpty());
+}
+
+void ConfigAppTests::followsChangesToTheFile()
+{
+    QTemporaryDir configHome;
+    QVERIFY(configHome.isValid());
+    qputenv("XDG_CONFIG_HOME", configHome.path().toLocal8Bit());
+
+    const QString configPath = configHome.path() + QStringLiteral("/tide-island/userconfig.json");
+    QVERIFY(writeTextFile(configPath, "{ \"doNotDisturb\": false }\n"));
+    Backend backend;
+    QCOMPARE(backend.userConfig().value(QStringLiteral("doNotDisturb")).toBool(), false);
+
+    QVERIFY(writeTextFile(configPath, "{ \"doNotDisturb\": true }\n"));
+    QTRY_COMPARE(backend.userConfig().value(QStringLiteral("doNotDisturb")).toBool(), true);
+
+    // Replaced atomically, the way the shell saves it.
+    QSaveFile replacement(configPath);
+    QVERIFY(replacement.open(QIODevice::WriteOnly));
+    replacement.write("{ \"doNotDisturb\": false }\n");
+    QVERIFY(replacement.commit());
+    QTRY_COMPARE(backend.userConfig().value(QStringLiteral("doNotDisturb")).toBool(), false);
+
+    QVERIFY(writeTextFile(configPath, "{ \"doNotDisturb\": true }\n"));
+    QTRY_COMPARE(backend.userConfig().value(QStringLiteral("doNotDisturb")).toBool(), true);
+}
+
+void ConfigAppTests::saveKeepsAFileWithAPasswordOwnerOnly()
+{
+    QTemporaryDir configHome;
+    QVERIFY(configHome.isValid());
+    qputenv("XDG_CONFIG_HOME", configHome.path().toLocal8Bit());
+
+    const QString configPath = configHome.path() + QStringLiteral("/tide-island/userconfig.json");
+    QVERIFY(writeTextFile(configPath, "{}\n",
+        QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadGroup | QFileDevice::ReadOther));
+
+    Backend backend;
+    QVariantMap changes;
+    changes.insert(QStringLiteral("tlpSudoPassword"), QStringLiteral("secret"));
+    QVERIFY(backend.save(changes));
+
+    const QFileDevice::Permissions permissions = QFile::permissions(configPath);
+    QVERIFY(permissions & QFileDevice::ReadOwner);
+    QVERIFY(!(permissions & (QFileDevice::ReadGroup | QFileDevice::ReadOther
+                             | QFileDevice::WriteGroup | QFileDevice::WriteOther)));
 }
 
 QTEST_GUILESS_MAIN(ConfigAppTests)
