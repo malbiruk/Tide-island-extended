@@ -2733,7 +2733,8 @@ PanelWindow {
                     }
 
                     drag.accept(Qt.CopyAction);
-                    if (!islandContainer.fileShelfLayerVisible)
+                    // Also a shelf sliding away: it comes back.
+                    if (islandContainer.openState !== "file_shelf")
                         islandContainer.showFileShelf(false);
                     root.showAutoHiddenIsland("state");
                 }
