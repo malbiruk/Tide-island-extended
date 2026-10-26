@@ -84,6 +84,14 @@ Rectangle {
         verticalAlignment: TextInput.AlignVCenter
 
         onTextEdited: control.dirty = true
+        // Text the validator does not accept (e.g. an emptied number) never finishes editing;
+        // leaving the field puts the stored value back instead of keeping it edited forever.
+        onActiveFocusChanged: {
+            if (!activeFocus && control.dirty && !acceptableInput) {
+                control.dirty = false
+                text = control.savedText
+            }
+        }
         onAccepted: {
             control.accepted()
             control.commitIfEdited()
