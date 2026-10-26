@@ -582,7 +582,7 @@ dnf_install_dependencies() {
 zypper_install_dependencies() {
   local build_packages=(
     git gcc-c++ cmake ninja pkg-config
-    qt6-base-devel qt6-declarative-devel qt6-wayland-devel
+    qt6-base-devel qt6-gui-private-devel qt6-declarative-devel qt6-wayland-devel
     qt6-shadertools-devel qt6-svg-devel
     systemd-devel libdrm-devel wayland-devel wayland-protocols-devel
     Mesa-libgbm-devel vulkan-headers libjemalloc-devel cli11-devel spirv-tools-devel
