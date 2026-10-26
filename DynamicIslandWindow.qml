@@ -3336,6 +3336,8 @@ PanelWindow {
         }
         root.addFilesFromDrop(drop);
         drop.accept(Qt.CopyAction);
-        islandContainer.closeAutoOpenedFileShelf();
+        // After the drop event: until then the drop area still holds the drag, which would count
+        // as the pointer on the island and keep it from sliding away.
+        Qt.callLater(islandContainer.closeAutoOpenedFileShelf);
     }
 }
