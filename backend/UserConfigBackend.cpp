@@ -9,6 +9,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSaveFile>
 #include <QJsonParseError>
 #include <QJsonValue>
 #include <QSet>
@@ -487,22 +488,7 @@ void UserConfigBackend::setAvatarPath(const QString &path)
     emit avatarPathChanged();
 
     // Persist to userconfig.json
-    QFile file(m_userConfigPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    if (clean.isEmpty()) {
-        obj.remove(QStringLiteral("avatarPath"));
-    } else {
-        obj.insert(QStringLiteral("avatarPath"), clean);
-    }
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
+    writeConfigValue(QStringLiteral("avatarPath"), clean.isEmpty() ? QJsonValue(QJsonValue::Undefined) : QJsonValue(clean));
 }
 
 void UserConfigBackend::setIslandStyle(const QString &style)
@@ -518,18 +504,7 @@ void UserConfigBackend::setIslandStyle(const QString &style)
     emit islandStyleChanged();
 
     // Persist to userconfig.json
-    QFile file(m_userConfigPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    obj.insert(QStringLiteral("islandStyle"), normalized);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
+    writeConfigValue(QStringLiteral("islandStyle"), normalized);
 }
 
 bool UserConfigBackend::doNotDisturb() const { return m_doNotDisturb; }
@@ -538,18 +513,7 @@ void UserConfigBackend::setDoNotDisturb(bool enabled)
     if (m_doNotDisturb == enabled) return;
     m_doNotDisturb = enabled;
     emit doNotDisturbChanged();
-    QFile file(m_userConfigPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    obj.insert(QStringLiteral("doNotDisturb"), enabled);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
+    writeConfigValue(QStringLiteral("doNotDisturb"), enabled);
 }
 
 bool UserConfigBackend::lockscreenEnabled() const { return m_lockscreenEnabled; }
@@ -558,18 +522,7 @@ void UserConfigBackend::setLockscreenEnabled(bool enabled)
     if (m_lockscreenEnabled == enabled) return;
     m_lockscreenEnabled = enabled;
     emit lockscreenEnabledChanged();
-    QFile file(m_userConfigPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    obj.insert(QStringLiteral("lockscreenEnabled"), enabled);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
+    writeConfigValue(QStringLiteral("lockscreenEnabled"), enabled);
 }
 
 bool UserConfigBackend::lockscreenMedia() const { return m_lockscreenMedia; }
@@ -578,18 +531,7 @@ void UserConfigBackend::setLockscreenMedia(bool enabled)
     if (m_lockscreenMedia == enabled) return;
     m_lockscreenMedia = enabled;
     emit lockscreenMediaChanged();
-    QFile file(m_userConfigPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    obj.insert(QStringLiteral("lockscreenMedia"), enabled);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
+    writeConfigValue(QStringLiteral("lockscreenMedia"), enabled);
 }
 
 bool UserConfigBackend::lockscreenPowerActions() const { return m_lockscreenPowerActions; }
@@ -598,18 +540,7 @@ void UserConfigBackend::setLockscreenPowerActions(bool enabled)
     if (m_lockscreenPowerActions == enabled) return;
     m_lockscreenPowerActions = enabled;
     emit lockscreenPowerActionsChanged();
-    QFile file(m_userConfigPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    obj.insert(QStringLiteral("lockscreenPowerActions"), enabled);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
+    writeConfigValue(QStringLiteral("lockscreenPowerActions"), enabled);
 }
 
 bool UserConfigBackend::lockscreenShowBattery() const { return m_lockscreenShowBattery; }
@@ -618,18 +549,7 @@ void UserConfigBackend::setLockscreenShowBattery(bool enabled)
     if (m_lockscreenShowBattery == enabled) return;
     m_lockscreenShowBattery = enabled;
     emit lockscreenShowBatteryChanged();
-    QFile file(m_userConfigPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    obj.insert(QStringLiteral("lockscreenShowBattery"), enabled);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
+    writeConfigValue(QStringLiteral("lockscreenShowBattery"), enabled);
 }
 
 QString UserConfigBackend::lockscreenPamService() const { return m_lockscreenPamService; }
@@ -639,18 +559,7 @@ void UserConfigBackend::setLockscreenPamService(const QString &service)
     if (clean.isEmpty() || m_lockscreenPamService == clean) return;
     m_lockscreenPamService = clean;
     emit lockscreenPamServiceChanged();
-    QFile file(m_userConfigPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    obj.insert(QStringLiteral("lockscreenPamService"), clean);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
+    writeConfigValue(QStringLiteral("lockscreenPamService"), clean);
 }
 
 QString UserConfigBackend::lockscreenWallpaperPath() const { return m_lockscreenWallpaperPath; }
@@ -660,21 +569,7 @@ void UserConfigBackend::setLockscreenWallpaperPath(const QString &path)
     if (m_lockscreenWallpaperPath == clean) return;
     m_lockscreenWallpaperPath = clean;
     emit lockscreenWallpaperPathChanged();
-    QFile file(m_userConfigPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    if (clean.isEmpty())
-        obj.remove(QStringLiteral("lockscreenWallpaperPath"));
-    else
-        obj.insert(QStringLiteral("lockscreenWallpaperPath"), clean);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
+    writeConfigValue(QStringLiteral("lockscreenWallpaperPath"), clean.isEmpty() ? QJsonValue(QJsonValue::Undefined) : QJsonValue(clean));
 }
 
 bool UserConfigBackend::lockscreenBlur() const { return m_lockscreenBlur; }
@@ -683,18 +578,7 @@ void UserConfigBackend::setLockscreenBlur(bool enabled)
     if (m_lockscreenBlur == enabled) return;
     m_lockscreenBlur = enabled;
     emit lockscreenBlurChanged();
-    QFile file(m_userConfigPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    obj.insert(QStringLiteral("lockscreenBlur"), enabled);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
+    writeConfigValue(QStringLiteral("lockscreenBlur"), enabled);
 }
 
 void UserConfigBackend::toggleIslandStyle()
@@ -768,6 +652,50 @@ void UserConfigBackend::scheduleReload()
         m_reloadTimer.start();
 }
 
+// Persist one key: read the current file (comments allowed, like loadConfig), change the key
+// (an undefined value removes it) and write atomically. An unreadable or invalid file is
+// never overwritten; the change then only lives in memory.
+bool UserConfigBackend::writeConfigValue(const QString &key, const QJsonValue &value)
+{
+    QJsonObject object;
+    QFile current(m_userConfigPath);
+    if (current.exists()) {
+        if (!current.open(QIODevice::ReadOnly)) {
+            qWarning().noquote() << QStringLiteral("[UserConfig] Not saving \"%1\": cannot read %2 (%3)")
+                .arg(key, m_userConfigPath, current.errorString());
+            return false;
+        }
+        const QByteArray bytes = current.readAll();
+        current.close();
+        if (!bytes.trimmed().isEmpty()) {
+            QJsonParseError error;
+            const QJsonDocument document = QJsonDocument::fromJson(JsonComments::strip(bytes), &error);
+            if (error.error != QJsonParseError::NoError || !document.isObject()) {
+                qWarning().noquote() << QStringLiteral("[UserConfig] Not saving \"%1\": %2 is not a valid JSON object")
+                    .arg(key, m_userConfigPath);
+                return false;
+            }
+            object = document.object();
+        }
+    }
+
+    if (value.isUndefined())
+        object.remove(key);
+    else
+        object.insert(key, value);
+
+    QDir().mkpath(QFileInfo(m_userConfigPath).absolutePath());
+    QSaveFile file(m_userConfigPath);
+    if (!file.open(QIODevice::WriteOnly)
+            || file.write(QJsonDocument(object).toJson(QJsonDocument::Indented)) < 0
+            || !file.commit()) {
+        qWarning().noquote() << QStringLiteral("[UserConfig] Could not save \"%1\" to %2: %3")
+            .arg(key, m_userConfigPath, file.errorString());
+        return false;
+    }
+    return true;
+}
+
 void UserConfigBackend::loadConfig()
 {
     updateWatchedPaths();
@@ -803,6 +731,9 @@ void UserConfigBackend::loadConfig()
     }
 
     updateField(this, m_configError, nextConfigError, &UserConfigBackend::configErrorChanged);
+    // A broken file must not reset everything to defaults; keep the last good values.
+    if (!nextConfigError.isEmpty())
+        return;
 
     updateField(this, m_wallpaperPath, jsonString(configObject, QLatin1String("wallpaperPath"), m_defaultWallpaperPath), &UserConfigBackend::wallpaperPathChanged);
     updateField(this, m_wallpaperLibraryPath, jsonString(configObject, QLatin1String("wallpaperLibraryPath"), QString()), &UserConfigBackend::wallpaperLibraryPathChanged);

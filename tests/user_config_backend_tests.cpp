@@ -158,6 +158,61 @@ private slots:
         UserConfigBackend restarted;
         QCOMPARE(restarted.doNotDisturb(), true);
     }
+
+    void commentedConfigSurvivesADoNotDisturbToggle() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(),
+            "// personal settings\n{\n    \"hoverExpandAction\": 2, /* keep */\n    \"lockscreenBlur\": false\n}\n"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.configError(), QString());
+        runtime.setDoNotDisturb(true);
+
+        QFile file(directory.path() + "/tide-island/userconfig.json");
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QJsonParseError error;
+        const QJsonObject saved = QJsonDocument::fromJson(file.readAll(), &error).object();
+        QCOMPARE(error.error, QJsonParseError::NoError);
+        QCOMPARE(saved.value("hoverExpandAction").toInt(), 2);
+        QCOMPARE(saved.value("lockscreenBlur").toBool(true), false);
+        QCOMPARE(saved.value("doNotDisturb").toBool(), true);
+    }
+
+    void invalidConfigIsNeverOverwritten() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        const QByteArray broken = "{ \"hoverExpandAction\": 2, ";
+        QVERIFY(writeConfig(directory.path(), broken));
+
+        UserConfigBackend runtime;
+        QVERIFY(!runtime.configError().isEmpty());
+        runtime.setDoNotDisturb(true);
+        QCOMPARE(runtime.doNotDisturb(), true);
+
+        QFile file(directory.path() + "/tide-island/userconfig.json");
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), broken);
+    }
+
+    void invalidReloadKeepsTheLastGoodValues() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{\"doNotDisturb\": true, \"hoverExpandAction\": 2}"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.doNotDisturb(), true);
+        QCOMPARE(runtime.hoverExpandAction(), 2);
+
+        QVERIFY(writeConfig(directory.path(), "{ broken"));
+        runtime.reload();
+        QVERIFY(!runtime.configError().isEmpty());
+        QCOMPARE(runtime.doNotDisturb(), true);
+        QCOMPARE(runtime.hoverExpandAction(), 2);
+    }
 };
 
 QTEST_GUILESS_MAIN(UserConfigBackendTests)

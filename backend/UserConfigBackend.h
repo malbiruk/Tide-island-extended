@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QFileSystemWatcher>
+#include <QJsonValue>
 #include <QObject>
 #include <QTimer>
 #include <QVariantList>
@@ -253,6 +254,7 @@ signals:
 private:
     void scheduleReload();
     void loadConfig();
+    bool writeConfigValue(const QString &key, const QJsonValue &value);
     void updateWatchedPaths();
     QString configHome() const;
 
