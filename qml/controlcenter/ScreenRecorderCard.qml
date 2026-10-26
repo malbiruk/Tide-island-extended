@@ -171,9 +171,9 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 8
 
-                    // Pause / Resume Button (Visible only when recording)
+                    // Pause / Resume Button (Visible only when recording; gpu-screen-recorder only)
                     Rectangle {
-                        visible: root.isRecording
+                        visible: root.isRecording && !!root.recorder && root.recorder.canPause
                         width: 34
                         height: 34
                         radius: 10
@@ -246,8 +246,9 @@ Item {
                         }
                     }
 
-                    // Replay Buffer Toggle Button
+                    // Replay Buffer Toggle Button (gpu-screen-recorder only)
                     Rectangle {
+                        visible: !!root.recorder && root.recorder.canReplay
                         width: 34
                         height: 34
                         radius: 10

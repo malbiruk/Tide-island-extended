@@ -157,10 +157,12 @@ target_include_directories(screen_recorder_tests PRIVATE
 target_link_libraries(screen_recorder_tests PRIVATE
     IslandBackend
     Qt6::Core
+    Qt6::Gui
     Qt6::Test
 )
 
 add_test(NAME screen_recorder COMMAND screen_recorder_tests)
+set_tests_properties(screen_recorder PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/lyricsmpris_core_tests.cpp")
     add_executable(lyricsmpris_tests

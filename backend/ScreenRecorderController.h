@@ -23,6 +23,8 @@ class ScreenRecorderController final : public QObject {
     Q_PROPERTY(QString recordingsDir READ recordingsDir WRITE setRecordingsDir NOTIFY recordingsDirChanged FINAL)
     Q_PROPERTY(QString replaysDir READ replaysDir WRITE setReplaysDir NOTIFY replaysDirChanged FINAL)
     Q_PROPERTY(bool isAvailable READ isAvailable CONSTANT FINAL)
+    Q_PROPERTY(bool canPause READ canPause CONSTANT FINAL)
+    Q_PROPERTY(bool canReplay READ canReplay CONSTANT FINAL)
     Q_PROPERTY(QString lastSavedFile READ lastSavedFile NOTIFY lastSavedFileChanged FINAL)
 
 public:
@@ -49,6 +51,8 @@ public:
     QString replaysDir() const;
     void setReplaysDir(const QString &dir);
     bool isAvailable() const;
+    bool canPause() const;
+    bool canReplay() const;
     QString lastSavedFile() const;
 
     Q_INVOKABLE void startRecording(bool withMic = false);
@@ -93,8 +97,13 @@ private:
     bool isProcessRunning(qint64 pid) const;
     QString detectDefaultScreen() const;
     QString resolveAudioSource(bool withMic) const;
+    QString resolveWfRecorderAudioDevice(bool withMic) const;
 
     static ScreenRecorderController *s_instance;
+
+    // gpu-screen-recorder is preferred; wf-recorder is the fallback (no pause, no replay buffer).
+    QString m_gsrPath;
+    QString m_wfRecorderPath;
 
     bool m_isRecording = false;
     bool m_isPaused = false;

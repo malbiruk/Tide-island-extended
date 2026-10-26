@@ -6,7 +6,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QProcess>
+#include <QScreen>
 #include <QStandardPaths>
 
 #include <csignal>
@@ -19,6 +21,9 @@ ScreenRecorderController::ScreenRecorderController(QObject *parent)
     : QObject(parent)
 {
     s_instance = this;
+
+    m_gsrPath = QStandardPaths::findExecutable(QStringLiteral("gpu-screen-recorder"));
+    m_wfRecorderPath = QStandardPaths::findExecutable(QStringLiteral("wf-recorder"));
 
     const QString home = QDir::homePath();
     m_recordingsDir = home + QStringLiteral("/Videos/ScreenRecordings/Recordings");
@@ -48,7 +53,16 @@ ScreenRecorderController *ScreenRecorderController::instance() {
 }
 
 bool ScreenRecorderController::isAvailable() const {
-    return !QStandardPaths::findExecutable(QStringLiteral("gpu-screen-recorder")).isEmpty();
+    return !m_gsrPath.isEmpty() || !m_wfRecorderPath.isEmpty();
+}
+
+// Pause (SIGUSR2) and the replay buffer are gpu-screen-recorder features.
+bool ScreenRecorderController::canPause() const {
+    return !m_gsrPath.isEmpty();
+}
+
+bool ScreenRecorderController::canReplay() const {
+    return !m_gsrPath.isEmpty();
 }
 
 bool ScreenRecorderController::isRecording() const {
@@ -194,12 +208,13 @@ bool ScreenRecorderController::isProcessRunning(qint64 pid) const {
     if (kill(static_cast<pid_t>(pid), 0) != 0)
         return false;
 
-    // Verify it is actually gpu-screen-recorder
+    // Verify it is actually gpu-screen-recorder or wf-recorder
     const QString commPath = QStringLiteral("/proc/%1/comm").arg(pid);
     QFile file(commPath);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         const QString comm = QString::fromUtf8(file.readAll()).trimmed();
-        if (comm.contains(QStringLiteral("gpu-screen-reco")) || comm.contains(QStringLiteral("gpu-screen")))
+        if (comm.contains(QStringLiteral("gpu-screen-reco")) || comm.contains(QStringLiteral("gpu-screen"))
+                || comm == QStringLiteral("wf-recorder"))
             return true;
     }
 
@@ -207,7 +222,7 @@ bool ScreenRecorderController::isProcessRunning(qint64 pid) const {
     QFile cmdFile(cmdlinePath);
     if (cmdFile.open(QIODevice::ReadOnly)) {
         const QString cmd = QString::fromUtf8(cmdFile.readAll());
-        if (cmd.contains(QStringLiteral("gpu-screen-recorder")))
+        if (cmd.contains(QStringLiteral("gpu-screen-recorder")) || cmd.contains(QStringLiteral("wf-recorder")))
             return true;
     }
 
@@ -220,8 +235,19 @@ QString ScreenRecorderController::detectDefaultScreen() const {
     if (!m_cachedDetectedScreen.isEmpty())
         return m_cachedDetectedScreen;
 
-    const QString gsr = QStandardPaths::findExecutable(QStringLiteral("gpu-screen-recorder"));
-    if (!gsr.isEmpty()) {
+    const QString gsr = m_gsrPath;
+    if (gsr.isEmpty()) {
+        // wf-recorder mode: wl_output names as Qt sees them (primary screen first).
+        QList<QScreen *> screens = QGuiApplication::screens();
+        if (QScreen *primary = QGuiApplication::primaryScreen())
+            screens.prepend(primary);
+        for (const QScreen *screen : std::as_const(screens)) {
+            if (screen && !screen->name().isEmpty()) {
+                m_cachedDetectedScreen = screen->name();
+                return m_cachedDetectedScreen;
+            }
+        }
+    } else {
         QProcess proc;
         proc.start(gsr, {QStringLiteral("--list-monitors")});
         if (proc.waitForFinished(300)) {
@@ -247,6 +273,22 @@ QString ScreenRecorderController::resolveAudioSource(bool withMic) const {
     return QStringLiteral("default_output");
 }
 
+// wf-recorder captures a single PulseAudio source, so gsr's "desktop + mic" mix has no
+// equivalent: with the mic enabled we record the default source (the mic), otherwise the
+// default sink's monitor (desktop audio). Returns an empty string if pactl can't tell us.
+QString ScreenRecorderController::resolveWfRecorderAudioDevice(bool withMic) const {
+    QProcess pactl;
+    pactl.start(QStringLiteral("pactl"),
+                {withMic ? QStringLiteral("get-default-source") : QStringLiteral("get-default-sink")});
+    if (!pactl.waitForFinished(500) || pactl.exitStatus() != QProcess::NormalExit || pactl.exitCode() != 0)
+        return QString();
+
+    const QString device = QString::fromUtf8(pactl.readAllStandardOutput()).trimmed();
+    if (device.isEmpty())
+        return QString();
+    return withMic ? device : device + QStringLiteral(".monitor");
+}
+
 void ScreenRecorderController::startRecording(bool withMic) {
     if (m_isRecording) {
         emit notificationRequested(QStringLiteral("Screen Recorder"), QStringLiteral("Recording is already in progress."));
@@ -254,7 +296,8 @@ void ScreenRecorderController::startRecording(bool withMic) {
     }
 
     if (!isAvailable()) {
-        emit notificationRequested(QStringLiteral("Screen Recorder"), QStringLiteral("gpu-screen-recorder is not installed."));
+        emit notificationRequested(QStringLiteral("Screen Recorder"),
+                                   QStringLiteral("Neither gpu-screen-recorder nor wf-recorder is installed."));
         return;
     }
 
@@ -265,20 +308,36 @@ void ScreenRecorderController::startRecording(bool withMic) {
     m_currentRecordingFile = m_recordingsDir + QStringLiteral("/recording_%1.mp4").arg(timestamp);
 
     const QString screen = detectDefaultScreen();
-    const QString audio = resolveAudioSource(useMic);
+    const bool useGsr = !m_gsrPath.isEmpty();
 
     QStringList args;
-    args << QStringLiteral("-w") << screen;
-    args << QStringLiteral("-f") << QString::number(m_fps);
-    args << QStringLiteral("-a") << audio;
-    args << QStringLiteral("-cursor") << QStringLiteral("yes");
-    args << QStringLiteral("-q") << QStringLiteral("very_high");
-    args << QStringLiteral("-o") << m_currentRecordingFile;
+    if (useGsr) {
+        const QString audio = resolveAudioSource(useMic);
+        args << QStringLiteral("-w") << screen;
+        args << QStringLiteral("-f") << QString::number(m_fps);
+        args << QStringLiteral("-a") << audio;
+        args << QStringLiteral("-cursor") << QStringLiteral("yes");
+        args << QStringLiteral("-q") << QStringLiteral("very_high");
+        args << QStringLiteral("-o") << m_currentRecordingFile;
+    } else {
+        // CPU H.264 in yuv420p for broad player compatibility; the container comes from the
+        // .mp4 extension and -y avoids an overwrite prompt on stdin.
+        args << QStringLiteral("-o") << screen;
+        args << QStringLiteral("-f") << m_currentRecordingFile;
+        args << QStringLiteral("-r") << QString::number(m_fps);
+        args << QStringLiteral("-c") << QStringLiteral("libx264");
+        args << QStringLiteral("-x") << QStringLiteral("yuv420p");
+        args << QStringLiteral("-y");
+        const QString audioDevice = resolveWfRecorderAudioDevice(useMic);
+        if (!audioDevice.isEmpty())
+            args << QStringLiteral("--audio=%1").arg(audioDevice);
+    }
 
+    const QString program = useGsr ? QStringLiteral("gpu-screen-recorder") : QStringLiteral("wf-recorder");
     qint64 pid = 0;
-    const bool started = QProcess::startDetached(QStringLiteral("gpu-screen-recorder"), args, QString(), &pid);
+    const bool started = QProcess::startDetached(program, args, QString(), &pid);
     if (!started || pid <= 0) {
-        emit notificationRequested(QStringLiteral("Screen Recorder"), QStringLiteral("Failed to start gpu-screen-recorder."));
+        emit notificationRequested(QStringLiteral("Screen Recorder"), QStringLiteral("Failed to start %1.").arg(program));
         return;
     }
 
@@ -346,6 +405,11 @@ void ScreenRecorderController::toggleRecording() {
 }
 
 void ScreenRecorderController::pauseRecording() {
+    if (!canPause()) {
+        emit notificationRequested(QStringLiteral("Recording"), QStringLiteral("Pausing requires gpu-screen-recorder."));
+        return;
+    }
+
     qint64 pid = m_recordPid;
     if (pid <= 0)
         pid = readPidFromFile(recordPidFilePath());
@@ -373,8 +437,9 @@ void ScreenRecorderController::startReplay(bool withMic) {
         return;
     }
 
-    if (!isAvailable()) {
-        emit notificationRequested(QStringLiteral("Replay Buffer"), QStringLiteral("gpu-screen-recorder is not installed."));
+    if (!canReplay()) {
+        emit notificationRequested(QStringLiteral("Replay Buffer"),
+                                   QStringLiteral("The replay buffer requires gpu-screen-recorder."));
         return;
     }
 

@@ -1,4 +1,6 @@
 #include <QTest>
+#include <QDir>
+#include <QFile>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <memory>
@@ -12,6 +14,7 @@ private slots:
     void testInitialState();
     void testTimeFormatting();
     void testPropertySetters();
+    void testBackendCapabilities();
 
 private:
     std::unique_ptr<QTemporaryDir> m_tempDir;
@@ -62,6 +65,54 @@ void ScreenRecorderTests::testPropertySetters() {
     controller.setScreenName(QStringLiteral("DP-1"));
     QCOMPARE(controller.screenName(), QStringLiteral("DP-1"));
     QCOMPARE(screenSpy.count(), 1);
+}
+
+static bool writeFakeExecutable(const QString &path) {
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly))
+        return false;
+    file.write("#!/bin/sh\nexit 0\n");
+    file.close();
+    return file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+}
+
+void ScreenRecorderTests::testBackendCapabilities() {
+    const QByteArray originalPath = qgetenv("PATH");
+    const QString binDir = m_tempDir->path() + QStringLiteral("/bin");
+    QVERIFY(QDir().mkpath(binDir));
+    qputenv("PATH", binDir.toUtf8());
+
+    {
+        ScreenRecorderController controller;
+        QCOMPARE(controller.isAvailable(), false);
+    }
+
+    // wf-recorder only: recording works, pause and the replay buffer do not.
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/wf-recorder")));
+    {
+        ScreenRecorderController controller;
+        QCOMPARE(controller.isAvailable(), true);
+        QCOMPARE(controller.canPause(), false);
+        QCOMPARE(controller.canReplay(), false);
+
+        QSignalSpy notificationSpy(&controller, &ScreenRecorderController::notificationRequested);
+        controller.startReplay();
+        QCOMPARE(controller.isReplayActive(), false);
+        controller.pauseRecording();
+        QCOMPARE(controller.isPaused(), false);
+        QCOMPARE(notificationSpy.count(), 2);
+    }
+
+    // gpu-screen-recorder present: it is preferred and supports pause and replay.
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/gpu-screen-recorder")));
+    {
+        ScreenRecorderController controller;
+        QCOMPARE(controller.isAvailable(), true);
+        QCOMPARE(controller.canPause(), true);
+        QCOMPARE(controller.canReplay(), true);
+    }
+
+    qputenv("PATH", originalPath);
 }
 
 QTEST_MAIN(ScreenRecorderTests)
