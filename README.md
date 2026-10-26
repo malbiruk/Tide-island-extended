@@ -357,7 +357,7 @@ tide-island-config-app
 - **Color Palette**: Tide Island reads its palette from `~/.config/tide-island/colors.json` (any generator can write it).
   - **Live Auto-Reload**: Palette updates on disk are automatically detected and reloaded instantly via `QFileSystemWatcher` without restarting the service.
   - **Transparency Preserved**: Island capsule background transparency (`islandBackgroundOpacity`) continues to work seamlessly alongside dynamic palette tints.
-- **Commands** (`~/.config/tide-island/userconfig.json`, also in the settings app): a command line with arguments, `~` allowed in the program.
+- **Commands** (`~/.config/tide-island/userconfig.json`, also in the settings app): split into words like a shell would, but never run through one: `'…'` and `"…"` quoting, backslash escapes, and a leading `~/` in any word for your home directory; no variables, globs or pipes (wrap those in a script).
   - `lockCommand`: the screen locker for the power menu's Lock (e.g. `gtklock -d`); empty tries gtklock, `loginctl lock-session`, then swaylock. Any failure is shown as a notice.
   - `idleInhibitCommand`: adds the caffeine button; it is run as `<command> toggle` and `<command> status` (which prints `on` or `off`).
 - **Island edge**: `islandEdge` is `top` (default) or `bottom`.

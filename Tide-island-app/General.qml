@@ -466,7 +466,7 @@ PagePanel {
 
                     CommandRow {
                         title: "Caffeine Command"
-                        description: "Adds a caffeine button to the Display card. Runs as \"<command> toggle\" and \"<command> status\"; status must print on or off. Arguments and ~ are allowed"
+                        description: "Adds a caffeine button to the Display card. Runs as \"<command> toggle\" and \"<command> status\"; status must print on or off. Split like a shell: quote with ' or \", escape with \\, a leading ~/ is your home; no variables or pipes"
                         keyName: "idleInhibitCommand"
                         placeholderText: "Not set"
                         width: parent.width
@@ -474,7 +474,7 @@ PagePanel {
 
                     CommandRow {
                         title: "Lock Command"
-                        description: "Screen locker for the power menu's Lock, e.g. gtklock -d. Empty tries gtklock, loginctl lock-session, then swaylock"
+                        description: "Screen locker for the power menu's Lock, e.g. gtklock -d. Empty tries gtklock, loginctl lock-session, then swaylock. Split like a shell: quote with ' or \", escape with \\, a leading ~/ is your home; no variables or pipes"
                         keyName: "lockCommand"
                         placeholderText: "Automatic"
                         width: parent.width

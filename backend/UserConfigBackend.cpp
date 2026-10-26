@@ -10,7 +10,6 @@
 #include <QSaveFile>
 #include <QJsonParseError>
 #include <QJsonValue>
-#include <QProcess>
 #include <QSet>
 #include <QUrl>
 #include <QVariant>
@@ -20,12 +19,70 @@
 #include <cmath>
 
 namespace {
-// A command line as the shell would split it (quotes allowed); "~" in the program is the home dir.
+// A command line split like a POSIX shell would, without running one: words separated by
+// whitespace, '…' taken literally, "…" with \" \\ \$ \` escapes, a backslash outside quotes
+// escaping the next character, and an unquoted leading ~ or ~/ in any word meaning the home
+// directory. Nothing is expanded or substituted otherwise. An unterminated quote gives no command.
 QStringList commandArguments(const QString &command)
 {
-    QStringList arguments = QProcess::splitCommand(command.trimmed());
-    if (!arguments.isEmpty() && (arguments.first() == QLatin1String("~") || arguments.first().startsWith(QLatin1String("~/"))))
-        arguments.first().replace(0, 1, QDir::homePath());
+    QStringList arguments;
+    QString word;
+    bool inWord = false;
+    bool tildeCandidate = false;
+    enum { Plain, Single, Double } quote = Plain;
+    const auto finishWord = [&]() {
+        if (!inWord)
+            return;
+        if (tildeCandidate && (word == QLatin1String("~") || word.startsWith(QLatin1String("~/"))))
+            word.replace(0, 1, QDir::homePath());
+        arguments << word;
+        word.clear();
+        inWord = false;
+        tildeCandidate = false;
+    };
+
+    for (qsizetype i = 0; i < command.size(); ++i) {
+        const QChar c = command.at(i);
+        if (quote == Single) {
+            if (c == QLatin1Char('\''))
+                quote = Plain;
+            else
+                word += c;
+            continue;
+        }
+        if (quote == Double) {
+            if (c == QLatin1Char('"')) {
+                quote = Plain;
+            } else if (c == QLatin1Char('\\') && i + 1 < command.size()
+                       && QStringLiteral("\"\\$`").contains(command.at(i + 1))) {
+                word += command.at(++i);
+            } else {
+                word += c;
+            }
+            continue;
+        }
+        if (c.isSpace()) {
+            finishWord();
+            continue;
+        }
+        if (!inWord) {
+            inWord = true;
+            tildeCandidate = c == QLatin1Char('~');
+        }
+        if (c == QLatin1Char('\'')) {
+            quote = Single;
+        } else if (c == QLatin1Char('"')) {
+            quote = Double;
+        } else if (c == QLatin1Char('\\')) {
+            if (i + 1 < command.size())
+                word += command.at(++i);
+        } else {
+            word += c;
+        }
+    }
+    if (quote != Plain)
+        return {};
+    finishWord();
     return arguments;
 }
 

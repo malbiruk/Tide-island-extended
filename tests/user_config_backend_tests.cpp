@@ -336,6 +336,34 @@ private slots:
         QCOMPARE(runtime.islandEdge(), QStringLiteral("top"));
     }
 
+    void commandsSplitLikeAShell_data() {
+        QTest::addColumn<QByteArray>("json");
+        QTest::addColumn<QStringList>("expected");
+        const QString home = QDir::homePath();
+        QTest::newRow("single quotes") << QByteArray("\"gtklock -d -b '/x/My Pictures/bg.png'\"")
+            << QStringList{"gtklock", "-d", "-b", "/x/My Pictures/bg.png"};
+        QTest::newRow("double quotes and escapes") << QByteArray("\"sh -c \\\"echo \\\\\\\"hi\\\\\\\" \\\\$HOME\\\"\"")
+            << QStringList{"sh", "-c", "echo \"hi\" $HOME"};
+        QTest::newRow("backslash space") << QByteArray("\"my\\\\ locker now\"")
+            << QStringList{"my locker", "now"};
+        QTest::newRow("tilde in any unquoted word") << QByteArray("\"~/bin/lock --image ~/Pictures/x.png '~/kept' ~user\"")
+            << QStringList{home + "/bin/lock", "--image", home + "/Pictures/x.png", "~/kept", "~user"};
+        QTest::newRow("empty argument") << QByteArray("\"cmd '' x\"") << QStringList{"cmd", "", "x"};
+        QTest::newRow("unterminated quote") << QByteArray("\"gtklock 'oops\"") << QStringList{};
+    }
+
+    void commandsSplitLikeAShell() {
+        QFETCH(QByteArray, json);
+        QFETCH(QStringList, expected);
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{\"lockCommand\": " + json + "}"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.lockCommand(), expected);
+    }
+
     void loadingTightensAReadableFileWithAPassword() {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
