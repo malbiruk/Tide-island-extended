@@ -257,7 +257,8 @@ Scope {
     }
 
     // A new notification with the same content as older ones replaces them in the history
-    // (counted there), so close the superseded ones for their senders too.
+    // (counted there), so close the superseded ones for their senders too, as expired: the
+    // user did not dismiss them.
     function supersedeDuplicates(notification) {
         if (notification.transient)
             return;
@@ -268,7 +269,7 @@ Scope {
                 continue;
             if (other.appName === notification.appName && other.summary === notification.summary
                     && other.body === notification.body)
-                other.dismiss();
+                other.expire();
         }
     }
 
@@ -292,7 +293,16 @@ Scope {
             .filter((key) => !trackedNotifications[key].transient)
             .sort((a, b) => notificationUpdatedAt[a] - notificationUpdatedAt[b]);
         for (let i = 0; i < ids.length - maxTrackedNotifications; i++)
-            dismissNotification(Number(ids[i]));
+            expireNotification(Number(ids[i]));
+    }
+
+    // Closed by tide without the user (reason 1, expired); removed everywhere.
+    function expireNotification(id) {
+        const notification = trackedNotifications[id];
+        if (notification)
+            notification.expire();
+        else
+            forgetNotification(id);
     }
 
     // Dismiss in tide: tells the sender (NotificationClosed) and removes it everywhere.
