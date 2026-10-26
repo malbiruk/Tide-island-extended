@@ -89,6 +89,8 @@ private:
     static ScreenRecorderController *s_instance;
 
     QString m_wfRecorderPath;
+    mutable QString m_stateDir;
+    mutable bool m_stateDirResolved = false;
 
     bool m_isRecording = false;
     int m_recordingSeconds = 0;

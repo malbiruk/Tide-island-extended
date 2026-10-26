@@ -142,9 +142,14 @@ QString ScreenRecorderController::lastSavedFile() const {
 }
 
 // In the user's runtime directory only (never a shared /tmp); empty when there is none.
+// Looked up once: Qt checks (and warns about) the directory on every query.
 QString ScreenRecorderController::stateDir() const {
-    const QString runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
-    return runtimeDir.isEmpty() ? QString() : runtimeDir + QStringLiteral("/tide-island-recorder");
+    if (!m_stateDirResolved) {
+        const QString runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+        m_stateDir = runtimeDir.isEmpty() ? QString() : runtimeDir + QStringLiteral("/tide-island-recorder");
+        m_stateDirResolved = true;
+    }
+    return m_stateDir;
 }
 
 // The state directory exists, is a real directory (not a symlink) and is ours.
