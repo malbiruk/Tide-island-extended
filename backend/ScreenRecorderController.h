@@ -79,6 +79,7 @@ private:
     void adoptRunningRecorder();
     QString processName(qint64 pid) const;
     bool isProcessRunning(qint64 pid) const;
+    bool isOwnRecorderRunning(qint64 pid) const;
     QString outputName() const;
     QString uniqueRecordingPath() const;
     void checkRecorderStarted(qint64 pid, const QString &screen);
@@ -106,6 +107,8 @@ private:
     // A recorder that was just started is checked once shortly afterwards (m_startCheckPid);
     // a stopped one is tracked until it exits so "Recording Saved" means the file is final.
     qint64 m_startCheckPid = 0;
+    int m_startCheckAttempts = 0;
+    static constexpr int MaxStartChecks = 10;
     qint64 m_stoppingPid = 0;
     int m_stopEscalation = 0;
     QString m_stoppingFile;

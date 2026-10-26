@@ -9,6 +9,7 @@
 #include <QTemporaryDir>
 #include <memory>
 #include "ScreenRecorderController.h"
+#include "../common/ScopedLaunch.h"
 
 class ScreenRecorderTests : public QObject {
     Q_OBJECT
@@ -25,6 +26,8 @@ private slots:
     void aRunningRecorderIsAdoptedAndSavesItsFile();
     void aRecorderExitingOnItsOwnEndsTheRecording();
     void symlinkedStateFilesAreNotFollowed();
+    void stoppingWhileTheScopeIsStartingStopsTheRecorder();
+    void aScopeThatNeverStartsTheRecorderIsGivenUp();
 
 private:
     QString stateDir() const { return m_tempDir->path() + QStringLiteral("/tide-island-recorder"); }
@@ -216,8 +219,10 @@ void ScreenRecorderTests::aRecorderExitingOnItsOwnEndsTheRecording() {
     const auto restorePath = qScopeGuard([&originalPath] { qputenv("PATH", originalPath); });
     const QString binDir = m_tempDir->path() + QStringLiteral("/exit-bin");
     QVERIFY(QDir().mkpath(binDir));
-    // Outlives the start check, then exits like a recorder whose output went away.
-    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/wf-recorder"), "#!/bin/sh\n/bin/sleep 2\n"));
+    // Runs until told to exit, like a recorder whose output goes away.
+    const QString exitNow = m_tempDir->path() + QStringLiteral("/exit-now");
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/wf-recorder"),
+        "#!/bin/sh\nwhile [ ! -e '" + exitNow.toUtf8() + "' ]; do /bin/sleep 0.05; done\n"));
     QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/pactl"), "#!/bin/sh\nexit 1\n"));
     qputenv("PATH", binDir.toUtf8());
 
@@ -229,6 +234,9 @@ void ScreenRecorderTests::aRecorderExitingOnItsOwnEndsTheRecording() {
     QTest::qWait(1200);
     QVERIFY(controller.isRecording());
 
+    QFile marker(exitNow);
+    QVERIFY(marker.open(QIODevice::WriteOnly));
+    marker.close();
     QTRY_VERIFY_WITH_TIMEOUT(!controller.isRecording(), 6000);
     QCOMPARE(notificationSpy.last().at(0).toString(), QStringLiteral("Recording Stopped"));
     QVERIFY(!QFileInfo::exists(stateDir() + QStringLiteral("/record.pid")));
@@ -261,6 +269,67 @@ void ScreenRecorderTests::symlinkedStateFilesAreNotFollowed() {
     ScreenRecorderController controller;
     QVERIFY(!controller.isRecording());
     QFile::remove(stateDir() + QStringLiteral("/record.pid"));
+}
+
+// A fake systemd-run that takes its time before it execs the program, so the recorder's pid is
+// still named systemd-run when the recording is stopped.
+static void installSlowScopes(const QString &directory, const QString &delay) {
+    QVERIFY(QDir().mkpath(directory + QStringLiteral("/systemd")));
+    QFile socket(directory + QStringLiteral("/systemd/private"));
+    QVERIFY(socket.open(QIODevice::WriteOnly));
+    socket.close();
+    QVERIFY(writeFakeExecutable(directory + QStringLiteral("/bin/systemd-run"),
+        "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 'systemd 262'; exit 0; fi\n"
+        "while [ $# -gt 0 ]; do if [ \"$1\" = -- ]; then shift; break; fi; shift; done\n"
+        "if [ \"$1\" = true ]; then exit 0; fi\n/bin/sleep " + delay.toUtf8() + "\nexec \"$@\"\n"));
+    ScopedLaunch::resetProbe();
+    ScopedLaunch::probe();
+    QTRY_VERIFY(ScopedLaunch::scopesAvailable());
+}
+
+void ScreenRecorderTests::stoppingWhileTheScopeIsStartingStopsTheRecorder() {
+    const QString binDir = m_tempDir->path() + QStringLiteral("/bin");
+    QVERIFY(QDir().mkpath(binDir));
+    const QString started = m_tempDir->path() + QStringLiteral("/recorder-started");
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/wf-recorder"),
+        "#!/bin/sh\n: > '" + started.toUtf8() + "'\n/bin/sleep 30\n"));
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/pactl"), "#!/bin/sh\nexit 1\n"));
+    const QByteArray originalPath = qgetenv("PATH");
+    qputenv("PATH", binDir.toUtf8());
+    const auto restore = qScopeGuard([&originalPath] { qputenv("PATH", originalPath); ScopedLaunch::resetProbe(); });
+    installSlowScopes(m_tempDir->path(), QStringLiteral("1"));
+
+    ScreenRecorderController controller;
+    controller.setRecordingsDir(m_tempDir->path() + QStringLiteral("/race-recordings"));
+    controller.startRecording(false);
+    QVERIFY(controller.isRecording());
+    controller.stopRecording();
+    QVERIFY(!controller.isRecording());
+
+    // The scope was signalled before it started the recorder, so nothing records untracked.
+    QTest::qWait(2000);
+    QVERIFY(!QFileInfo::exists(started));
+}
+
+void ScreenRecorderTests::aScopeThatNeverStartsTheRecorderIsGivenUp() {
+    const QString binDir = m_tempDir->path() + QStringLiteral("/bin");
+    QVERIFY(QDir().mkpath(binDir));
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/wf-recorder"), "#!/bin/sh\n/bin/sleep 30\n"));
+    QVERIFY(writeFakeExecutable(binDir + QStringLiteral("/pactl"), "#!/bin/sh\nexit 1\n"));
+    const QByteArray originalPath = qgetenv("PATH");
+    qputenv("PATH", binDir.toUtf8());
+    const auto restore = qScopeGuard([&originalPath] { qputenv("PATH", originalPath); ScopedLaunch::resetProbe(); });
+    installSlowScopes(m_tempDir->path(), QStringLiteral("60"));
+
+    ScreenRecorderController controller;
+    controller.setRecordingsDir(m_tempDir->path() + QStringLiteral("/stuck-recordings"));
+    QSignalSpy notificationSpy(&controller, &ScreenRecorderController::notificationRequested);
+    controller.startRecording(false);
+    QVERIFY(controller.isRecording());
+
+    QTRY_VERIFY_WITH_TIMEOUT(!controller.isRecording(), 10000);
+    QCOMPARE(notificationSpy.last().at(0).toString(), QStringLiteral("Recording Failed"));
+    QVERIFY(notificationSpy.last().at(1).toString().contains(QStringLiteral("did not start in time")));
 }
 
 QTEST_GUILESS_MAIN(ScreenRecorderTests)

@@ -244,6 +244,13 @@ bool ScreenRecorderController::isProcessRunning(qint64 pid) const {
     return processName(pid) == QLatin1String("wf-recorder");
 }
 
+// A recorder this controller started may still be systemd-run setting up its scope; it becomes
+// wf-recorder in place, so it is alive and must be signalled like one.
+bool ScreenRecorderController::isOwnRecorderRunning(qint64 pid) const {
+    const QString name = processName(pid);
+    return name == QLatin1String("wf-recorder") || name == QLatin1String("systemd-run");
+}
+
 // wf-recorder output: the configured screen, else the current wl_output name as Qt sees it
 // (primary first; looked up at every start, not cached). Empty means "omit -o": wf-recorder
 // then records the only output, or asks which one when there are several.
@@ -367,6 +374,7 @@ void ScreenRecorderController::startRecording(bool withMic) {
 
     // A recorder that rejects its arguments or output exits right away.
     m_startCheckPid = pid;
+    m_startCheckAttempts = 0;
     QTimer::singleShot(800, this, [this, pid, screen]() {
         checkRecorderStarted(pid, screen);
     });
@@ -376,9 +384,10 @@ void ScreenRecorderController::checkRecorderStarted(qint64 pid, const QString &s
     if (m_startCheckPid != pid)
         return;
 
-    // Still on its way through systemd-run and env (a slow user manager): look again.
+    // Still systemd-run setting up its scope (a slow user manager): look again for a while,
+    // then give up and stop it so no recording can start untracked.
     const QString name = processName(pid);
-    if (m_recordPid == pid && (name == QLatin1String("systemd-run") || name == QLatin1String("env"))) {
+    if (m_recordPid == pid && name == QLatin1String("systemd-run") && ++m_startCheckAttempts <= MaxStartChecks) {
         QTimer::singleShot(500, this, [this, pid, screen]() { checkRecorderStarted(pid, screen); });
         return;
     }
@@ -386,6 +395,10 @@ void ScreenRecorderController::checkRecorderStarted(qint64 pid, const QString &s
 
     if (m_recordPid != pid || name == QLatin1String("wf-recorder"))
         return;
+
+    const bool gaveUp = name == QLatin1String("systemd-run");
+    if (gaveUp)
+        kill(static_cast<pid_t>(pid), SIGKILL);
 
     m_isRecording = false;
     m_recordPid = 0;
@@ -396,9 +409,10 @@ void ScreenRecorderController::checkRecorderStarted(qint64 pid, const QString &s
     if (SystemServices::instance())
         SystemServices::instance()->updateScreenRecordingActive();
 
-    emit notificationRequested(QStringLiteral("Recording Failed"),
-        QStringLiteral("wf-recorder exited right after starting. Check the output name (%1) and that the "
-                       "compositor supports screencopy.").arg(screen.isEmpty() ? QStringLiteral("default") : screen));
+    emit notificationRequested(QStringLiteral("Recording Failed"), gaveUp
+        ? QStringLiteral("wf-recorder did not start in time; nothing is being recorded.")
+        : QStringLiteral("wf-recorder exited right after starting. Check the output name (%1) and that the "
+                         "compositor supports screencopy.").arg(screen.isEmpty() ? QStringLiteral("default") : screen));
 }
 
 void ScreenRecorderController::stopRecording() {
@@ -406,11 +420,12 @@ void ScreenRecorderController::stopRecording() {
         return;
 
     qint64 pid = m_recordPid;
-    if (pid <= 0)
+    const bool ownPid = pid > 0;
+    if (!ownPid)
         pid = readPidFromFile(recordPidFilePath());
 
     m_pollTimer.stop();
-    if (pid <= 0 || !isProcessRunning(pid)) {
+    if (pid <= 0 || !(ownPid ? isOwnRecorderRunning(pid) : isProcessRunning(pid))) {
         m_isRecording = false;
         m_recordPid = 0;
         clearRecordingState();
@@ -448,7 +463,7 @@ void ScreenRecorderController::pollStoppingRecorder() {
         return;
     }
 
-    if (!isProcessRunning(m_stoppingPid)) {
+    if (!isOwnRecorderRunning(m_stoppingPid)) {
         finishStoppedRecording(m_stopEscalation >= 2);
         return;
     }
@@ -523,7 +538,7 @@ void ScreenRecorderController::pollExternalState() {
             m_pollTimer.stop();
         return;
     }
-    if (isProcessRunning(m_recordPid))
+    if (isOwnRecorderRunning(m_recordPid))
         return;
 
     const QString file = m_currentRecordingFile;
