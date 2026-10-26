@@ -2406,6 +2406,7 @@ PanelWindow {
                 iconFontFamily: root.iconFontFamily
                 textPixelSize: root.bodyFontSize
                 minimumCenterWidth: userConfig.islandWidth
+                roomLeftOfClock: root.width * userConfig.islandPositionX / 100 - 16
                 centerShift: mainCapsule.centerShift
                 musicVisible: islandContainer.restingMusicVisible
                 musicText: mediaController.restingText

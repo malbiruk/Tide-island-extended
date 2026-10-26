@@ -30,11 +30,16 @@ Item {
     property bool unreadVisible: false
 
     property bool showCondition: true
+    // Room from the output's left margin to the clock's centre: the music section never grows
+    // the capsule past it.
+    property real roomLeftOfClock: Infinity
 
     readonly property real edgePadding: 12
     readonly property real innerSpacing: 8
     readonly property real coverSize: 20
-    readonly property real musicTextMaxWidth: 480
+    // Up to 480 px, within that room (at least 1 px: MarqueeText takes 0 as no cap).
+    readonly property real musicTextMaxWidth: Math.max(1, Math.min(480, roomLeftOfClock - centerSectionWidth / 2
+        - edgePadding - coverSize - innerSpacing * 2 - cavaBars.implicitWidth))
     readonly property real bellWidth: 22
 
     readonly property real centerSectionWidth: Math.max(minimumCenterWidth, Math.ceil(timeMetrics.advanceWidth) + edgePadding * 2)
