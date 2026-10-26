@@ -407,7 +407,8 @@ PanelWindow {
     }
     readonly property real baseExclusiveZone: userConfig.islandExclusiveZone
     readonly property bool hoverExpandEnabled: configuredHoverExpandAction > 0
-    readonly property bool topGestureInputActive: !root.overviewVisible && islandContainer.canShowSideSwipe
+    // The resting island has no side pages any more, so no swipe strip either.
+    readonly property bool topGestureInputActive: false
     readonly property bool autoHideRuntimeEnabled: !shellRootController
         || shellRootController.islandAutoHideRuntimeEnabled === undefined
         || !!shellRootController.islandAutoHideRuntimeEnabled
@@ -415,12 +416,18 @@ PanelWindow {
     readonly property bool autoHideRestingState: islandContainer.islandState === "normal"
         || islandContainer.islandState === "custom"
         || islandContainer.islandState === "lyrics"
+    // With islandAutoHideKeepActivities, the music or battery section keeps the island revealed.
+    readonly property bool restingActivityPinned: userConfig.islandAutoHideKeepActivities
+        && islandContainer.islandState === "normal"
+        && (islandContainer.restingMusicVisible || islandContainer.restingBatteryVisible)
     readonly property bool autoHideCanHideNow: autoHideEnabled
+        && !restingActivityPinned
         && autoHideRestingState
         && !root.overviewVisible
         && !root.connectivityPromptActive
         && !root.anyConnectivityDetailMounted
     readonly property bool autoHideMustShow: !autoHideRestingState
+        || restingActivityPinned
         || root.overviewVisible
         || root.connectivityPromptActive
         || root.anyConnectivityDetailMounted
@@ -1278,6 +1285,48 @@ PanelWindow {
         property int currentWs: root.currentMonitorWorkspaceId > 0 ? root.currentMonitorWorkspaceId : 1
         readonly property int batteryCapacity: systemState.batteryCapacity
         readonly property bool isCharging: systemState.isCharging
+
+        // Unified resting island: music (while playing, with a short grace period so track
+        // changes don't flicker), clock, battery (islandBatteryMode: "low" = below 40 %,
+        // charging or not; "always"; "never").
+        readonly property bool musicPlaying: !!mediaController.activePlayer
+            && mediaController.activePlayer.playbackState === MprisPlaybackState.Playing
+        property bool restingMusicVisible: false
+        readonly property bool restingBatteryVisible: {
+            const mode = userConfig.islandBatteryMode;
+            if (mode === "never" || batteryCapacity <= 0)
+                return false;
+            return mode === "always" || batteryCapacity < 40;
+        }
+        readonly property real restingCapsuleWidth: restingLayer.leftSectionWidth
+            + restingLayer.centerSectionWidth + restingLayer.rightSectionWidth
+
+        // Control-center player card: shown while a player has a track (playing or paused);
+        // the card's close button hides it until playback starts again or the track changes.
+        readonly property bool playerHasTrack: !!mediaController.activePlayer
+            && mediaController.playerHasTrackInfo(mediaController.activePlayer)
+            && (mediaController.activePlayer.playbackState === MprisPlaybackState.Playing
+                || mediaController.activePlayer.playbackState === MprisPlaybackState.Paused)
+        property bool playerCardDismissed: false
+        readonly property bool playerCardVisible: playerHasTrack && !playerCardDismissed
+
+        onMusicPlayingChanged: {
+            if (musicPlaying) {
+                restingMusicHideTimer.stop();
+                restingMusicVisible = true;
+                playerCardDismissed = false;
+            } else {
+                restingMusicHideTimer.restart();
+            }
+        }
+
+        Timer {
+            id: restingMusicHideTimer
+            interval: 2000
+            onTriggered: islandContainer.restingMusicVisible = false
+        }
+
+        Component.onCompleted: restingMusicVisible = musicPlaying
         readonly property real currentVolume: systemState.currentVolume
         readonly property bool isMuted: systemState.isMuted
         readonly property real currentMicVolume: systemState.currentMicVolume
@@ -1513,6 +1562,7 @@ PanelWindow {
             id: mediaController
 
             expanded: islandContainer.islandState === "expanded"
+                || (islandContainer.controlCenterLayerVisible && islandContainer.playerCardVisible)
             clientId: "island-mpris-" + root.screenOutputName
         }
 
@@ -1530,10 +1580,10 @@ PanelWindow {
             currentTrack: islandContainer.currentTrack
             currentArtUrl: islandContainer.currentArtUrl
             currentWorkspace: islandContainer.currentWs
-            customSwipeActive: customSwipeLoader.active
+            customSwipeActive: false
             statsVisible: customSwipeLoader.active && root.autoHideProgress > 0.001
-            lyricsCavaActive: islandContainer.lyricsSwipeVisible
-                && islandContainer.rightSwipeProgress > 0.001
+            lyricsCavaActive: islandContainer.restingMusicVisible && restingLayer.visible
+                && root.autoHideProgress > 0.001
 
             onTransientRequested: function(icon, progress, text) {
                 islandContainer.showTransientCapsule(icon, progress, text);
@@ -1801,9 +1851,8 @@ PanelWindow {
             return Math.max(0, Math.min(1, value));
         }
 
+        // The custom and lyrics pages are gone: every resting state is the unified clock island.
         function normalizeRestingState(nextState) {
-            if (nextState === "lyrics") return "lyrics";
-            if (nextState === "custom" && hasCustomLeftItems) return "custom";
             return "normal";
         }
 
@@ -1919,59 +1968,12 @@ PanelWindow {
         function sideSwipeRestWidthForProgress(progressValue) {
             if (progressValue <= -0.5) return customCapsuleWidth;
             if (progressValue >= 0.5) return lyricsCapsuleWidth;
-            return userConfig.islandWidth;
-        }
-
-        function customSideSwipeDragDistance() {
-            const view = customSwipeLoader.item;
-            if (view && view.dragDistance > 0) return view.dragDistance;
-            return Math.max(userConfig.islandWidth, customCapsuleWidth + 4);
-        }
-
-        function lyricsSideSwipeDragDistance() {
-            const view = lyricsSwipeLoader.item;
-            if (view && view.dragDistance > 0) return view.dragDistance;
-            return Math.max(userConfig.islandWidth, lyricsCapsuleWidth + 2);
-        }
-
-        function sideSwipeDragDistanceForDirection(direction) {
-            if (direction === "left") return customSideSwipeDragDistance();
-            if (direction === "right") return lyricsSideSwipeDragDistance();
-            return userConfig.islandWidth;
+            return restingCapsuleWidth;
         }
 
         function advanceSideSwipeProgress(currentProgress, deltaX) {
-            const minProgress = hasCustomLeftItems ? -1 : 0;
-            let nextProgress = Math.max(minProgress, Math.min(1, currentProgress));
-            let remainingDelta = deltaX;
-
-            if (remainingDelta > 0) {
-                if (nextProgress < 0) {
-                    const leftDistance = Math.max(1, sideSwipeDragDistanceForDirection("left"));
-                    const progressToCenter = Math.min(-nextProgress, remainingDelta / leftDistance);
-                    nextProgress += progressToCenter;
-                    remainingDelta -= progressToCenter * leftDistance;
-                }
-
-                if (remainingDelta > 0 && nextProgress < 1) {
-                    const rightDistance = Math.max(1, sideSwipeDragDistanceForDirection("right"));
-                    nextProgress = Math.min(1, nextProgress + remainingDelta / rightDistance);
-                }
-            } else if (remainingDelta < 0) {
-                if (nextProgress > 0) {
-                    const rightDistance = Math.max(1, sideSwipeDragDistanceForDirection("right"));
-                    const progressToCenter = Math.min(nextProgress, -remainingDelta / rightDistance);
-                    nextProgress -= progressToCenter;
-                    remainingDelta += progressToCenter * rightDistance;
-                }
-
-                if (remainingDelta < 0 && nextProgress > minProgress) {
-                    const leftDistance = Math.max(1, sideSwipeDragDistanceForDirection("left"));
-                    nextProgress = Math.max(minProgress, nextProgress + remainingDelta / leftDistance);
-                }
-            }
-
-            return Math.max(minProgress, Math.min(1, nextProgress));
+            // No side pages at rest: horizontal drags/scrolls don't move anything.
+            return 0;
         }
 
         function resolveSideSwipeSettle(startProgress, finalProgress) {
@@ -1991,18 +1993,18 @@ PanelWindow {
                 if (finalProgress >= -0.44) {
                     settleAction = "time";
                     settleProgress = 0;
-                    settleWidth = userConfig.islandWidth;
+                    settleWidth = restingCapsuleWidth;
                 }
             } else if (startProgress >= 0.5) {
                 if (finalProgress <= 0.44) {
                     settleAction = "time";
                     settleProgress = 0;
-                    settleWidth = userConfig.islandWidth;
+                    settleWidth = restingCapsuleWidth;
                 }
             } else {
                 settleAction = "time";
                 settleProgress = 0;
-                settleWidth = userConfig.islandWidth;
+                settleWidth = restingCapsuleWidth;
             }
 
             return {
@@ -2599,17 +2601,7 @@ PanelWindow {
             lyricsCapsuleWidth = Math.max(220, Math.min(root.width - 48, view.preferredWidth));
         }
 
-        onCurrentTrackChanged: {
-            if (userConfig.disableAutoExpandOnTrackChange) return;
-            if (currentTrack !== ""
-                    && islandState !== "control_center"
-                    && islandState !== "notification"
-                    && islandState !== "file_shelf") {
-                if (root.autoHideSuppressesTransientReveal) return;
-                if (islandState === "expanded" && !expandedByPlayerAutoOpen) return;
-                showExpandedPlayer(true);
-            }
-        }
+        onCurrentTrackChanged: playerCardDismissed = false
 
         // --- UI 渲染：灵动岛主干 ---
         Rectangle {
@@ -2623,6 +2615,17 @@ PanelWindow {
                 ? root.overviewCapsuleBorderColor
                 : (isCriticalNotification ? StyleTokens.danger : StyleTokens.surfaceBorder)
             property real displayedWidth: baseTargetWidth
+            // At rest the clock sits on the island anchor and the capsule extends left for music
+            // and right for battery: shift the capsule centre by half the difference.
+            property real centerShift: islandContainer.islandState === "normal" && !root.overviewVisible
+                ? (restingLayer.leftSectionWidth - restingLayer.rightSectionWidth) / 2
+                : 0
+            Behavior on centerShift {
+                NumberAnimation {
+                    duration: mainCapsule.morphDuration
+                    easing.type: Easing.OutQuint
+                }
+            }
             readonly property real baseTargetWidth: {
                 if (root.overviewVisible) return root.overviewCapsuleWidth;
                 if (sideTransientRestoreTimer.running) {
@@ -2675,7 +2678,7 @@ PanelWindow {
                         Math.min(root.width - 48, notificationLoader.item.maximumWidth, notificationLoader.item.preferredWidth)
                     );
                 default:
-                    return userConfig.islandWidth;
+                    return islandContainer.restingCapsuleWidth;
                 }
             }
             readonly property real targetHeight: {
@@ -2739,7 +2742,7 @@ PanelWindow {
                 }
             }
             function sideSwipeWidthForProgress(progressValue) {
-                const restingW = userConfig.islandWidth;
+                const restingW = islandContainer.restingCapsuleWidth;
                 if (progressValue < 0)
                     return restingW + (islandContainer.customCapsuleWidth - restingW)
                         * islandContainer.clamp01(-progressValue);
@@ -2756,7 +2759,7 @@ PanelWindow {
                 : Qt.rgba(StyleTokens.panel.r, StyleTokens.panel.g, StyleTokens.panel.b, userConfig.islandBackgroundOpacity / 100.0)
             y: islandContainer.effectiveTopMargin
                 - (1 - root.autoHideProgress) * (targetHeight + islandContainer.effectiveTopMargin + 8)
-            x: parent ? parent.width * userConfig.islandPositionX / 100 - width / 2 : 0
+            x: parent ? parent.width * userConfig.islandPositionX / 100 - width / 2 - centerShift : 0
             clip: true
             width: displayedWidth
             height: targetHeight
@@ -3246,7 +3249,7 @@ PanelWindow {
             Loader {
                 id: customSwipeLoader
                 anchors.fill: parent
-                active: islandContainer.customSwipeVisible
+                active: false
                 asynchronous: false
                 visible: active
 
@@ -3277,7 +3280,7 @@ PanelWindow {
             Loader {
                 id: lyricsSwipeLoader
                 anchors.fill: parent
-                active: islandContainer.lyricsSwipeVisible
+                active: false
                 asynchronous: false
                 visible: active
 
@@ -3302,6 +3305,25 @@ PanelWindow {
                         onPreferredWidthChanged: islandContainer.syncLyricsCapsuleWidth()
                     }
                 }
+            }
+
+            RestingIslandLayer {
+                id: restingLayer
+                showCondition: !root.overviewVisible && islandContainer.islandState === "normal"
+                timeText: timeObj.currentTime
+                timeFontFamily: root.timeFontFamily
+                textFontFamily: root.textFontFamily
+                iconFontFamily: root.iconFontFamily
+                textPixelSize: root.bodyFontSize
+                minimumCenterWidth: userConfig.islandWidth
+                centerShift: mainCapsule.centerShift
+                musicVisible: islandContainer.restingMusicVisible
+                musicText: mediaController.restingText
+                artUrl: islandContainer.currentArtUrl
+                cavaLevels: islandContainer.cavaLevels
+                batteryVisible: islandContainer.restingBatteryVisible
+                batteryCapacity: islandContainer.batteryCapacity
+                batteryCharging: islandContainer.isCharging
             }
 
             Loader {
@@ -3491,6 +3513,24 @@ PanelWindow {
                         iconFontFamily: root.iconFontFamily
                         textFontFamily: root.textFontFamily
                         heroFontFamily: root.heroFontFamily
+                        playerCardVisible: islandContainer.playerCardVisible
+                        playerTitle: islandContainer.currentTrack
+                        playerArtist: islandContainer.currentArtist
+                        playerArtUrl: islandContainer.currentArtUrl
+                        playerPlaying: islandContainer.musicPlaying
+                        playerProgress: islandContainer.trackProgress
+                        onPlayerPreviousRequested: mediaController.previous()
+                        onPlayerPlayPauseRequested: {
+                            const player = mediaController.activePlayer;
+                            if (player && player.canTogglePlaying)
+                                player.togglePlaying();
+                        }
+                        onPlayerNextRequested: {
+                            const player = mediaController.activePlayer;
+                            if (player && player.canGoNext)
+                                player.next();
+                        }
+                        onPlayerDismissRequested: islandContainer.playerCardDismissed = true
                         sliderIntroDelay: 0
                         currentTime: timeObj.currentTime
                         currentDateLabel: timeObj.currentDateLabel
@@ -3721,8 +3761,6 @@ PanelWindow {
                         iconFontFamily: root.iconFontFamily
                         textFontFamily: root.textFontFamily
                         heroFontFamily: root.heroFontFamily
-                        batteryCapacity: islandContainer.batteryCapacity
-                        isCharging: islandContainer.isCharging
                         showCondition: islandContainer.glanceLayerVisible
                         onCloseRequested: islandContainer.smartRestoreState()
                         onOpenCalendarRequested: {

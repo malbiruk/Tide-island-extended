@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import IslandBackend
+import "../common"
 
 Item {
     id: root
@@ -32,11 +33,8 @@ Item {
         }
     }
 
-    Rectangle {
+    GlassSurface {
         anchors.fill: parent
-        radius: 10
-        color: StyleTokens.module
-        opacity: 1
     }
 
     Item {

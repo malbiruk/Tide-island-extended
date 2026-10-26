@@ -9,10 +9,16 @@ Rectangle {
     signal commitRequested()
     signal cancelRequested()
     signal iconClicked()
+    signal secondaryIconClicked()
     signal flyoutClicked()
 
     property bool showFlyoutChevron: false
     property bool flyoutOpen: false
+
+    // Optional extra toggle left of the main glyph (e.g. idle inhibit on the Display card).
+    property string secondaryIconText: ""
+    property bool secondaryActive: false
+    property bool secondaryBusy: false
 
     property string title: ""
     property string iconText: ""
@@ -61,6 +67,41 @@ Rectangle {
             anchors.right: parent.right
             anchors.top: parent.top
             spacing: 8
+
+            Item {
+                width: 22
+                height: 20
+                visible: root.secondaryIconText !== ""
+                opacity: root.secondaryBusy ? 0.5 : 1
+                scale: secondaryMouse.pressed ? 0.88 : (secondaryMouse.containsMouse ? 1.08 : 1.0)
+
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: 70
+                        easing.type: Easing.OutCubic
+                    }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: root.secondaryIconText
+                    textFormat: Text.PlainText
+                    color: root.secondaryActive || secondaryMouse.containsMouse ? root.accentColor : root.textSecondary
+                    font.pixelSize: 16
+                    font.family: root.iconFontFamily
+
+                    Behavior on color { ColorAnimation { duration: 70 } }
+                }
+
+                MouseArea {
+                    id: secondaryMouse
+                    anchors.fill: parent
+                    enabled: !root.secondaryBusy
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.secondaryIconClicked()
+                }
+            }
 
             Item {
                 width: 22

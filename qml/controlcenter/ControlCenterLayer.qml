@@ -16,7 +16,53 @@ Item {
     signal calendarRequested()
     signal notificationCenterRequested()
     signal powerMenuRequested()
+    signal playerPreviousRequested()
+    signal playerPlayPauseRequested()
+    signal playerNextRequested()
+    signal playerDismissRequested()
     signal closeRequested()
+
+    // Media card (fed by the window's MPRIS controller)
+    property bool playerCardVisible: false
+    property string playerTitle: ""
+    property string playerArtist: ""
+    property string playerArtUrl: ""
+    property bool playerPlaying: false
+    property real playerProgress: 0
+
+    // Idle inhibit ("caffeine") through UserConfig.idleInhibitCommand: `<cmd> toggle` / `<cmd> status`.
+    readonly property string idleInhibitCommand: UserConfig.idleInhibitCommand
+    property bool idleInhibitOn: false
+    readonly property bool idleInhibitBusy: idleInhibitToggleProcess.running || idleInhibitStatusProcess.running
+
+    function refreshIdleInhibit() {
+        if (idleInhibitCommand !== "" && !idleInhibitStatusProcess.running)
+            idleInhibitStatusProcess.running = true;
+    }
+
+    function toggleIdleInhibit() {
+        if (idleInhibitCommand !== "" && !idleInhibitBusy)
+            idleInhibitToggleProcess.running = true;
+    }
+
+    Process {
+        id: idleInhibitToggleProcess
+        command: [controlCenter.idleInhibitCommand, "toggle"]
+        running: false
+        onExited: controlCenter.refreshIdleInhibit()
+    }
+
+    Process {
+        id: idleInhibitStatusProcess
+        command: [controlCenter.idleInhibitCommand, "status"]
+        running: false
+
+        stdout: SplitParser {
+            onRead: function(line) {
+                controlCenter.idleInhibitOn = line.trim().toLowerCase() === "on";
+            }
+        }
+    }
 
     readonly property var userConfig: UserConfig
 
@@ -138,7 +184,6 @@ Item {
     readonly property color buttonFillPressed: StyleTokens.buttonFillPressed
     readonly property string wifiGlyph: ""
     readonly property string bluetoothGlyph: ""
-    readonly property string chargingIconGlyph: "\uf0e7"
     readonly property string brightnessIconGlyph: "\u{F00DF}"
     readonly property string brightnessLowIconGlyph: "\u{F00DE}"
     readonly property string brightnessMediumIconGlyph: "\u{F00DF}"
@@ -161,9 +206,11 @@ Item {
     readonly property real activeRecorderExtraHeight: (activeScreenRecorderCard && activeScreenRecorderCard.visible && activeScreenRecorderCard.height > 0)
         ? activeScreenRecorderCard.height + mainContent.spacing
         : 0
+    readonly property real playerCardExtraHeight: playerCard.visible ? playerCard.height + mainContent.spacing : 0
 
     // The former drawer is now a fixed row (tray / recorder) with no handle.
     readonly property real controlCenterExtraHeight: 12 + batteryModeCardHeight
+        + playerCardExtraHeight
         + activeRecorderExtraHeight
     readonly property real controlCenterMaximumExtraHeight: controlCenterExtraHeight
     readonly property bool bluetoothAvailable: !!bluetoothAdapter
@@ -605,6 +652,8 @@ Item {
             powerPanelOpen = nextOpen;
             if (nextOpen) {
                 SystemServices.requestBatteryThresholdState();
+                if (tlpControlsEnabled)
+                    refreshBatteryModeState();
             }
         }
         else if (kind === "audio_output" || kind === "output") {
@@ -1277,6 +1326,7 @@ Item {
             sliderIntroTimer.interval = sliderIntroDelay;
             sliderIntroTimer.restart();
             refreshBatteryModeState();
+            refreshIdleInhibit();
             requestWifiStateRefresh();
             if (wifiPanelOpen && wifiSupported && wifiEnabled)
                 requestWifiListRefresh(true);
@@ -1295,6 +1345,7 @@ Item {
     }
 
     Component.onCompleted: {
+        refreshIdleInhibit();
         if (showCondition) {
             readyForCardAnimations = false;
             sliderIntroPending = true;
@@ -1903,73 +1954,13 @@ Item {
                     ColorAnimation { duration: 70 }
                 }
 
-                Row {
+                BatteryIndicator {
                     id: headerBatteryRow
                     anchors.centerIn: parent
-                    spacing: 5
-
-                    Text {
-                        text: controlCenter.chargingIconGlyph
-                        color: StyleTokens.textPrimary
-                        font.pixelSize: 13
-                        font.family: controlCenter.iconFontFamily
-                        visible: controlCenter.effectiveCharging
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    Text {
-                        text: controlCenter.effectiveBatteryCap + "%"
-                        color: StyleTokens.textPrimary
-                        font.pixelSize: 13
-                        font.family: controlCenter.textFontFamily
-                        font.weight: Font.DemiBold
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    Item {
-                        width: 28
-                        height: 14
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.rightMargin: 2
-                            radius: 4
-                            color: StyleTokens.transparent
-                            border.color: StyleTokens.textSecondary
-                            border.width: 1
-
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.top: parent.top
-                                anchors.bottom: parent.bottom
-                                anchors.margins: 2
-                                radius: 2
-                                width: (parent.width - 4) * (Math.max(0, Math.min(100, controlCenter.effectiveBatteryCap)) / 100.0)
-                                color: {
-                                    if (controlCenter.effectiveBatteryCap <= 10) return StyleTokens.danger;
-                                    if (controlCenter.effectiveBatteryCap <= 20) return StyleTokens.warning;
-                                    return StyleTokens.success;
-                                }
-
-                                Behavior on width {
-                                    NumberAnimation {
-                                        duration: 180
-                                        easing.type: Easing.OutCubic
-                                    }
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            width: 2
-                            height: 6
-                            radius: 1
-                            color: StyleTokens.textSecondary
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
+                    capacity: controlCenter.effectiveBatteryCap
+                    charging: controlCenter.effectiveCharging
+                    iconFontFamily: controlCenter.iconFontFamily
+                    textFontFamily: controlCenter.textFontFamily
                 }
 
                 MouseArea {
@@ -2854,6 +2845,24 @@ Item {
             }
         }
 
+        PlayerCard {
+            id: playerCard
+            width: parent.width
+            height: 76
+            visible: controlCenter.playerCardVisible
+            title: controlCenter.playerTitle
+            artist: controlCenter.playerArtist
+            artUrl: controlCenter.playerArtUrl
+            playing: controlCenter.playerPlaying
+            progress: controlCenter.playerProgress
+            iconFontFamily: controlCenter.iconFontFamily
+            textFontFamily: controlCenter.textFontFamily
+            onPreviousRequested: controlCenter.playerPreviousRequested()
+            onPlayPauseRequested: controlCenter.playerPlayPauseRequested()
+            onNextRequested: controlCenter.playerNextRequested()
+            onDismissRequested: controlCenter.playerDismissRequested()
+        }
+
         ScreenRecorderCard {
             id: activeScreenRecorderCard
             width: parent.width
@@ -2915,6 +2924,13 @@ Item {
             }
             onCancelRequested: SystemServices.requestBrightness()
             onIconClicked: controlCenter.cycleBrightnessPreset()
+            // Idle inhibit: coffee cup, filled while inhibiting
+            secondaryIconText: controlCenter.idleInhibitCommand === ""
+                ? ""
+                : (controlCenter.idleInhibitOn ? "\u{F0176}" : "\u{F06CA}")
+            secondaryActive: controlCenter.idleInhibitOn
+            secondaryBusy: controlCenter.idleInhibitBusy
+            onSecondaryIconClicked: controlCenter.toggleIdleInhibit()
         }
 
         ControlSliderCard {

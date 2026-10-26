@@ -40,6 +40,10 @@ Item {
         return inlineLyrics ? String(inlineLyrics) : "";
     }
     readonly property string displayText: lyricsBridge.displayText
+    // Resting island: the current synced lyric line, otherwise the track title.
+    readonly property string restingText: lyricsBridge.isSynced && lyricsBridge.currentLyric !== ""
+        ? lyricsBridge.currentLyric
+        : currentTrack
 
     property string plainLyric: ""
     property string _lastParsedInlineLyricsRaw: ""

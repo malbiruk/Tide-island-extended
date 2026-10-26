@@ -11,8 +11,6 @@ FocusScope {
     property string iconFontFamily: ""
     property string textFontFamily: ""
     property string heroFontFamily: ""
-    property int batteryCapacity: 100
-    property bool isCharging: false
 
     signal closeRequested()
     signal openCalendarRequested()
@@ -72,7 +70,7 @@ FocusScope {
             Item {
                 id: userProfileContainer
                 anchors.left: parent.left
-                anchors.right: updatesBadge.visible ? updatesBadge.left : batteryBadge.left
+                anchors.right: updatesBadge.visible ? updatesBadge.left : parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 height: 38
@@ -236,7 +234,7 @@ FocusScope {
             Rectangle {
                 id: updatesBadge
                 visible: (SystemGlance.pendingUpdatesCount || 0) > 0
-                anchors.right: batteryBadge.left
+                anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 height: 26
@@ -283,190 +281,6 @@ FocusScope {
                             SystemGlance.checkUpdatesAsync(true);
                         } else {
                             SystemGlance.launchUpdateTerminal();
-                        }
-                    }
-                }
-            }
-
-            // Right side: Rich Battery Badge
-            Rectangle {
-                id: batteryBadge
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                height: 26
-                width: batteryContentRow.implicitWidth + 16
-                radius: 13
-                color: batteryHover.containsMouse ? StyleTokens.cardFillHover : StyleTokens.cardFill
-                border.width: 1
-                border.color: batteryHover.containsMouse ? StyleTokens.accent : StyleTokens.inputBorder
-
-                Behavior on border.color { ColorAnimation { duration: 90 } }
-                Behavior on color { ColorAnimation { duration: 90 } }
-
-                readonly property int effectiveCap: (SystemGlance && SystemGlance.batteryCapacity > 0)
-                    ? SystemGlance.batteryCapacity
-                    : (root.batteryCapacity > 0 ? root.batteryCapacity : ((typeof SysBackend !== "undefined" && SysBackend.batteryCapacity > 0) ? SysBackend.batteryCapacity : 0))
-                readonly property bool effectiveCharging: root.isCharging
-                    || (SystemGlance && SystemGlance.batteryStatus === "Charging")
-                    || (typeof SysBackend !== "undefined" && (SysBackend.batteryStatus === "Charging" || SysBackend.batteryStatus === "Full"))
-                // Prefer SystemGlance's status; fall back to SysBackend when it has none.
-                readonly property string effectiveStatus: (SystemGlance && SystemGlance.batteryStatus)
-                    || ((typeof SysBackend !== "undefined" && SysBackend.batteryStatus !== "Unknown") ? SysBackend.batteryStatus : "")
-                readonly property bool isConservation: SystemGlance.batteryConservationActive || (SystemServices.batteryConservationMode ?? false)
-                readonly property int effectiveHealth: SystemGlance.batteryHealthPercent > 0 ? SystemGlance.batteryHealthPercent : (SystemServices.batteryHealthPercent || 100)
-
-                Row {
-                    id: batteryContentRow
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    // Battery Icon
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: {
-                            if (batteryBadge.effectiveCharging) return "\uf0e7"; // Bolt
-                            const c = batteryBadge.effectiveCap;
-                            if (c >= 85) return "\uf240"; // Full
-                            if (c >= 60) return "\uf241"; // 3/4
-                            if (c >= 35) return "\uf242"; // 1/2
-                            if (c >= 15) return "\uf243"; // 1/4
-                            return "\uf244"; // Empty
-                        }
-                        font.family: root.iconFontFamily
-                        font.pixelSize: 11
-                        color: {
-                            if (batteryBadge.effectiveCharging) return StyleTokens.success;
-                            if (batteryBadge.effectiveCap <= 20) return StyleTokens.danger;
-                            if (batteryBadge.effectiveCap <= 40) return StyleTokens.warning;
-                            return StyleTokens.accent;
-                        }
-                    }
-
-                    // Main Capacity %
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: batteryBadge.effectiveCap + "%"
-                        font.family: root.textFontFamily
-                        font.pixelSize: 11
-                        font.weight: Font.Bold
-                        color: StyleTokens.textPrimaryBright
-                    }
-
-                    // Separator
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "•"
-                        font.family: root.textFontFamily
-                        font.pixelSize: 8
-                        color: StyleTokens.textMuted
-                    }
-
-                    // Secondary info: Rate (e.g. +14.2W / -8.5W / 80% Cap / Plugged In)
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: {
-                            if (batteryBadge.isConservation && !batteryBadge.effectiveCharging)
-                                return "Capped";
-                            if (SystemGlance.batteryRateText && SystemGlance.batteryRateText !== "" && SystemGlance.batteryRateText !== "0.0 W")
-                                return SystemGlance.batteryRateText;
-                            if (batteryBadge.effectiveCharging)
-                                return "Charging";
-                            return batteryBadge.effectiveStatus === "Not charging" ? "Plugged In" : "On Battery";
-                        }
-                        font.family: root.textFontFamily
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                        color: batteryBadge.isConservation ? StyleTokens.accent : StyleTokens.textSecondary
-                    }
-
-                    // Separator
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "•"
-                        font.family: root.textFontFamily
-                        font.pixelSize: 8
-                        color: StyleTokens.textMuted
-                    }
-
-                    // Battery Health
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: batteryBadge.effectiveHealth + "% Health"
-                        font.family: root.textFontFamily
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                        color: StyleTokens.textSecondary
-                    }
-                }
-
-                MouseArea {
-                    id: batteryHover
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    acceptedButtons: Qt.NoButton
-                }
-
-                // Tooltip on Hover showing Full Battery Analytics
-                Rectangle {
-                    id: batteryTooltip
-                    anchors.top: parent.bottom
-                    anchors.topMargin: 6
-                    anchors.right: parent.right
-                    width: tooltipCol.implicitWidth + 20
-                    height: tooltipCol.implicitHeight + 14
-                    radius: 8
-                    color: StyleTokens.module
-                    border.width: 1
-                    border.color: StyleTokens.inputBorder
-                    opacity: batteryHover.containsMouse ? 1 : 0
-                    visible: opacity > 0
-                    z: 9999
-
-                    Behavior on opacity {
-                        NumberAnimation { duration: 90 }
-                    }
-
-                    Column {
-                        id: tooltipCol
-                        anchors.centerIn: parent
-                        spacing: 3
-
-                        Text {
-                            text: "Battery Telemetry"
-                            font.family: root.textFontFamily
-                            font.pixelSize: 10
-                            font.weight: Font.Bold
-                            color: StyleTokens.accent
-                        }
-
-                        Text {
-                            text: "Status: " + (batteryBadge.effectiveStatus || (batteryBadge.effectiveCharging ? "Charging" : "Discharging"))
-                            font.family: root.textFontFamily
-                            font.pixelSize: 9
-                            color: StyleTokens.textPrimaryBright
-                        }
-
-                        Text {
-                            text: "Health: " + batteryBadge.effectiveHealth + "% (" + (SystemGlance.batteryCycleCount > 0 ? (SystemGlance.batteryCycleCount + " cycles") : "Good") + ")"
-                            font.family: root.textFontFamily
-                            font.pixelSize: 9
-                            color: StyleTokens.textPrimaryBright
-                        }
-
-                        Text {
-                            visible: SystemGlance.batteryPowerWatts > 0.05
-                            text: "Power Rate: " + SystemGlance.batteryPowerWatts.toFixed(1) + " W"
-                            font.family: root.textFontFamily
-                            font.pixelSize: 9
-                            color: StyleTokens.textMuted
-                        }
-
-                        Text {
-                            visible: batteryBadge.isConservation
-                            text: "Conservation Mode: Active (80% Cap)"
-                            font.family: root.textFontFamily
-                            font.pixelSize: 9
-                            color: StyleTokens.accent
                         }
                     }
                 }

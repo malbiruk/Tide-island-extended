@@ -25,6 +25,50 @@ Item {
     readonly property bool bluetoothScanning: provider && provider.bluetoothAdapter
         ? provider.bluetoothAdapter.discovering
         : !!(provider && provider.bluetoothListRunning)
+    readonly property var batteryFacts: isPower ? buildBatteryFacts() : []
+    // Offered power profiles as the control center's mode indexes (0 saver, 1 balanced, 2 performance).
+    readonly property var powerProfileIndexes: {
+        if (!isPower || !provider || !provider.tlpControlsEnabled || !provider.batteryTlpAvailable)
+            return [];
+        const indexes = [];
+        const profiles = SystemServices.powerProfiles;
+        for (let i = 0; i < profiles.length; i++) {
+            const index = provider.batteryModeIndexForCommand(profiles[i]);
+            if (indexes.indexOf(index) < 0)
+                indexes.push(index);
+        }
+        return indexes.sort();
+    }
+
+    function formatDuration(seconds) {
+        const minutes = Math.round(seconds / 60);
+        if (minutes < 60)
+            return minutes + " min";
+        const rest = minutes % 60;
+        return Math.floor(minutes / 60) + " h" + (rest > 0 ? " " + rest + " min" : "");
+    }
+
+    function buildBatteryFacts() {
+        const status = SystemGlance.batteryStatus;
+        const capacity = provider && provider.batteryCapacity > 0 ? provider.batteryCapacity : SystemGlance.batteryCapacity;
+        const facts = [
+            { label: "Status", value: status === "Not charging" ? "Plugged in, not charging" : (status || "Unknown") },
+            { label: "Capacity", value: capacity + "%" }
+        ];
+        const watts = SystemGlance.batteryPowerWatts;
+        if (watts > 0.05) {
+            const sign = status === "Charging" ? "+" : (status === "Discharging" ? "\u2212" : "");
+            facts.push({ label: "Power", value: sign + watts.toFixed(1) + " W" });
+        }
+        if (status === "Discharging" && SystemGlance.batteryTimeToEmptySeconds > 0)
+            facts.push({ label: "Time to empty", value: formatDuration(SystemGlance.batteryTimeToEmptySeconds) });
+        else if (status === "Charging" && SystemGlance.batteryTimeToFullSeconds > 0)
+            facts.push({ label: "Time to full", value: formatDuration(SystemGlance.batteryTimeToFullSeconds) });
+        facts.push({ label: "Health", value: SystemGlance.batteryHealthPercent + "%" });
+        if (SystemGlance.batteryCycleCount > 0)
+            facts.push({ label: "Cycle count", value: String(SystemGlance.batteryCycleCount) });
+        return facts;
+    }
 
     function safeString(value) {
         return value === undefined || value === null ? "" : String(value);
@@ -81,6 +125,15 @@ Item {
 
         if (bluetoothPairingPrompt.visible && bluetoothSecretField.visible)
             bluetoothSecretField.forceActiveFocus();
+    }
+
+    // The Glance only polls while it is open; keep the battery facts live while this view is.
+    Timer {
+        interval: 5000
+        repeat: true
+        triggeredOnStart: true
+        running: root.isPower && root.visible
+        onTriggered: SystemGlance.refreshBattery()
     }
 
     Timer {
@@ -697,126 +750,60 @@ Item {
                 width: contentFlick.width
                 spacing: 8
 
-                // 1. Live Battery Status & Metrics Card
+                // Battery facts, each shown once: status, capacity, power, time, health, cycles
                 Rectangle {
                     visible: root.isPower
                     width: parent.width
-                    height: 58
+                    height: batteryFactsColumn.implicitHeight + 12
                     radius: 10
                     color: StyleTokens.secondaryButton
 
-                    Item {
-                        id: batteryInfoContainer
-                        anchors.fill: parent
-                        anchors.margins: 10
+                    Column {
+                        id: batteryFactsColumn
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
+                        anchors.topMargin: 6
 
-                        readonly property int effectiveCap: (root.provider && root.provider.batteryCapacity > 0)
-                            ? root.provider.batteryCapacity
-                            : ((typeof SysBackend !== "undefined" && SysBackend.batteryCapacity > 0)
-                                ? SysBackend.batteryCapacity
-                                : ((typeof SystemGlance !== "undefined" && SystemGlance.batteryCapacity > 0) ? SystemGlance.batteryCapacity : 0))
-                        readonly property bool effectiveCharging: (root.provider && root.provider.isCharging)
-                            || (typeof SysBackend !== "undefined" && (SysBackend.batteryStatus === "Charging" || SysBackend.batteryStatus === "Full"))
-                            || (typeof SystemGlance !== "undefined" && (SystemGlance.batteryStatus === "Charging" || SystemGlance.batteryStatus === "Full"))
+                        Repeater {
+                            model: root.batteryFacts
 
-                        Rectangle {
-                            id: batteryIconCircle
-                            width: 38
-                            height: 38
-                            radius: 19
-                            color: StyleTokens.moduleHover
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: batteryInfoContainer.effectiveCharging ? (root.provider ? root.provider.chargingIconGlyph || "\uf0e7" : "\uf0e7") : "\uf240"
-                                color: batteryInfoContainer.effectiveCharging
-                                    ? StyleTokens.accent
-                                    : (batteryInfoContainer.effectiveCap <= 20 ? StyleTokens.warning : StyleTokens.textPrimary)
-                                font.pixelSize: 15
-                                font.family: root.iconFontFamily
-                            }
-                        }
-
-                        Column {
-                            anchors.left: batteryIconCircle.right
-                            anchors.leftMargin: 10
-                            anchors.right: batteryStatusBadge.left
-                            anchors.rightMargin: 8
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 2
-
-                            Row {
-                                spacing: 6
+                            delegate: Item {
+                                id: batteryFactRow
+                                required property var modelData
+                                width: batteryFactsColumn.width
+                                height: 26
 
                                 Text {
-                                    text: batteryInfoContainer.effectiveCap + "%"
-                                    color: StyleTokens.textPrimary
-                                    font.pixelSize: 15
-                                    font.family: root.heroFontFamily
-                                    font.weight: Font.Bold
-                                }
-
-                                Text {
+                                    anchors.left: parent.left
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: {
-                                        if (batteryInfoContainer.effectiveCharging) return "Charging";
-                                        if (SystemServices.batteryChargeState === "Not charging") return "Plugged In";
-                                        if (SystemServices.batteryChargeState === "Full") return "Full";
-                                        return "Discharging";
-                                    }
+                                    text: batteryFactRow.modelData.label
                                     color: StyleTokens.textMuted
                                     font.pixelSize: 11
                                     font.family: root.textFontFamily
                                 }
-                            }
 
-                            Text {
-                                width: parent.width
-                                text: {
-                                    if (SystemServices.batteryConservationMode)
-                                        return "Conservation limit active (80% ceiling)";
-                                    if (SystemServices.batteryCycleCount > 0)
-                                        return SystemServices.batteryCycleCount + " cycles • " + SystemServices.batteryHealthPercent + "% health";
-                                    return "Full capacity mode";
+                                Text {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: batteryFactRow.modelData.value
+                                    color: StyleTokens.textPrimary
+                                    font.pixelSize: 12
+                                    font.family: root.textFontFamily
+                                    font.weight: Font.DemiBold
                                 }
-                                color: StyleTokens.textDim
-                                font.pixelSize: 10
-                                font.family: root.textFontFamily
-                                elide: Text.ElideRight
-                            }
-                        }
-
-                        Rectangle {
-                            id: batteryStatusBadge
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: badgeText.implicitWidth + 14
-                            height: 22
-                            radius: 11
-                            color: SystemServices.batteryConservationMode ? StyleTokens.moduleHover : StyleTokens.transparent
-                            border.color: SystemServices.batteryConservationMode ? StyleTokens.accent : StyleTokens.track
-                            border.width: 1
-
-                            Text {
-                                id: badgeText
-                                anchors.centerIn: parent
-                                text: SystemServices.batteryConservationMode ? "80% Cap" : "100% Full"
-                                color: SystemServices.batteryConservationMode ? StyleTokens.accent : StyleTokens.textMuted
-                                font.pixelSize: 10
-                                font.family: root.textFontFamily
-                                font.weight: Font.DemiBold
                             }
                         }
                     }
                 }
 
-                // 2. Battery Health & Charge Limit Card
+                // Charge limit
                 Rectangle {
                     visible: root.isPower && SystemServices.batteryThresholdSupported
                     width: parent.width
-                    implicitHeight: thresholdContentCol.implicitHeight + 20
+                    height: thresholdContentCol.implicitHeight + 20
                     radius: 10
                     color: StyleTokens.secondaryButton
 
@@ -838,7 +825,7 @@ Item {
                                 spacing: 6
 
                                 Text {
-                                    text: "\uf132"
+                                    text: ""
                                     color: StyleTokens.accent
                                     font.pixelSize: 12
                                     font.family: root.iconFontFamily
@@ -853,21 +840,27 @@ Item {
                                 }
                             }
 
+                            // The value; when the limit is writable the selected preset shows it instead.
                             Text {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: SystemServices.batteryThresholdBusy
-                                    ? "Applying..."
-                                    : (SystemServices.batteryThresholdType === "conservation"
-                                        ? (SystemServices.batteryConservationMode ? "Conservation (80%)" : "Full Charge (100%)")
-                                        : (SystemServices.batteryThresholdValue + "% Limit"))
-                                color: SystemServices.batteryThresholdBusy ? StyleTokens.warning : StyleTokens.textMuted
-                                font.pixelSize: 10
+                                text: {
+                                    if (SystemServices.batteryThresholdBusy)
+                                        return "Applying...";
+                                    if (SystemServices.batteryThresholdWritable)
+                                        return "";
+                                    if (SystemServices.batteryThresholdType === "conservation")
+                                        return SystemServices.batteryConservationMode ? "80%" : "100%";
+                                    return SystemServices.batteryThresholdValue + "%";
+                                }
+                                color: SystemServices.batteryThresholdBusy ? StyleTokens.warning : StyleTokens.textPrimary
+                                font.pixelSize: 12
                                 font.family: root.textFontFamily
+                                font.weight: Font.DemiBold
                             }
                         }
 
-                        // Presets Row for Lenovo IdeaPad (Conservation Mode); hidden when the limit is read-only
+                        // Lenovo IdeaPad conservation mode
                         Row {
                             visible: SystemServices.batteryThresholdType === "conservation" && SystemServices.batteryThresholdWritable
                             width: parent.width
@@ -932,7 +925,7 @@ Item {
                             }
                         }
 
-                        // Presets Row for Generic Thresholds (ThinkPad, ASUS, Apple Silicon, etc.); hidden when read-only
+                        // Generic end thresholds (ThinkPad, ASUS, Apple Silicon, etc.)
                         Row {
                             id: thresholdPresetsRow
                             visible: SystemServices.batteryThresholdType === "threshold" && SystemServices.batteryThresholdWritable
@@ -978,15 +971,11 @@ Item {
 
                         Text {
                             width: parent.width
-                            text: SystemServices.batteryThresholdType === "conservation"
-                                ? (SystemServices.batteryConservationMode
-                                    ? "Stops charging at 80% to preserve battery lifespan while plugged in."
-                                    : "Charges battery to 100% capacity for extended mobile use.")
-                                : ("Charging stops at " + SystemServices.batteryThresholdValue + "%"
-                                    + (SystemServices.batteryThresholdWritable
-                                        ? " to reduce battery degradation."
-                                        : ". The limit is read-only for this user."))
-                            color: StyleTokens.textMuted
+                            visible: text.length > 0
+                            text: SystemServices.batteryThresholdError.length > 0
+                                ? SystemServices.batteryThresholdError
+                                : (SystemServices.batteryThresholdWritable ? "" : "Read-only for this user.")
+                            color: SystemServices.batteryThresholdError.length > 0 ? StyleTokens.danger : StyleTokens.textMuted
                             font.pixelSize: 10
                             font.family: root.textFontFamily
                             wrapMode: Text.Wrap
@@ -994,7 +983,114 @@ Item {
                     }
                 }
 
+                // Power profiles, when a driver (power-profiles-daemon or TLP) answers
+                Rectangle {
+                    visible: root.isPower && root.powerProfileIndexes.length > 0
+                    width: parent.width
+                    height: powerModeColumn.implicitHeight + 20
+                    radius: 10
+                    color: StyleTokens.secondaryButton
 
+                    Column {
+                        id: powerModeColumn
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 10
+                        spacing: 8
+
+                        Item {
+                            width: parent.width
+                            height: 18
+
+                            Row {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 6
+
+                                Text {
+                                    text: ""
+                                    color: StyleTokens.accent
+                                    font.pixelSize: 12
+                                    font.family: root.iconFontFamily
+                                }
+
+                                Text {
+                                    text: "Power Mode"
+                                    color: StyleTokens.textPrimary
+                                    font.pixelSize: 12
+                                    font.family: root.textFontFamily
+                                    font.weight: Font.DemiBold
+                                }
+                            }
+
+                            Text {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: root.provider && root.provider.batteryModeBusy
+                                text: "Applying..."
+                                color: StyleTokens.warning
+                                font.pixelSize: 12
+                                font.family: root.textFontFamily
+                                font.weight: Font.DemiBold
+                            }
+                        }
+
+                        Row {
+                            id: powerModeRow
+                            width: parent.width
+                            spacing: 6
+
+                            Repeater {
+                                model: root.powerProfileIndexes
+
+                                delegate: Rectangle {
+                                    id: powerModePill
+                                    required property int modelData
+                                    readonly property bool active: root.provider && root.provider.batteryModeIndex === modelData
+                                    width: (powerModeRow.width - powerModeRow.spacing * (root.powerProfileIndexes.length - 1))
+                                        / Math.max(1, root.powerProfileIndexes.length)
+                                    height: 32
+                                    radius: 10
+                                    color: active ? StyleTokens.accent : StyleTokens.moduleHover
+                                    opacity: root.provider && root.provider.batteryModeBusy ? 0.6 : 1.0
+
+                                    Behavior on color {
+                                        ColorAnimation { duration: 90 }
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: root.provider ? root.provider.batteryModeLabel(powerModePill.modelData) : ""
+                                        color: powerModePill.active ? StyleTokens.textOnAccent : StyleTokens.textPrimary
+                                        font.pixelSize: 11
+                                        font.family: root.textFontFamily
+                                        font.weight: powerModePill.active ? Font.DemiBold : Font.Normal
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (root.provider)
+                                                root.provider.selectBatteryMode(powerModePill.modelData);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            width: parent.width
+                            visible: text.length > 0
+                            text: root.provider ? root.provider.batteryModeError : ""
+                            color: StyleTokens.danger
+                            font.pixelSize: 10
+                            font.family: root.textFontFamily
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
 
                 Text {
                     width: parent.width
