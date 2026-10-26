@@ -5,15 +5,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Bimbok/Tide-island-extended/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/Bimbok/Tide-island-extended?style=flat-square&color=8aadf4"></a>
-  <a href="https://github.com/Bimbok/Tide-island-extended/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/Bimbok/Tide-island-extended?style=flat-square&color=8aadf4"></a>
+  <a href="https://github.com/Bimbok/Tide-island-extended"><img alt="Upstream: Bimbok/Tide-island-extended" src="https://img.shields.io/badge/upstream-Bimbok%2FTide--island--extended-8aadf4?style=flat-square"></a>
   <a href="https://github.com/enhaoswen/Tide-island"><img alt="Upstream: enhaoswen/Tide-island" src="https://img.shields.io/badge/upstream-enhaoswen%2FTide--island-8aadf4?style=flat-square"></a>
   <img alt="driftwm" src="https://img.shields.io/badge/driftwm-111111?style=flat-square&color=8aadf4">
   <img alt="C++ + Qt" src="https://img.shields.io/badge/C%2B%2B%20%2B%20Qt-111111?style=flat-square&color=8aadf4">
 </p>
 
 <p align="center">
-  <b>Upstream:</b> <a href="https://github.com/enhaoswen/Tide-island">enhaoswen/Tide-island</a>
+  <b>Upstreams:</b> <a href="https://github.com/Bimbok/Tide-island-extended">Bimbok/Tide-island-extended</a>, itself a fork of <a href="https://github.com/enhaoswen/Tide-island">enhaoswen/Tide-island</a>
 </p>
 
 
@@ -38,8 +37,11 @@
 ## About Tide Island Extended
 
 Tide Island Extended is a desktop widget for the driftwm compositor, styled like the Dynamic Island.
-This is a driftwm-only fork: Hyprland/niri support, the notch style, the app launcher, the
-wallpaper picker, the built-in lockscreen and the Matugen/pywal hooks have been removed.
+This repository is a driftwm-only fork of [Tide Island Extended](https://github.com/Bimbok/Tide-island-extended)
+by [@Bimbok](https://github.com/Bimbok), which is itself a fork of [Tide Island](https://github.com/enhaoswen/Tide-island)
+by [@enhaoswen](https://github.com/enhaoswen). Hyprland/niri support, the notch style, the app
+launcher, the wallpaper picker, the built-in lockscreen and the Matugen/pywal hooks have been
+removed here.
 
 When nothing much is going on, it sits compactly at the top (or bottom) edge of the screen, staying out of the way: the clock, the playing track with its synced lyric, an unread-notification bell and, when wanted, the battery. When you need more, it expands into interactive panels to adjust system settings, check notifications, view weather or the calendar, and more.
 
@@ -142,7 +144,7 @@ It is built with Quickshell, QML, and C++/Qt 6. Animations are tuned to be fluid
   - **Dynamic Active Elevation**: While recording, a recorder banner with a live timer appears in the Control Center.
 - **Dynamic Color Palette**: Live hot-reloads of `colors.json` on disk via `QFileSystemWatcher` without service restarts, with preserved capsule translucency (`islandBackgroundOpacity`).
 - **Dynamic Battery Color Progression**: Battery pill smoothly shifts colors based on charge level (critical, warning, nominal, charging) with palette color matching and an on/off toggle in settings.
-- **Marquee Track Title Scrolling**: Clean, smooth auto-scrolling for long song titles with an initial 1.8s reading pause and seamless looping, plus an instant toggle in the Config App to fall back to static ellipsis (`Title...`) for 0% CPU.
+- **Marquee Track Title Scrolling**: Clean, smooth auto-scrolling for long song titles with an initial 1.8s reading pause and seamless looping, in the expanded player; set `marqueeTrackTitleEnabled` to `false` in `userconfig.json` for a static ellipsis (`Title...`) instead.
 - **Universal Keyboard Navigation & Dismissal**: Universal `Escape` key dismissal and keyboard navigation across all interactive panels (Control Center, Notification Center, File Shelf, Calendar, and Power Menu).
 - **Asynchronous Clipboard & Concurrency Safety**: Fast asynchronous decoding for image clipboard entries and race-condition guards during clip deletions.
 - **Interactive Control Center Sliders & Quick Corner Actions**:
@@ -256,11 +258,9 @@ server itself), `pw-mon` (privacy indicators), `pactl subscribe` (volume OSD) an
 
 ### From Source (All Distributions)
 
-Clone the repository and run the automated installer:
+Clone this repository and run the automated installer from the clone:
 
 ```bash
-git clone https://github.com/Bimbok/Tide-island-extended.git
-cd Tide-island-extended
 ./install.sh
 ```
 
@@ -306,10 +306,9 @@ Useful installer options:
 
 ### Updating
 
-To update Tide Island Extended to the latest version:
+To update, from your clone:
 
 ```bash
-cd Tide-island-extended
 git pull
 ./install.sh
 ```
@@ -430,6 +429,10 @@ You can control Tide Island remotely using `quickshell ipc call`:
 | `quickshell ipc call theme reload` | Reload color palette from colors.json |
 
 <br>
+
+## License
+
+GNU General Public License v3.0, like both upstreams; see [LICENSE](LICENSE).
 
 ## Contributing
 

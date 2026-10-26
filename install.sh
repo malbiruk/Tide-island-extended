@@ -945,7 +945,7 @@ check_dependencies() {
 
   printf '\nCore Runtime Dependencies (Mandatory):\n'
   check_tool "quickshell" "quickshell" "Wayland desktop shell runtime host" 1
-  check_tool "dbus-monitor" "dbus" "D-Bus lock & idle event monitoring" 1
+  check_tool "dbus-monitor" "dbus" "Screen-share indicator (ScreenCast portal)" 1
   check_tool "wpctl" "wireplumber" "PipeWire session manager & audio device control" 1
   check_tool "pactl" "libpulse / pulseaudio-utils" "PulseAudio / PipeWire event subscriber & volume mixer" 1
   check_tool "wl-copy" "wl-clipboard" "Wayland clipboard copy command" 1
@@ -953,9 +953,12 @@ check_dependencies() {
   check_tool "cliphist" "cliphist" "Clipboard history manager daemon" 1
 
   printf '\nFeature-Specific Dependencies (Optional):\n'
-  check_feature "cava" "cava" "8-bar audio spectrum visualizer (Player)"
+  check_feature "cava" "cava" "Audio visualizer bars next to the playing track"
   check_feature "fuser" "psmisc" "Camera & video device privacy tracking (/dev/video*)"
   check_feature "wf-recorder" "wf-recorder" "Screen recorder"
+  check_feature "systemd-run" "systemd" "Runs launched apps and lockers outside the shell's service"
+  check_feature "xdg-open" "xdg-utils" "Opens files, folders and notification links"
+  check_feature "gtklock" "gtklock" "Screen locker for the power menu (or set lockCommand)"
   check_feature "brightnessctl" "brightnessctl" "Backlight brightness adjustment"
   check_power_profile
   check_feature "bluetoothctl" "bluez" "Bluetooth device pairing & control"
