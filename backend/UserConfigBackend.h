@@ -50,11 +50,13 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(int dynamicIslandMiddleButton READ dynamicIslandMiddleButton NOTIFY dynamicIslandMiddleButtonChanged FINAL)
     Q_PROPERTY(QString dynamicIslandMiddleAction READ dynamicIslandMiddleAction NOTIFY dynamicIslandMiddleActionChanged FINAL)
     Q_PROPERTY(QVariantList dynamicIslandLeftSwipeItems READ dynamicIslandLeftSwipeItems NOTIFY dynamicIslandLeftSwipeItemsChanged FINAL)
-    Q_PROPERTY(bool disableAutoExpandOnTrackChange READ disableAutoExpandOnTrackChange NOTIFY disableAutoExpandOnTrackChangeChanged FINAL)
     Q_PROPERTY(int hoverExpandAction READ hoverExpandAction NOTIFY hoverExpandActionChanged FINAL)
     Q_PROPERTY(bool islandAutoHideEnabled READ islandAutoHideEnabled NOTIFY islandAutoHideEnabledChanged FINAL)
     Q_PROPERTY(int islandAutoHideDelayMs READ islandAutoHideDelayMs NOTIFY islandAutoHideDelayMsChanged FINAL)
     Q_PROPERTY(bool islandShowWorkspaceOnAutoHide READ islandShowWorkspaceOnAutoHide NOTIFY islandShowWorkspaceOnAutoHideChanged FINAL)
+    Q_PROPERTY(QString islandBatteryMode READ islandBatteryMode NOTIFY islandBatteryModeChanged FINAL)
+    Q_PROPERTY(bool islandAutoHideKeepActivities READ islandAutoHideKeepActivities NOTIFY islandAutoHideKeepActivitiesChanged FINAL)
+    Q_PROPERTY(QString idleInhibitCommand READ idleInhibitCommand NOTIFY idleInhibitCommandChanged FINAL)
     Q_PROPERTY(QString islandStyle READ islandStyle NOTIFY islandStyleChanged FINAL)
 
     Q_PROPERTY(int islandWidth READ islandWidth NOTIFY islandWidthChanged FINAL)
@@ -127,10 +129,12 @@ public:
     int dynamicIslandMiddleButton() const;
     QString dynamicIslandMiddleAction() const;
     const QVariantList &dynamicIslandLeftSwipeItems() const;
-    bool disableAutoExpandOnTrackChange() const;
     int hoverExpandAction() const;
     QString islandStyle() const;
     bool islandShowWorkspaceOnAutoHide() const;
+    QString islandBatteryMode() const;
+    bool islandAutoHideKeepActivities() const;
+    QString idleInhibitCommand() const;
     bool islandAutoHideEnabled() const;
     int islandAutoHideDelayMs() const;
     int islandWidth() const;
@@ -215,9 +219,11 @@ signals:
     void dynamicIslandMiddleButtonChanged();
     void dynamicIslandMiddleActionChanged();
     void dynamicIslandLeftSwipeItemsChanged();
-    void disableAutoExpandOnTrackChangeChanged();
     void islandStyleChanged();
     void islandShowWorkspaceOnAutoHideChanged();
+    void islandBatteryModeChanged();
+    void islandAutoHideKeepActivitiesChanged();
+    void idleInhibitCommandChanged();
     void hoverExpandActionChanged();
     void islandAutoHideEnabledChanged();
     void islandAutoHideDelayMsChanged();
@@ -296,7 +302,9 @@ private:
     QString m_dynamicIslandMiddleAction = QStringLiteral("toggleClipboard");
     QVariantList m_dynamicIslandLeftSwipeItems;
     bool m_islandShowWorkspaceOnAutoHide = true;
-    bool m_disableAutoExpandOnTrackChange = false;
+    QString m_islandBatteryMode = QStringLiteral("low");
+    bool m_islandAutoHideKeepActivities = true;
+    QString m_idleInhibitCommand;
     QString m_islandStyle = QStringLiteral("island");
     int m_hoverExpandAction = 1;
     bool m_islandAutoHideEnabled = true;

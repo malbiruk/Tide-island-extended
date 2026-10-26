@@ -213,6 +213,30 @@ private slots:
         QCOMPARE(runtime.doNotDisturb(), true);
         QCOMPARE(runtime.hoverExpandAction(), 2);
     }
+
+    void islandActivityKeysHaveDefaultsAndAreNormalized() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{}"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.islandBatteryMode(), QStringLiteral("low"));
+        QCOMPARE(runtime.islandAutoHideKeepActivities(), true);
+        QCOMPARE(runtime.idleInhibitCommand(), QString());
+
+        QVERIFY(writeConfig(directory.path(),
+            "{\"islandBatteryMode\": \"Always\", \"islandAutoHideKeepActivities\": false,"
+            " \"idleInhibitCommand\": \"~/bin/caffeine.sh\"}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandBatteryMode(), QStringLiteral("always"));
+        QCOMPARE(runtime.islandAutoHideKeepActivities(), false);
+        QCOMPARE(runtime.idleInhibitCommand(), QDir::homePath() + QStringLiteral("/bin/caffeine.sh"));
+
+        QVERIFY(writeConfig(directory.path(), "{\"islandBatteryMode\": \"sometimes\"}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandBatteryMode(), QStringLiteral("low"));
+    }
 };
 
 QTEST_GUILESS_MAIN(UserConfigBackendTests)

@@ -86,6 +86,26 @@ private slots:
                  (QVariantList{80, 85, 90, 100}));
     }
 
+    void readsOfferedAndActivePowerProfiles()
+    {
+        // `powerprofilesctl list` on a platform without a performance profile.
+        const QString output = QStringLiteral(
+            "* balanced:\n"
+            "    CpuDriver:\tintel_pstate\n"
+            "    PlatformDriver:\tplaceholder\n"
+            "\n"
+            "  power-saver:\n"
+            "    PlatformDriver:\tplaceholder\n");
+        QString active;
+        QCOMPARE(BatteryStatusUtils::parsePowerProfilesList(output, &active),
+                 (QStringList{QStringLiteral("balanced"), QStringLiteral("power-saver")}));
+        QCOMPARE(active, QStringLiteral("balanced"));
+
+        active.clear();
+        QVERIFY(BatteryStatusUtils::parsePowerProfilesList(QString(), &active).isEmpty());
+        QVERIFY(active.isEmpty());
+    }
+
 private:
     static bool writeSupply(const QString &root, const char *name, const QList<QPair<QByteArray, QByteArray>> &attributes)
     {

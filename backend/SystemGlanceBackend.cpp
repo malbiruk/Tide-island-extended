@@ -168,6 +168,12 @@ void SystemGlanceBackend::refreshNow()
     emit statsUpdated();
 }
 
+void SystemGlanceBackend::refreshBattery()
+{
+    updateBatteryStats();
+    emit statsUpdated();
+}
+
 void SystemGlanceBackend::onPollTick()
 {
     if (!m_active)
@@ -722,6 +728,17 @@ void SystemGlanceBackend::updateBatteryStats()
         }
     }
     m_batteryPowerWatts = watts;
+
+    const auto readSeconds = [&batPath](const QString &name) {
+        QFile file(batPath + QLatin1Char('/') + name);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            return 0;
+        bool ok = false;
+        const int seconds = QString::fromUtf8(file.readAll()).trimmed().toInt(&ok);
+        return ok && seconds > 0 ? seconds : 0;
+    };
+    m_batteryTimeToEmptySeconds = readSeconds(QStringLiteral("time_to_empty_now"));
+    m_batteryTimeToFullSeconds = readSeconds(QStringLiteral("time_to_full_now"));
 
     // Cycle count
     QFile cycleFile(batPath + QStringLiteral("/cycle_count"));

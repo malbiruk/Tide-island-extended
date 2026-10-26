@@ -88,6 +88,9 @@ class SystemGlanceBackend : public QObject {
     Q_PROPERTY(int batteryHealthPercent READ batteryHealthPercent NOTIFY statsUpdated FINAL)
     Q_PROPERTY(int batteryCycleCount READ batteryCycleCount NOTIFY statsUpdated FINAL)
     Q_PROPERTY(bool batteryConservationActive READ batteryConservationActive NOTIFY statsUpdated FINAL)
+    // Seconds until empty/full as reported by the driver; 0 when not reported.
+    Q_PROPERTY(int batteryTimeToEmptySeconds READ batteryTimeToEmptySeconds NOTIFY statsUpdated FINAL)
+    Q_PROPERTY(int batteryTimeToFullSeconds READ batteryTimeToFullSeconds NOTIFY statsUpdated FINAL)
 
 public:
     explicit SystemGlanceBackend(QObject *parent = nullptr);
@@ -165,10 +168,14 @@ public:
     int batteryHealthPercent() const { return m_batteryHealthPercent; }
     int batteryCycleCount() const { return m_batteryCycleCount; }
     bool batteryConservationActive() const { return m_batteryConservationActive; }
+    int batteryTimeToEmptySeconds() const { return m_batteryTimeToEmptySeconds; }
+    int batteryTimeToFullSeconds() const { return m_batteryTimeToFullSeconds; }
 
     Q_INVOKABLE void setAvatarPath(const QString &path);
     Q_INVOKABLE void openAvatarDirectory();
     Q_INVOKABLE void refreshNow();
+    // Re-reads only the battery attributes (for battery views shown while the Glance is closed).
+    Q_INVOKABLE void refreshBattery();
     Q_INVOKABLE void checkUpdatesAsync(bool force = false);
     Q_INVOKABLE void launchUpdateTerminal();
     Q_INVOKABLE void lockScreen();
@@ -290,4 +297,6 @@ private:
     int m_batteryHealthPercent = 100;
     int m_batteryCycleCount = 0;
     bool m_batteryConservationActive = false;
+    int m_batteryTimeToEmptySeconds = 0;
+    int m_batteryTimeToFullSeconds = 0;
 };

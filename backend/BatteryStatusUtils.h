@@ -3,7 +3,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QString>
+#include <QStringList>
 #include <QVariantList>
 
 #include <unistd.h>
@@ -71,6 +73,22 @@ inline QVariantList chargeLimitPresets(const QString &batteryPath)
     if (QFileInfo(batteryPath).fileName().startsWith(QStringLiteral("macsmc")))
         return QVariantList{80, 100};
     return QVariantList{80, 85, 90, 100};
+}
+
+// Profile names from `powerprofilesctl list`, in listed order; `active` receives the one
+// marked with "*". Detail lines ("    PlatformDriver: ...") are skipped.
+inline QStringList parsePowerProfilesList(const QString &text, QString *active = nullptr)
+{
+    static const QRegularExpression profileLine(QStringLiteral("^(\\*?)[ \\t]*([a-z][a-z-]*):[ \\t]*$"),
+                                                QRegularExpression::MultilineOption);
+    QStringList profiles;
+    for (auto it = profileLine.globalMatch(text); it.hasNext();) {
+        const QRegularExpressionMatch match = it.next();
+        profiles.append(match.captured(2));
+        if (active && !match.captured(1).isEmpty())
+            *active = match.captured(2);
+    }
+    return profiles;
 }
 
 } // namespace BatteryStatusUtils

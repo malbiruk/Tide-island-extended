@@ -337,11 +337,6 @@ const QVariantList &UserConfigBackend::dynamicIslandLeftSwipeItems() const
     return m_dynamicIslandLeftSwipeItems;
 }
 
-bool UserConfigBackend::disableAutoExpandOnTrackChange() const
-{
-    return m_disableAutoExpandOnTrackChange;
-}
-
 int UserConfigBackend::hoverExpandAction() const
 {
     return m_hoverExpandAction;
@@ -355,6 +350,24 @@ bool UserConfigBackend::islandAutoHideEnabled() const
 bool UserConfigBackend::islandShowWorkspaceOnAutoHide() const
 {
     return m_islandShowWorkspaceOnAutoHide;
+}
+
+// Island battery section: "low" (only below 40 % while discharging), "always" or "never".
+QString UserConfigBackend::islandBatteryMode() const
+{
+    return m_islandBatteryMode;
+}
+
+bool UserConfigBackend::islandAutoHideKeepActivities() const
+{
+    return m_islandAutoHideKeepActivities;
+}
+
+// Command implementing `toggle` and `status` (prints "on"/"off") for idle inhibition;
+// empty hides the control. A leading "~" is expanded.
+QString UserConfigBackend::idleInhibitCommand() const
+{
+    return m_idleInhibitCommand;
 }
 
 int UserConfigBackend::islandAutoHideDelayMs() const
@@ -764,11 +777,19 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_dynamicIslandPrimaryAction, jsonString(configObject, QLatin1String("dynamicIslandPrimaryAction"), QStringLiteral("toggleExpandedPlayer")), &UserConfigBackend::dynamicIslandPrimaryActionChanged);
     updateField(this, m_dynamicIslandSecondaryButton, jsonInt(configObject, QLatin1String("dynamicIslandSecondaryButton"), 3), &UserConfigBackend::dynamicIslandSecondaryButtonChanged);
     updateField(this, m_islandShowWorkspaceOnAutoHide, jsonBool(configObject, QLatin1String("islandShowWorkspaceOnAutoHide"), true), &UserConfigBackend::islandShowWorkspaceOnAutoHideChanged);
+    const QString batteryMode = jsonString(configObject, QLatin1String("islandBatteryMode"), QStringLiteral("low")).trimmed().toLower();
+    updateField(this, m_islandBatteryMode,
+                (batteryMode == QLatin1String("always") || batteryMode == QLatin1String("never")) ? batteryMode : QStringLiteral("low"),
+                &UserConfigBackend::islandBatteryModeChanged);
+    updateField(this, m_islandAutoHideKeepActivities, jsonBool(configObject, QLatin1String("islandAutoHideKeepActivities"), true), &UserConfigBackend::islandAutoHideKeepActivitiesChanged);
+    QString idleCommand = jsonString(configObject, QLatin1String("idleInhibitCommand"), QString()).trimmed();
+    if (idleCommand == QLatin1String("~") || idleCommand.startsWith(QLatin1String("~/")))
+        idleCommand.replace(0, 1, QDir::homePath());
+    updateField(this, m_idleInhibitCommand, idleCommand, &UserConfigBackend::idleInhibitCommandChanged);
     updateField(this, m_dynamicIslandSecondaryAction, jsonString(configObject, QLatin1String("dynamicIslandSecondaryAction"), QStringLiteral("toggleControlCenter")), &UserConfigBackend::dynamicIslandSecondaryActionChanged);
     updateField(this, m_dynamicIslandMiddleButton, jsonInt(configObject, QLatin1String("dynamicIslandMiddleButton"), 2), &UserConfigBackend::dynamicIslandMiddleButtonChanged);
     updateField(this, m_dynamicIslandMiddleAction, jsonString(configObject, QLatin1String("dynamicIslandMiddleAction"), QStringLiteral("toggleClipboard")), &UserConfigBackend::dynamicIslandMiddleActionChanged);
     updateField(this, m_dynamicIslandLeftSwipeItems, jsonArray(configObject, QLatin1String("dynamicIslandLeftSwipeItems"), defaultDynamicIslandLeftSwipeItems()), &UserConfigBackend::dynamicIslandLeftSwipeItemsChanged);
-    updateField(this, m_disableAutoExpandOnTrackChange, jsonBool(configObject, QLatin1String("disableAutoExpandOnTrackChange"), false), &UserConfigBackend::disableAutoExpandOnTrackChangeChanged);
     updateField(this, m_hoverExpandAction, jsonInt(configObject, QLatin1String("hoverExpandAction"), 1), &UserConfigBackend::hoverExpandActionChanged);
     updateField(this, m_islandAutoHideEnabled, jsonBool(configObject, QLatin1String("islandAutoHideEnabled"), true), &UserConfigBackend::islandAutoHideEnabledChanged);
     updateField(this, m_islandAutoHideDelayMs, jsonBoundedInt(configObject, QLatin1String("islandAutoHideDelayMs"), 1000, 100, 10000), &UserConfigBackend::islandAutoHideDelayMsChanged);

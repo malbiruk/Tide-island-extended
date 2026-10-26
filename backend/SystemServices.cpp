@@ -2011,31 +2011,39 @@ QString SystemServices::resolvePowerProfileDriver(const QString &requestedDriver
 void SystemServices::requestPowerProfileState(const QString &driver) {
     const QString resolved = resolvePowerProfileDriver(driver);
     if (resolved.isEmpty()) {
+        setPowerProfiles({});
         emit tlpStateReady(false, QString(), QString(), QStringLiteral("No power profile service found (install power-profiles-daemon or tlp)."));
         return;
     }
 
     if (resolved == QLatin1String("disabled")) {
+        setPowerProfiles({});
         emit tlpStateReady(false, QString(), QString(), QStringLiteral("Power profile controls are disabled."));
         return;
     }
 
     if (resolved == QLatin1String("powerprofilesctl")) {
-        startCommand(QStringLiteral("powerprofilesctl"), {QStringLiteral("get")}, 2000,
+        // `list` gives both the active profile and the ones this platform offers.
+        startCommand(QStringLiteral("powerprofilesctl"), {QStringLiteral("list")}, 2000,
             [this](const CommandResult &result) {
                 const QString output = trimCommandOutput(result.stdoutData, result.stderrData).trimmed();
                 const QString errorText = commandErrorText(QStringLiteral("powerprofilesctl"), result);
-                bool ok = errorText.isEmpty() && (result.exitCode == 0) && !output.isEmpty();
-                emit tlpStateReady(ok, output.toLower(), output, errorText);
+                QString active;
+                const QStringList profiles = BatteryStatusUtils::parsePowerProfilesList(output, &active);
+                const bool ok = errorText.isEmpty() && (result.exitCode == 0) && !active.isEmpty();
+                setPowerProfiles(ok ? profiles : QStringList());
+                emit tlpStateReady(ok, active, output, errorText);
             });
         return;
     }
 
     if (resolved == QLatin1String("tlp")) {
         if (findExecutable(QStringLiteral("tlp")).isEmpty()) {
+            setPowerProfiles({});
             emit tlpStateReady(false, QString(), QString(), QStringLiteral("TLP is not installed."));
             return;
         }
+        setPowerProfiles({QStringLiteral("power-saver"), QStringLiteral("balanced"), QStringLiteral("performance")});
 
         if (findExecutable(QStringLiteral("tlp-stat")).isEmpty()) {
             emit tlpStateReady(true, QString(), QString(), QString());
@@ -2050,6 +2058,13 @@ void SystemServices::requestPowerProfileState(const QString &driver) {
             });
         return;
     }
+}
+
+void SystemServices::setPowerProfiles(const QStringList &profiles) {
+    if (m_powerProfiles == profiles)
+        return;
+    m_powerProfiles = profiles;
+    emit powerProfilesChanged();
 }
 
 void SystemServices::requestTlpState() {

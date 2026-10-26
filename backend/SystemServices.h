@@ -6,6 +6,7 @@
 #include <QProcess>
 #include <QSet>
 #include <QString>
+#include <QStringList>
 #include <QTimer>
 #include <QVariant>
 #include <QVariantList>
@@ -39,6 +40,9 @@ class SystemServices final : public QObject {
     Q_PROPERTY(int batteryCycleCount READ batteryCycleCount NOTIFY batteryHealthMetricsChanged FINAL)
     Q_PROPERTY(int batteryHealthPercent READ batteryHealthPercent NOTIFY batteryHealthMetricsChanged FINAL)
     Q_PROPERTY(QString batteryChargeState READ batteryChargeState NOTIFY batteryHealthMetricsChanged FINAL)
+    // Profiles the resolved power driver offers (power-saver / balanced / performance); empty
+    // when there is no driver or it has not been queried yet.
+    Q_PROPERTY(QStringList powerProfiles READ powerProfiles NOTIFY powerProfilesChanged FINAL)
 
 public:
     explicit SystemServices(QObject *parent = nullptr);
@@ -68,6 +72,7 @@ public:
     int batteryCycleCount() const { return m_batteryCycleCount; }
     int batteryHealthPercent() const { return m_batteryHealthPercent; }
     QString batteryChargeState() const { return m_batteryChargeState; }
+    QStringList powerProfiles() const { return m_powerProfiles; }
     void updateScreenRecordingActive();
 
     Q_INVOKABLE void requestScreenRecordingSnapshot();
@@ -147,6 +152,7 @@ signals:
     void batteryThresholdChanged();
     void batteryThresholdBusyChanged();
     void batteryHealthMetricsChanged();
+    void powerProfilesChanged();
     void batteryThresholdFinished(bool success, const QString &errorString);
     void cavaLevelsChanged();
     void audioOutputsChanged();
@@ -296,4 +302,7 @@ private:
     int m_batteryCycleCount = 0;
     int m_batteryHealthPercent = 100;
     QString m_batteryChargeState;
+    QStringList m_powerProfiles;
+
+    void setPowerProfiles(const QStringList &profiles);
 };
