@@ -47,7 +47,7 @@ Item {
     z: 6
     visible: mounted
     opacity: reveal * autoHideProgress
-    scale: (0.55 + reveal * 0.45) * (0.96 + autoHideProgress * 0.04) * (mouseArea.containsMouse ? 1.06 : 1.0)
+    scale: (0.55 + reveal * 0.45) * (0.96 + autoHideProgress * 0.04)
     transformOrigin: Item.Center
 
     Behavior on scale {
@@ -99,12 +99,8 @@ Item {
         radius: width / 2
         color: StyleTokens.panel
         border.width: 2
-        border.color: mouseArea.containsMouse ? StyleTokens.accentSoft : StyleTokens.surfaceBorder
+        border.color: StyleTokens.surfaceBorder
         antialiasing: true
-
-        Behavior on border.color {
-            ColorAnimation { duration: 90 }
-        }
 
         Text {
             anchors.centerIn: parent
@@ -139,7 +135,6 @@ Item {
         anchors.fill: parent
         enabled: root.mounted && root.autoHideProgress > 0.5
         hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
         onEntered: root.entered()
         onExited: root.exited()
         onClicked: root.clicked()
