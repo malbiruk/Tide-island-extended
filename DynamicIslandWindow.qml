@@ -2255,10 +2255,13 @@ PanelWindow {
                         return;
                     }
 
-                    // Open panels have their own controls; the configured actions belong to the
-                    // compact island only.
-                    if (islandContainer.islandState !== "normal" && islandContainer.islandState !== "split")
+                    // A left click on an open panel's empty space returns to the island; the
+                    // configured actions belong to the compact island only.
+                    if (islandContainer.islandState !== "normal" && islandContainer.islandState !== "split") {
+                        if (mouse.button === Qt.LeftButton)
+                            islandContainer.smartRestoreState();
                         return;
+                    }
 
                     // Resting island: a left click on the bell, battery or music opens that directly;
                     // the clock and the rest of the capsule follow the configured mapping.
