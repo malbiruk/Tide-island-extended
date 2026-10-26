@@ -3150,29 +3150,9 @@ PanelWindow {
                         islandContainer.forceActiveFocus();
                 }
 
-                sourceComponent: Component {
-                    NotificationCenterLayer {
-                        notificationModel: islandContainer.notificationHistoryModel
-                        iconFontFamily: root.iconFontFamily
-                        textFontFamily: root.textFontFamily
-                        heroFontFamily: root.heroFontFamily
-
-                        onClearAllRequested: {
-                            if (root.shellRootController && root.shellRootController.clearAllNotifications)
-                                root.shellRootController.clearAllNotifications();
-                            else
-                                islandContainer.notificationHistoryModel.clear();
-                        }
-                        onNotificationDismissRequested: function(id) {
-                            root.dismissNotification(id);
-                        }
-                        onNotificationActivated: function(id) {
-                            root.activateNotification({ id: id }, true);
-                            islandContainer.smartRestoreState();
-                        }
-                        onCloseRequested: islandContainer.smartRestoreState()
-                    }
-                }
+                // Loaded by URL, so the layer's type is compiled only when it first opens.
+                Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/NotificationCenterHost.qml"),
+                    { host: root, island: islandContainer })
             }
 
             Loader {
@@ -3183,15 +3163,9 @@ PanelWindow {
                 visible: islandContainer.fileShelfLayerVisible
                 onLoaded: root.focusFileShelf()
 
-                sourceComponent: Component {
-                    FileShelfLayer {
-                        iconFontFamily: root.iconFontFamily
-                        textFontFamily: root.textFontFamily
-                        showCondition: islandContainer.fileShelfLayerVisible
-                        dropPreviewOnly: !islandContainer.fileShelfOpenedManually
-                        onCloseRequested: islandContainer.smartRestoreState()
-                    }
-                }
+                // Loaded by URL, so the layer's type is compiled only when it first opens.
+                Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/FileShelfHost.qml"),
+                    { host: root, island: islandContainer })
             }
 
             Loader {
@@ -3202,14 +3176,9 @@ PanelWindow {
                 visible: islandContainer.clipboardLayerVisible
                 onLoaded: root.focusClipboard()
 
-                sourceComponent: Component {
-                    ClipboardLayer {
-                        iconFontFamily: root.iconFontFamily
-                        textFontFamily: root.textFontFamily
-                        showCondition: islandContainer.clipboardLayerVisible
-                        onCloseRequested: islandContainer.smartRestoreState()
-                    }
-                }
+                // Loaded by URL, so the layer's type is compiled only when it first opens.
+                Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/ClipboardHost.qml"),
+                    { host: root, island: islandContainer })
             }
 
             Loader {
@@ -3220,16 +3189,9 @@ PanelWindow {
                 visible: islandContainer.weatherLayerVisible
                 onLoaded: islandContainer.forceActiveFocus()
 
-                sourceComponent: Component {
-                    WeatherLayer {
-                        weatherService: root.weatherService
-                        iconFontFamily: root.iconFontFamily
-                        textFontFamily: root.textFontFamily
-                        heroFontFamily: root.heroFontFamily
-                        showCondition: islandContainer.weatherLayerVisible
-                        onCloseRequested: islandContainer.smartRestoreState()
-                    }
-                }
+                // Loaded by URL, so the layer's type is compiled only when it first opens.
+                Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/WeatherHost.qml"),
+                    { host: root, island: islandContainer })
             }
 
             Loader {
@@ -3240,15 +3202,9 @@ PanelWindow {
                 visible: islandContainer.calendarLayerVisible
                 onLoaded: islandContainer.forceActiveFocus()
 
-                sourceComponent: Component {
-                    CalendarLayer {
-                        iconFontFamily: root.iconFontFamily
-                        textFontFamily: root.textFontFamily
-                        heroFontFamily: root.heroFontFamily
-                        showCondition: islandContainer.calendarLayerVisible
-                        onCloseRequested: islandContainer.smartRestoreState()
-                    }
-                }
+                // Loaded by URL, so the layer's type is compiled only when it first opens.
+                Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/CalendarHost.qml"),
+                    { host: root, island: islandContainer })
             }
 
             Loader {
@@ -3262,16 +3218,9 @@ PanelWindow {
                     if (item) item.forceActiveFocus();
                 }
 
-                sourceComponent: Component {
-                    PrivacyHudLayer {
-                        iconFontFamily: root.iconFontFamily
-                        textFontFamily: root.textFontFamily
-                        heroFontFamily: root.heroFontFamily
-                        isMicMuted: islandContainer.isMicMuted
-                        showCondition: islandContainer.privacyHudLayerVisible
-                        onCloseRequested: islandContainer.smartRestoreState()
-                    }
-                }
+                // Loaded by URL, so the layer's type is compiled only when it first opens.
+                Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/PrivacyHudHost.qml"),
+                    { host: root, island: islandContainer })
             }
 
             Loader {
@@ -3285,23 +3234,9 @@ PanelWindow {
                     if (item) item.forceActiveFocus();
                 }
 
-                sourceComponent: Component {
-                    SystemGlanceLayer {
-                        iconFontFamily: root.iconFontFamily
-                        textFontFamily: root.textFontFamily
-                        heroFontFamily: root.heroFontFamily
-                        showCondition: islandContainer.glanceLayerVisible
-                        onCloseRequested: islandContainer.smartRestoreState()
-                        onOpenCalendarRequested: {
-                            islandContainer.smartRestoreState();
-                            root.showCalendarWindow();
-                        }
-                        onOpenWeatherRequested: {
-                            islandContainer.smartRestoreState();
-                            root.showWeatherWindow();
-                        }
-                    }
-                }
+                // Loaded by URL, so the layer's type is compiled only when it first opens.
+                Component.onCompleted: setSource(Qt.resolvedUrl("qml/hosts/GlanceHost.qml"),
+                    { host: root, island: islandContainer })
             }
 
             DropArea {
