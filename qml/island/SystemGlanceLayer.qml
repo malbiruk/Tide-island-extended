@@ -155,12 +155,9 @@ FocusScope {
                             } else if (drop.hasText) {
                                 path = drop.text.trim();
                             }
-                            if (path !== "") {
-                                if (path.startsWith("file://")) {
-                                    path = path.substring(7);
-                                }
-                                SystemGlance.setAvatarPath(path);
-                            }
+                            // Saved through UserConfig; the glance follows the file.
+                            if (path !== "")
+                                UserConfig.avatarPath = path;
                         }
                     }
                 }

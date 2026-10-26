@@ -67,7 +67,7 @@ class SystemGlanceBackend : public QObject {
     Q_PROPERTY(QString kernelVersion READ kernelVersion NOTIFY staticInfoReady FINAL)
     Q_PROPERTY(QString kernelRelease READ kernelRelease NOTIFY staticInfoReady FINAL)
     Q_PROPERTY(QString kernelArch READ kernelArch NOTIFY staticInfoReady FINAL)
-    Q_PROPERTY(QString avatarPath READ avatarPath WRITE setAvatarPath NOTIFY avatarPathChanged FINAL)
+    Q_PROPERTY(QString avatarPath READ avatarPath NOTIFY avatarPathChanged FINAL)
 
     // Kernel & Load Telemetry
     Q_PROPERTY(QString loadAvgText READ loadAvgText NOTIFY statsUpdated FINAL)
@@ -171,7 +171,6 @@ public:
     int batteryTimeToEmptySeconds() const { return m_batteryTimeToEmptySeconds; }
     int batteryTimeToFullSeconds() const { return m_batteryTimeToFullSeconds; }
 
-    Q_INVOKABLE void setAvatarPath(const QString &path);
     Q_INVOKABLE void openAvatarDirectory();
     Q_INVOKABLE void refreshNow();
     // Re-reads only the battery attributes (for battery views shown while the Glance is closed).

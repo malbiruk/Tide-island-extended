@@ -114,7 +114,8 @@ void Backend::setColorScheme(const QString &colorScheme){
 }
 
 // Applies only the given keys on top of the file as it is now, so values written
-// by the shell since the app loaded (e.g. doNotDisturb) are not reverted.
+// by the shell since the app loaded (e.g. doNotDisturb) are not reverted. The file is
+// re-serialised: comments in it are not kept.
 bool Backend::save(const QVariantMap &changes, const QStringList &removedKeys){
     QJsonObject current;
     if (!readUserConfigObject(current))

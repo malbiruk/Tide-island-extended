@@ -1,5 +1,6 @@
 #include "SystemGlanceBackend.h"
 #include "BatteryStatusUtils.h"
+#include "../common/JsonComments.h"
 #include "../common/ScopedLaunch.h"
 
 #include <QDir>
@@ -572,48 +573,6 @@ void SystemGlanceBackend::powerOffSystem()
     QProcess::startDetached(QStringLiteral("systemctl"), {QStringLiteral("poweroff")});
 }
 
-void SystemGlanceBackend::setAvatarPath(const QString &path)
-{
-    QString clean = path.trimmed();
-    if (clean.startsWith(QLatin1String("file://"))) {
-        clean = QUrl(clean).toLocalFile();
-    }
-    const QString home = QDir::homePath();
-    if (clean.startsWith(QLatin1String("~"))) {
-        clean.replace(0, 1, home);
-    }
-
-    const QString nextAvatarUrl = clean.isEmpty() ? QString() : (QStringLiteral("file://") + clean);
-    if (m_avatarPath != nextAvatarUrl) {
-        m_avatarPath = nextAvatarUrl;
-        emit avatarPathChanged();
-        emit staticInfoReady();
-    }
-
-    // Persist to userconfig.json
-    const QString cfgPath = resolveUserConfigPath();
-    const QString cfgDir = resolveUserConfigDir();
-    if (!QDir(cfgDir).exists()) {
-        QDir().mkpath(cfgDir);
-    }
-    QFile file(cfgPath);
-    QJsonObject obj;
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        if (doc.isObject()) obj = doc.object();
-        file.close();
-    }
-    if (clean.isEmpty()) {
-        obj.remove(QStringLiteral("avatarPath"));
-    } else {
-        obj.insert(QStringLiteral("avatarPath"), clean);
-    }
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-        file.close();
-    }
-}
-
 void SystemGlanceBackend::openAvatarDirectory()
 {
     QString dir = QDir::homePath() + QStringLiteral("/Pictures");
@@ -901,7 +860,7 @@ void SystemGlanceBackend::reloadAvatar()
     const QString cfgPath = resolveUserConfigPath();
     QFile cfgFile(cfgPath);
     if (cfgFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(cfgFile.readAll());
+        const QJsonDocument doc = QJsonDocument::fromJson(JsonComments::strip(cfgFile.readAll()));
         if (doc.isObject()) {
             const QJsonObject obj = doc.object();
             QString configured = obj.value(QStringLiteral("avatarPath")).toString();

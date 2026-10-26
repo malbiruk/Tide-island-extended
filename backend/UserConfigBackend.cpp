@@ -436,8 +436,9 @@ void UserConfigBackend::scheduleReload()
 }
 
 // Persist one key: read the current file (comments allowed, like loadConfig), change the key
-// (an undefined value removes it) and write atomically. An unreadable or invalid file is
-// never overwritten; the change then only lives in memory.
+// (an undefined value removes it) and write atomically. The file is re-serialised, so comments
+// in it are not kept. An unreadable or invalid file is never overwritten; the change then only
+// lives in memory.
 bool UserConfigBackend::writeConfigValue(const QString &key, const QJsonValue &value)
 {
     QJsonObject object;

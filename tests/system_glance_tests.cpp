@@ -85,20 +85,22 @@ private slots:
         QVERIFY(!glance.uploadSpeedText().isEmpty());
     }
 
-    void testAvatarSupport() {
+    // The avatar is saved by UserConfig; the glance follows userconfig.json, comments and all.
+    void avatarFollowsTheConfigFile() {
         SystemGlanceBackend glance;
-        QSignalSpy avatarSpy(&glance, &SystemGlanceBackend::avatarPathChanged);
 
-        // Setting a custom avatar path using the isolated temporary config directory
         const QString testPath = m_tempConfigDir.filePath(QStringLiteral("test_avatar.png"));
         QFile file(testPath);
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.write("dummy avatar data");
         file.close();
 
-        glance.setAvatarPath(testPath);
-        QCOMPARE(avatarSpy.count(), 1);
-        QCOMPARE(glance.avatarPath(), QStringLiteral("file://") + testPath);
+        QFile config(m_tempConfigDir.filePath(QStringLiteral("tide-island/userconfig.json")));
+        QVERIFY(config.open(QIODevice::WriteOnly));
+        config.write("// set from the glance\n{ \"avatarPath\": \"" + testPath.toUtf8() + "\" }\n");
+        config.close();
+
+        QTRY_COMPARE(glance.avatarPath(), QStringLiteral("file://") + testPath);
     }
 
     void testKernelAndBatteryTelemetry() {
