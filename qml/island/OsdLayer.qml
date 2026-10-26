@@ -17,6 +17,8 @@ Item {
     property string slideDirection: "none"
     property real transitionProgress: 0
     readonly property bool showProgress: progress >= 0
+    // Muted volume: the bar and text are dimmed (the icon is the mute glyph).
+    property bool muted: false
     readonly property bool showText: progress < 0 && customText !== ""
     property bool showCondition: false
     property real hiddenLeftPadding: 16
@@ -46,86 +48,62 @@ Item {
         }
     }
 
+    // [icon] [bar] [percent]: the bar matches the control center sliders.
     Item {
         x: contentX
         width: parent.width
         height: parent.height
         visible: showProgress
 
-        Row {
+        Text {
+            id: progressIcon
             anchors.left: parent.left
             anchors.leftMargin: 18
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 12
-
-            Text {
-                text: iconText
-                color: StyleTokens.textPrimary
-                font.pixelSize: userConfig.iconFontSize
-                font.family: iconFontFamily
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Text {
-                text: Math.round(progress * 100) + "%"
-                color: StyleTokens.textPrimary
-                font.pixelSize: userConfig.bodyFontSize
-                font.family: heroFontFamily
-                font.weight: Font.Bold
-                font.letterSpacing: -0.35
-                anchors.verticalCenter: parent.verticalCenter
-            }
+            text: iconText
+            color: root.muted ? StyleTokens.textMuted : StyleTokens.textPrimary
+            font.pixelSize: userConfig.iconFontSize
+            font.family: iconFontFamily
         }
 
-        Item {
-            width: 30
-            height: 30
+        TextMetrics {
+            id: percentMetrics
+            font: percentText.font
+            text: "100%"
+        }
+
+        Text {
+            id: percentText
             anchors.right: parent.right
-            anchors.rightMargin: 16
+            anchors.rightMargin: 18
             anchors.verticalCenter: parent.verticalCenter
+            width: Math.ceil(percentMetrics.advanceWidth)
+            horizontalAlignment: Text.AlignRight
+            text: Math.round(Math.max(0, Math.min(1, progress)) * 100) + "%"
+            color: root.muted ? StyleTokens.textMuted : StyleTokens.textPrimary
+            font.pixelSize: userConfig.bodyFontSize
+            font.family: heroFontFamily
+            font.weight: Font.Bold
+            font.letterSpacing: -0.35
+        }
+
+        Rectangle {
+            id: progressTrack
+            anchors.left: progressIcon.right
+            anchors.leftMargin: 12
+            anchors.right: percentText.left
+            anchors.rightMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            height: 4
+            radius: 2
+            color: StyleTokens.cardFillHover
 
             Rectangle {
-                anchors.centerIn: parent
-                width: 16
-                height: 16
-                radius: 8
-                color: StyleTokens.module
-                border.color: StyleTokens.moduleHover
-                border.width: 1
-            }
-
-            Canvas {
-                anchors.fill: parent
-                antialiasing: true
-                property real progressValue: Math.max(0, Math.min(1, progress))
-
-                onProgressValueChanged: requestPaint()
-                onWidthChanged: requestPaint()
-                onHeightChanged: requestPaint()
-
-                onPaint: {
-                    var ctx = getContext("2d");
-                    var size = Math.min(width, height);
-                    var lineWidth = 3.5;
-                    var center = size / 2;
-                    var radius = (size - lineWidth) / 2 - 0.5;
-                    var startAngle = -Math.PI / 2;
-                    var endAngle = startAngle + (Math.PI * 2 * progressValue);
-
-                    ctx.clearRect(0, 0, width, height);
-                    ctx.lineCap = "round";
-                    ctx.lineWidth = lineWidth;
-
-                    ctx.strokeStyle = StyleTokens.withAlpha(StyleTokens.textPrimary, 0.16);
-                    ctx.beginPath();
-                    ctx.arc(center, center, radius, 0, Math.PI * 2, false);
-                    ctx.stroke();
-
-                    ctx.strokeStyle = StyleTokens.textPrimary;
-                    ctx.beginPath();
-                    ctx.arc(center, center, radius, startAngle, endAngle, false);
-                    ctx.stroke();
-                }
+                height: parent.height
+                radius: 2
+                width: parent.width * Math.max(0, Math.min(1, progress))
+                color: root.muted ? StyleTokens.textMuted : StyleTokens.accent
+                opacity: root.muted ? 0.6 : 1
             }
         }
     }

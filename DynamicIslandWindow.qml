@@ -3468,6 +3468,7 @@ PanelWindow {
                 sourceComponent: Component {
                     OsdLayer {
                         iconText: islandContainer.splitIcon
+                        muted: islandContainer.splitIcon === systemState.muteStatusIcon
                         progress: islandContainer.osdProgress
                         customText: islandContainer.osdCustomText
                         iconFontFamily: root.iconFontFamily
