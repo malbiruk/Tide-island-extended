@@ -16,6 +16,10 @@ Item {
     readonly property color buttonBgHover: StyleTokens.cardFillHover
     readonly property color buttonBgPressed: StyleTokens.cardFillActive
 
+    // MatteSurface fills the card with StyleTokens.module
+    readonly property color cardSurface: StyleTokens.module
+    readonly property real cardLuma: 0.2126 * cardSurface.r + 0.7152 * cardSurface.g + 0.0722 * cardSurface.b
+
     // Mean luminance of each icon source's opaque pixels (-1 = unmeasurable), kept across delegate rebuilds
     property var iconLuma: ({})
 
@@ -153,8 +157,10 @@ Item {
                             scale: trayMouse.pressed ? 0.90 : (trayMouse.containsMouse ? 1.08 : 1.0)
 
                             readonly property string iconSource: modelData.icon || ""
-                            // Light glyphs (made for dark panels) get a dark tile; the last verdict holds while a new source is measured
-                            property bool lightIcon: root.iconLuma[iconSource] > 0.75
+                            // -1 until measured; the last value holds while a new source is measured
+                            property real glyphLuma: root.iconLuma[iconSource] ?? -1
+                            // Icon too close in brightness to the card gets a contrasting tile
+                            readonly property bool needsTile: glyphLuma >= 0 && Math.abs(glyphLuma - root.cardLuma) < 0.35
 
                             onIconSourceChanged: lumaProbe.requestPaint()
 
@@ -181,12 +187,12 @@ Item {
                                 }
 
                                 Rectangle {
-                                    visible: trayDelegate.lightIcon
+                                    visible: trayDelegate.needsTile
                                     anchors.centerIn: parent
                                     width: trayIcon.width + 6
                                     height: trayIcon.height + 6
                                     radius: 6
-                                    color: StyleTokens.surfaceBorder
+                                    color: StyleTokens.textPrimary
                                 }
 
                                 Image {
@@ -243,7 +249,7 @@ Item {
                                         unloadImage(source);
                                         root.rememberIconLuma(source, luma);
                                     }
-                                    trayDelegate.lightIcon = luma > 0.75;
+                                    trayDelegate.glyphLuma = luma;
                                 }
                             }
 
