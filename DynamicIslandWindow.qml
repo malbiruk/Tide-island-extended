@@ -1296,8 +1296,13 @@ PanelWindow {
         IslandSystemState {
             id: systemState
 
-            lyricsCavaActive: ((islandContainer.restingMusicVisible && restingLayer.visible)
-                    || (islandContainer.expandedLayerVisible && islandContainer.musicPlaying))
+            // The resting music section or the expanded player's music page on screen. Both read
+            // islandState itself (restingLayer.visible turns true a frame late), so moving from one
+            // to the other never drops cava for a moment.
+            lyricsCavaActive: ((islandContainer.restingMusicVisible
+                        && (islandContainer.islandState === "normal" || restingLayer.visible))
+                    || (islandContainer.islandState === "expanded" && islandContainer.musicPlaying
+                        && expandedPlayerLoader.item !== null && expandedPlayerLoader.item.clampedPageProgress < 1))
                 && root.autoHideProgress > 0.001
 
             onTransientRequested: function(icon, progress, text) {
