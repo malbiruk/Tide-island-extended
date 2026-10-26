@@ -10,7 +10,6 @@ Item {
     id: controlCenter
 
     signal connectivityPanelRequested(string kind, bool open)
-    signal nightLightModeChanged(bool enabled)
     signal requestNotification(string appName, string summary, string body)
     signal weatherRequested()
     signal calendarRequested()
@@ -21,6 +20,9 @@ Item {
     signal playerNextRequested()
     signal playerDismissRequested()
     signal closeRequested()
+
+    // Shell-wide unread notifications: an accent dot on the header bell.
+    property int unreadNotificationCount: 0
 
     // Media card (fed by the window's MPRIS controller)
     property bool playerCardVisible: false
@@ -127,31 +129,17 @@ Item {
     property bool audioOutputPanelOpen: false
     property bool audioInputPanelOpen: false
     property bool powerViewActive: false
-    property bool batteryDrawerOpen: false
-    property bool batteryDrawerDragging: false
-    property real batteryDrawerProgress: 0
-    property bool batteryDrawerSettling: false
-    readonly property bool batteryDrawerMoving: batteryDrawerDragging
-        || batteryDrawerSettling
-        || batteryDrawerProgressAnimation.running
     property bool batteryModeBusy: false
     property bool batteryModeStateRunning: false
     property bool batteryModeSetterRunning: false
-    property bool batteryModeSliderDragging: false
     property bool batteryTlpAvailable: false
     property bool batteryTlpChecked: false
     property int batteryModeIndex: 1
     property int batteryModeAppliedIndex: 1
     property int batteryModePendingIndex: 1
-    property real batteryModeDragOffset: 0
-    property string batteryModeInfoMessage: ""
     property string batteryModeError: ""
     property string batteryModeLastCommandOutput: ""
     property int batteryModeRefreshPollsRemaining: 0
-    property bool nightLightEnabled: false
-    property bool nightLightBusy: false
-    property int nightLightTemperature: 4500
-    readonly property bool hyprlandNightLight: CompositorBackend.compositor === "hyprland"
     // Do-not-disturb is tide's own state, persisted as "doNotDisturb" in userconfig.json.
     readonly property bool focusEnabled: UserConfig.doNotDisturb
 
@@ -192,17 +180,12 @@ Item {
     readonly property string volumeMuteIconGlyph: "\ueb24"
     readonly property string micIconGlyph: "\uf130"
     readonly property string micMuteIconGlyph: "\uf131"
-    readonly property string nightLightGlyph: "\uf186"
-    readonly property var batteryModeGlyphs: ["", "", ""]
-    readonly property real batteryDrawerHandleHeight: 20
-    readonly property real batteryDrawerContentGap: 8
     readonly property real batteryModeCardHeight: 80
     readonly property real roundToggleButtonSize: 58
     readonly property real roundToggleButtonGap: 18
 
     readonly property bool isRecording: ScreenRecorder ? ScreenRecorder.isRecording : false
     readonly property bool isReplayActive: ScreenRecorder ? ScreenRecorder.isReplayActive : false
-    readonly property real drawerOpenDistance: batteryModeCardHeight * 2 + batteryDrawerContentGap * 2
     readonly property real activeRecorderExtraHeight: (activeScreenRecorderCard && activeScreenRecorderCard.visible && activeScreenRecorderCard.height > 0)
         ? activeScreenRecorderCard.height + mainContent.spacing
         : 0
@@ -252,7 +235,6 @@ Item {
     readonly property string wifiStatusText: (wifiController && wifiController.statusText) || "Unavailable"
     readonly property string bluetoothStatusText: buildBluetoothStatusText()
     readonly property string bluetoothAvailabilityMessage: bluetoothAvailable ? "" : "No Bluetooth adapter is available."
-    readonly property string batteryModeStatusText: buildBatteryModeStatusText()
     readonly property string powerDriver: {
         const d = trimString(userConfig.powerProfileDriver);
         return d.length > 0 ? d : "auto";
@@ -297,20 +279,6 @@ Item {
         batteryModeIndex = nextIndex;
     }
 
-    function setBatteryDrawerOpen(open) {
-        const nextOpen = !!open;
-        batteryDrawerOpen = nextOpen;
-        batteryDrawerSettling = true;
-        batteryDrawerProgress = nextOpen ? 1 : 0;
-        batteryDrawerSettleTimer.restart();
-        if (nextOpen && tlpControlsEnabled && !batteryTlpChecked)
-            refreshBatteryModeState();
-    }
-
-    function toggleBatteryDrawer() {
-        setBatteryDrawerOpen(!batteryDrawerOpen);
-    }
-
     function refreshBatteryModeState() {
         if (batteryModeStateRunning)
             return;
@@ -350,24 +318,13 @@ Item {
                 batteryModeRefreshPollsRemaining = 0;
                 batteryModeRefreshTimer.stop();
                 batteryModeError = "";
-                batteryModeInfoMessage = batteryModeLabel(nextIndex) + " active.";
             }
         }
-    }
-
-    function buildBatteryModeStatusText() {
-        if (batteryModeBusy) return "Applying " + batteryModeLabel(batteryModePendingIndex);
-        if (!controlCenter.tlpControlsEnabled) return "Power disabled";
-        if (!batteryTlpChecked) return "Checking power...";
-        if (!batteryTlpAvailable) return "Service not found";
-        return batteryModeLabel(batteryModeIndex);
     }
 
     function rollbackBatteryMode(message) {
         batteryModeBusy = false;
         batteryModeError = message;
-        batteryModeInfoMessage = "";
-        batteryModeDragOffset = 0;
         setBatteryModeVisualIndex(batteryModeAppliedIndex, true);
     }
 
@@ -445,7 +402,6 @@ Item {
 
         if (nextIndex === batteryModeAppliedIndex) {
             batteryModeError = "";
-            batteryModeInfoMessage = batteryModeLabel(nextIndex) + " active.";
             setBatteryModeVisualIndex(nextIndex, true);
             return;
         }
@@ -454,7 +410,6 @@ Item {
         batteryModeBusy = true;
         batteryModeSetterRunning = true;
         batteryModeError = "";
-        batteryModeInfoMessage = "Applying " + batteryModeLabel(nextIndex) + "...";
         setBatteryModeVisualIndex(nextIndex, true);
         batteryModeLastCommandOutput = "";
         const permissionMode = trimString(userConfig.tlpPermissionMode);
@@ -478,25 +433,8 @@ Item {
 
         batteryModeAppliedIndex = batteryModePendingIndex;
         batteryModeError = "";
-        batteryModeInfoMessage = batteryModeLabel(batteryModeAppliedIndex) + " active.";
         setBatteryModeVisualIndex(batteryModeAppliedIndex, true);
         refreshBatteryModeState();
-    }
-
-    function toggleNightLight() {
-        if (nightLightBusy)
-            return;
-
-        nightLightBusy = true;
-        if (nightLightEnabled) {
-            nightLightDisableProcess.running = true;
-        } else {
-            nightLightEnableProcess.running = true;
-        }
-    }
-
-    function toggleFocus() {
-        UserConfig.doNotDisturb = !UserConfig.doNotDisturb;
     }
 
     function clearWifiPrompt() {
@@ -1239,11 +1177,6 @@ Item {
             event.accepted = true;
             return;
         }
-        if (controlCenter.batteryDrawerOpen) {
-            controlCenter.setBatteryDrawerOpen(false);
-            event.accepted = true;
-            return;
-        }
         if (controlCenter.powerViewActive) {
             controlCenter.powerViewActive = false;
             controlCenter.closeRequested();
@@ -1269,11 +1202,6 @@ Item {
                 event.accepted = true;
                 return;
             }
-            if (controlCenter.batteryDrawerOpen) {
-                controlCenter.setBatteryDrawerOpen(false);
-                event.accepted = true;
-                return;
-            }
             if (controlCenter.powerViewActive) {
                 controlCenter.powerViewActive = false;
                 controlCenter.closeRequested();
@@ -1294,16 +1222,6 @@ Item {
                 event.accepted = true;
             } else if (event.key === Qt.Key_4) {
                 controlCenter.triggerShutdown();
-                event.accepted = true;
-            }
-        } else if (controlCenter.batteryDrawerOpen && controlCenter.tlpControlsEnabled) {
-            if (event.key === Qt.Key_Left || event.key === Qt.Key_H) {
-                controlCenter.setBatteryModeVisualIndex(controlCenter.batteryModeIndex - 1, true);
-                controlCenter.applyBatteryMode(controlCenter.batteryModeIndex);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_Right || event.key === Qt.Key_L) {
-                controlCenter.setBatteryModeVisualIndex(controlCenter.batteryModeIndex + 1, true);
-                controlCenter.applyBatteryMode(controlCenter.batteryModeIndex);
                 event.accepted = true;
             }
         }
@@ -1338,8 +1256,6 @@ Item {
             displayedVolume = localVolume;
             displayedMicVolume = localMicVolume;
             powerViewActive = false;
-            batteryDrawerOpen = false;
-            batteryDrawerProgress = 0;
             closeConnectivityPanels();
         }
     }
@@ -1395,93 +1311,6 @@ Item {
             easing.type: Easing.OutCubic
         }
     }
-
-    Behavior on batteryDrawerProgress {
-        enabled: !controlCenter.batteryDrawerDragging
-
-        NumberAnimation {
-            id: batteryDrawerProgressAnimation
-            duration: 140
-            easing.type: Easing.OutCubic
-        }
-    }
-
-    Process {
-        id: nightLightEnableProcess
-        command: [
-            "sh",
-            "-c",
-            controlCenter.hyprlandNightLight
-                ? "temp=\"$1\"\n"
-                    + "if ! command -v hyprsunset >/dev/null 2>&1; then exit 127; fi\n"
-                    + "if hyprctl hyprsunset temperature \"$temp\" >/dev/null 2>&1; then exit 0; fi\n"
-                    + "if ! command -v pgrep >/dev/null 2>&1 || ! pgrep -x hyprsunset >/dev/null 2>&1; then\n"
-                    + "  if command -v setsid >/dev/null 2>&1; then\n"
-                    + "    setsid hyprsunset >/dev/null 2>&1 < /dev/null &\n"
-                    + "  else\n"
-                    + "    nohup hyprsunset >/dev/null 2>&1 < /dev/null &\n"
-                    + "  fi\n"
-                    + "fi\n"
-                    + "i=0\n"
-                    + "while [ \"$i\" -lt 24 ]; do\n"
-                    + "  if hyprctl hyprsunset temperature \"$temp\" >/dev/null 2>&1; then exit 0; fi\n"
-                    + "  i=$((i + 1))\n"
-                    + "  sleep 0.04\n"
-                    + "done\n"
-                    + "exit 1"
-                : "temp=\"$1\"\n"
-                    + "if ! command -v gammastep >/dev/null 2>&1; then exit 127; fi\n"
-                    + "gammastep -m wayland -P -O \"$temp\" >/dev/null 2>&1",
-            "tide-night-light",
-            controlCenter.nightLightTemperature.toString()
-        ]
-        running: false
-
-        onExited: function(exitCode) {
-            if (exitCode === 0) {
-                controlCenter.nightLightBusy = false;
-                controlCenter.nightLightEnabled = true;
-                controlCenter.nightLightModeChanged(true);
-                controlCenter.requestNotification("Night Light", "Night Light enabled", controlCenter.nightLightTemperature + "K");
-                return;
-            }
-
-            controlCenter.nightLightBusy = false;
-            controlCenter.nightLightEnabled = false;
-            controlCenter.nightLightModeChanged(false);
-            controlCenter.requestNotification("Night Light", "Night Light unavailable",
-                controlCenter.hyprlandNightLight
-                    ? "Install hyprsunset to use Night Light."
-                    : "Install gammastep to use Night Light.");
-        }
-    }
-
-    Process {
-        id: nightLightDisableProcess
-        command: [
-            "sh",
-            "-c",
-            controlCenter.hyprlandNightLight
-                ? "hyprctl hyprsunset identity >/dev/null 2>&1 || true"
-                : "if ! command -v gammastep >/dev/null 2>&1; then exit 127; fi\n"
-                    + "gammastep -m wayland -x >/dev/null 2>&1 || true"
-        ]
-        running: false
-
-        onExited: function(exitCode) {
-            controlCenter.nightLightBusy = false;
-            controlCenter.nightLightEnabled = false;
-            controlCenter.nightLightModeChanged(false);
-            if (exitCode === 127)
-                controlCenter.requestNotification("Night Light", "Night Light unavailable",
-                    controlCenter.hyprlandNightLight
-                        ? "Install hyprsunset to use Night Light."
-                        : "Install gammastep to use Night Light.");
-            else
-                controlCenter.requestNotification("Night Light", "Night Light disabled", "");
-        }
-    }
-
 
     Process {
         id: shutdownProcess
@@ -1695,13 +1524,6 @@ Item {
             if (controlCenter.bluetoothPairAndConnectPath.length === 0)
                 controlCenter.bluetoothInfoMessage = "";
         }
-    }
-
-    Timer {
-        id: batteryDrawerSettleTimer
-        interval: 180
-        repeat: false
-        onTriggered: controlCenter.batteryDrawerSettling = false
     }
 
     Connections {
@@ -1923,6 +1745,19 @@ Item {
                             color: StyleTokens.textPrimary
                             font.pixelSize: 13
                             font.family: controlCenter.iconFontFamily
+                        }
+
+                        Rectangle {
+                            visible: headerButton.modelData.action === "notifications"
+                                && controlCenter.unreadNotificationCount > 0
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.topMargin: 2
+                            anchors.rightMargin: 3
+                            width: 6
+                            height: 6
+                            radius: 3
+                            color: StyleTokens.accent
                         }
 
                         MouseArea {
@@ -2249,486 +2084,10 @@ Item {
         Item {
             id: batteryDrawer
             readonly property real cardWidth: (width - connectivityCardsRow.spacing) / 2
-            readonly property real modeSlotWidth: 44
-            readonly property real openDistance: controlCenter.drawerOpenDistance
 
             width: parent.width
             height: controlCenter.batteryModeCardHeight
             clip: true
-
-            Rectangle {
-                id: batteryModeCard
-                anchors.left: parent.left
-                y: -height + controlCenter.batteryDrawerProgress * height
-                width: batteryDrawer.cardWidth
-                height: controlCenter.batteryModeCardHeight
-                radius: 10
-                color: StyleTokens.clearBlack
-                visible: false
-                opacity: controlCenter.tlpControlsEnabled ? Math.min(1, controlCenter.batteryDrawerProgress * 1.35) : 0
-                clip: true
-
-                MatteSurface {
-                    anchors.fill: parent
-                    radius: parent.radius
-                    hovered: controlCenter.batteryModeSliderDragging
-                }
-
-                Row {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 14
-                    anchors.top: parent.top
-                    anchors.topMargin: 11
-                    spacing: 6
-
-                    Text {
-                        text: "Battery"
-                        color: textPrimary
-                        font.pixelSize: 13
-                        font.family: textFontFamily
-                        font.weight: Font.DemiBold
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    Rectangle {
-                        visible: SystemServices.batteryConservationMode
-                        width: capBadgeText.implicitWidth + 8
-                        height: 15
-                        radius: 7
-                        color: StyleTokens.moduleHover
-                        border.color: cardAccent
-                        border.width: 1
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Text {
-                            id: capBadgeText
-                            anchors.centerIn: parent
-                            text: "80%"
-                            color: cardAccent
-                            font.pixelSize: 9
-                            font.family: textFontFamily
-                            font.weight: Font.DemiBold
-                        }
-                    }
-                }
-
-                Row {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 10
-                    anchors.top: parent.top
-                    anchors.topMargin: 10
-                    spacing: 4
-
-                    Text {
-                        width: Math.max(0, batteryModeCard.width - 105)
-                        text: controlCenter.batteryModeError.length > 0
-                            ? controlCenter.batteryModeError
-                            : (controlCenter.batteryModeInfoMessage.length > 0
-                                ? controlCenter.batteryModeInfoMessage
-                                : controlCenter.batteryModeStatusText)
-                        color: controlCenter.batteryModeError.length > 0 ? StyleTokens.error : StyleTokens.textMuted
-                        horizontalAlignment: Text.AlignRight
-                        font.pixelSize: 9
-                        font.family: textFontFamily
-                        font.weight: Font.Medium
-                        elide: Text.ElideRight
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    Text {
-                        text: "›"
-                        color: controlCenter.powerPanelOpen ? cardAccent : StyleTokens.textSubtle
-                        font.pixelSize: 16
-                        font.family: textFontFamily
-                        font.weight: Font.DemiBold
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                }
-
-                MouseArea {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    height: 28
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: controlCenter.toggleConnectivityOverlay("power")
-                }
-
-                Item {
-                    id: batteryModeCarousel
-                    anchors.left: parent.left
-                    anchors.leftMargin: 12
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 8
-                    height: 34
-                    clip: true
-
-                    Item {
-                        id: batteryModeItems
-                        width: batteryDrawer.modeSlotWidth * 3
-                        height: parent.height
-                        x: batteryModeCarousel.width / 2
-                            - batteryDrawer.modeSlotWidth / 2
-                            - controlCenter.batteryModeIndex * batteryDrawer.modeSlotWidth
-                            + controlCenter.batteryModeDragOffset
-
-                        Behavior on x {
-                            enabled: !controlCenter.batteryModeSliderDragging
-
-                            NumberAnimation {
-                                duration: 110
-                                easing.type: Easing.OutCubic
-                            }
-                        }
-
-                        Repeater {
-                            model: 3
-
-                            delegate: Item {
-                                x: index * batteryDrawer.modeSlotWidth
-                                width: batteryDrawer.modeSlotWidth
-                                height: batteryModeCarousel.height
-                                opacity: index === controlCenter.batteryModeIndex ? 1 : 0.42
-
-                                Behavior on opacity {
-                                    NumberAnimation {
-                                        duration: 80
-                                        easing.type: Easing.OutCubic
-                                    }
-                                }
-
-                                Rectangle {
-                                    anchors.centerIn: parent
-                                    width: index === controlCenter.batteryModeIndex ? 32 : 28
-                                    height: index === controlCenter.batteryModeIndex ? 28 : 24
-                                    radius: 12
-                                    color: index === controlCenter.batteryModeIndex ? cardAccent : StyleTokens.track
-
-                                    Behavior on width {
-                                        NumberAnimation {
-                                            duration: 80
-                                            easing.type: Easing.OutCubic
-                                        }
-                                    }
-
-                                    Behavior on height {
-                                        NumberAnimation {
-                                            duration: 80
-                                            easing.type: Easing.OutCubic
-                                        }
-                                    }
-
-                                    Behavior on color {
-                                        ColorAnimation {
-                                            duration: 80
-                                        }
-                                    }
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: controlCenter.batteryModeGlyphs[index]
-                                        color: index === controlCenter.batteryModeIndex ? StyleTokens.textOnAccent : StyleTokens.textDim
-                                        font.pixelSize: index === controlCenter.batteryModeIndex ? 15 : 13
-                                        font.family: iconFontFamily
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.bottom: parent.bottom
-                        width: 22
-                        height: 2
-                        radius: 1
-                        color: cardAccent
-                        opacity: 0.75
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        property real startX: 0
-                        property int startIndex: 1
-                        property bool moved: false
-
-                        function clampDrag(delta) {
-                            return Math.max(-batteryDrawer.modeSlotWidth, Math.min(batteryDrawer.modeSlotWidth, delta));
-                        }
-
-                        onPressed: function(mouse) {
-                            startX = mouse.x;
-                            startIndex = controlCenter.batteryModeIndex;
-                            moved = false;
-                            controlCenter.batteryModeInfoMessage = "";
-                            controlCenter.batteryModeError = "";
-                            controlCenter.batteryModeSliderDragging = true;
-                            controlCenter.batteryModeDragOffset = 0;
-                        }
-
-                        onPositionChanged: function(mouse) {
-                            if (!pressed)
-                                return;
-
-                            const delta = mouse.x - startX;
-                            if (!moved && Math.abs(delta) < 4)
-                                return;
-
-                            moved = true;
-                            controlCenter.batteryModeDragOffset = clampDrag(delta);
-                        }
-
-                        onReleased: function(mouse) {
-                            const delta = mouse.x - startX;
-                            let nextIndex = startIndex;
-
-                            if (delta <= -18)
-                                nextIndex = Math.min(2, startIndex + 1);
-                            else if (delta >= 18)
-                                nextIndex = Math.max(0, startIndex - 1);
-                            else if (mouse.x < width / 2 - batteryDrawer.modeSlotWidth / 2)
-                                nextIndex = Math.max(0, startIndex - 1);
-                            else if (mouse.x > width / 2 + batteryDrawer.modeSlotWidth / 2)
-                                nextIndex = Math.min(2, startIndex + 1);
-
-                            controlCenter.batteryModeSliderDragging = false;
-                            controlCenter.batteryModeDragOffset = 0;
-                            controlCenter.selectBatteryMode(nextIndex);
-                        }
-
-                        onCanceled: {
-                            controlCenter.batteryModeSliderDragging = false;
-                            controlCenter.batteryModeDragOffset = 0;
-                            controlCenter.setBatteryModeVisualIndex(controlCenter.batteryModeAppliedIndex, true);
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                id: quickTogglesCard
-                visible: false
-                x: controlCenter.tlpControlsEnabled ? batteryDrawer.cardWidth + connectivityCardsRow.spacing : 0
-                y: batteryModeCard.y
-                width: batteryDrawer.cardWidth
-                height: controlCenter.batteryModeCardHeight
-                radius: 10
-                color: StyleTokens.clearBlack
-                opacity: Math.min(1, controlCenter.batteryDrawerProgress * 1.35)
-                clip: true
-                readonly property real toggleIconTop: 12
-                readonly property real toggleIconBoxHeight: 32
-                readonly property real toggleLabelTop: 55
-
-                Behavior on x {
-                    NumberAnimation {
-                        duration: 110
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                MatteSurface {
-                    anchors.fill: parent
-                    radius: parent.radius
-                    hovered: focusButtonMouse.containsMouse || nightLightButtonMouse.containsMouse
-                    pressed: focusButtonMouse.pressed || nightLightButtonMouse.pressed
-                }
-
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 1
-                    height: parent.height - 34
-                    radius: 1
-                    color: StyleTokens.withAlpha(StyleTokens.track, 0.4)
-                }
-
-                Item {
-                    id: focusButton
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: parent.width / 2
-                    property real slashProgress: controlCenter.focusEnabled ? 1 : 0
-                    property color iconColor: controlCenter.focusEnabled ? cardAccent : StyleTokens.textSecondary
-
-                    Behavior on slashProgress {
-                        NumberAnimation {
-                            duration: 500
-                            easing.type: Easing.OutCubic
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        radius: 10
-                        color: focusButtonMouse.containsMouse ? StyleTokens.withAlpha(StyleTokens.track, 0.3) : StyleTokens.clearBlack
-
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Math.round(StyleTokens.durationFast * 0.6)
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: focusButtonMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: controlCenter.toggleFocus()
-                    }
-
-                    Item {
-                        id: focusIconSlot
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        y: quickTogglesCard.toggleIconTop
-                        width: parent.width
-                        height: quickTogglesCard.toggleIconBoxHeight
-
-                        Shape {
-                            id: focusIcon
-                            anchors.centerIn: parent
-                            width: 24
-                            height: 24
-                            scale: focusButtonMouse.pressed ? 0.94 : 1.0
-                            preferredRendererType: Shape.CurveRenderer
-
-                            Behavior on scale {
-                                NumberAnimation {
-                                    duration: 70
-                                    easing.type: Easing.OutCubic
-                                }
-                            }
-
-                            ShapePath {
-                                fillColor: StyleTokens.transparent
-                                strokeColor: focusButton.iconColor
-                                strokeWidth: 2
-                                capStyle: ShapePath.RoundCap
-                                joinStyle: ShapePath.RoundJoin
-
-                                PathSvg {
-                                    path: "M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"
-                                }
-                            }
-
-                            ShapePath {
-                                fillColor: StyleTokens.transparent
-                                strokeColor: focusButton.iconColor
-                                strokeWidth: 2.1
-                                capStyle: ShapePath.RoundCap
-                                joinStyle: ShapePath.RoundJoin
-
-                                PathMove {
-                                    x: 1
-                                    y: 1
-                                }
-
-                                PathLine {
-                                    x: 1 + 22 * focusButton.slashProgress
-                                    y: 1 + 22 * focusButton.slashProgress
-                                }
-                            }
-                        }
-                    }
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        y: quickTogglesCard.toggleLabelTop
-                        width: parent.width
-                        text: "Silent"
-                        color: controlCenter.focusEnabled ? cardAccent : StyleTokens.textMuted
-                        horizontalAlignment: Text.AlignHCenter
-                        font.pixelSize: 10
-                        font.family: textFontFamily
-                        font.weight: Font.Medium
-                        elide: Text.ElideRight
-                    }
-                }
-
-                Item {
-                    id: nightLightButton
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: parent.width / 2
-
-                    MouseArea {
-                        id: nightLightButtonMouse
-                        anchors.fill: parent
-                        enabled: !controlCenter.nightLightBusy
-                        hoverEnabled: true
-                        onClicked: controlCenter.toggleNightLight()
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        radius: 10
-                        color: nightLightButtonMouse.containsMouse ? StyleTokens.withAlpha(StyleTokens.track, 0.3) : StyleTokens.clearBlack
-
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Math.round(StyleTokens.durationFast * 0.6)
-                            }
-                        }
-                    }
-
-                    Item {
-                        id: nightLightIconSlot
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        y: quickTogglesCard.toggleIconTop
-                        width: parent.width
-                        height: quickTogglesCard.toggleIconBoxHeight
-
-                        Text {
-                            anchors.centerIn: parent
-                            anchors.verticalCenterOffset: 1
-                            text: controlCenter.nightLightGlyph
-                            color: StyleTokens.withAlpha(StyleTokens.black, 0.27)
-                            font.pixelSize: 29
-                            font.family: iconFontFamily
-                            scale: nightLightButtonMouse.pressed ? 0.94 : 1.0
-                            opacity: controlCenter.nightLightBusy ? 0.1 : 0.22
-                        }
-
-                        Text {
-                            id: nightLightIcon
-                            anchors.centerIn: parent
-                            text: controlCenter.nightLightGlyph
-                            color: controlCenter.nightLightEnabled ? cardAccent : StyleTokens.textSecondary
-                            font.pixelSize: 29
-                            font.family: iconFontFamily
-                            scale: nightLightButtonMouse.pressed ? 0.94 : 1.0
-                            opacity: controlCenter.nightLightBusy ? 0.5 : 1.0
-
-                            Behavior on scale {
-                                NumberAnimation {
-                                    duration: 70
-                                    easing.type: Easing.OutCubic
-                                }
-                            }
-                        }
-                    }
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        y: quickTogglesCard.toggleLabelTop
-                        width: parent.width
-                        text: "Night mode"
-                        color: controlCenter.nightLightEnabled ? cardAccent : StyleTokens.textMuted
-                        horizontalAlignment: Text.AlignHCenter
-                        font.pixelSize: 10
-                        font.family: textFontFamily
-                        font.weight: Font.Medium
-                        elide: Text.ElideRight
-                        opacity: controlCenter.nightLightBusy ? 0.5 : 1.0
-                    }
-                }
-            }
 
             SystemTrayCard {
                 id: drawerSystemTrayCard
@@ -2746,102 +2105,6 @@ Item {
                 width: batteryDrawer.cardWidth
                 height: controlCenter.batteryModeCardHeight
                 clip: true
-            }
-
-            Rectangle {
-                id: batteryDrawerTunnelShade
-                visible: false
-                anchors.left: parent.left
-                anchors.top: parent.top
-                width: parent.width
-                height: Math.max(1, controlCenter.batteryDrawerContentGap * 0.35)
-                z: 6
-                opacity: Math.min(0.34, controlCenter.batteryDrawerProgress * 0.45)
-                gradient: Gradient {
-                    GradientStop {
-                        position: 0
-                        color: StyleTokens.withAlpha(StyleTokens.black, 0.6)
-                    }
-                    GradientStop {
-                        position: 1
-                        color: StyleTokens.clearBlack
-                    }
-                }
-            }
-
-            Item {
-                id: batteryDrawerHandle
-                visible: false
-                anchors.left: parent.left
-                anchors.right: parent.right
-                y: controlCenter.batteryDrawerProgress * batteryDrawer.openDistance
-                height: controlCenter.batteryDrawerHandleHeight
-                z: 10
-
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: 8
-                    width: 48
-                    height: 5
-                    radius: 3
-                    color: controlCenter.batteryDrawerOpen ? cardAccent : StyleTokens.track
-                    opacity: 0.88
-                }
-
-                MouseArea {
-                    id: batteryDrawerHandleArea
-                    anchors.fill: parent
-                    property real pointerGrabOffset: 0
-                    property bool moved: false
-                    property bool suppressClick: false
-
-                    function pointerY(mouse) {
-                        return batteryDrawerHandle.mapToItem(controlCenter, mouse.x, mouse.y).y;
-                    }
-
-                    function itemTop(item) {
-                        return item.mapToItem(controlCenter, 0, 0).y;
-                    }
-
-                    onPressed: function(mouse) {
-                        batteryDrawerSettleTimer.stop();
-                        controlCenter.batteryDrawerSettling = false;
-                        pointerGrabOffset = pointerY(mouse) - itemTop(batteryDrawerHandle);
-                        moved = false;
-                        suppressClick = false;
-                        controlCenter.batteryDrawerDragging = true;
-                    }
-
-                    onPositionChanged: function(mouse) {
-                        const nextHandleY = pointerY(mouse) - pointerGrabOffset - itemTop(batteryDrawer);
-                        if (!moved && Math.abs(nextHandleY - batteryDrawerHandle.y) < 4)
-                            return;
-
-                        moved = true;
-                        suppressClick = true;
-                        controlCenter.batteryDrawerProgress = controlCenter.clamp01(nextHandleY / batteryDrawer.openDistance);
-                    }
-
-                    onReleased: {
-                        controlCenter.batteryDrawerDragging = false;
-                        if (moved)
-                            controlCenter.setBatteryDrawerOpen(controlCenter.batteryDrawerProgress >= 0.55);
-                    }
-
-                    onCanceled: {
-                        controlCenter.batteryDrawerDragging = false;
-                        controlCenter.setBatteryDrawerOpen(controlCenter.batteryDrawerOpen);
-                    }
-
-                    onClicked: {
-                        if (suppressClick) {
-                            suppressClick = false;
-                            return;
-                        }
-
-                        controlCenter.toggleBatteryDrawer();
-                    }
-                }
             }
         }
 

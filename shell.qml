@@ -24,7 +24,6 @@ Scope {
     readonly property var activePrivacyApps: SystemServices.activePrivacyApps
     // Do-not-disturb, persisted in userconfig.json ("doNotDisturb").
     readonly property bool focusEnabled: UserConfig.doNotDisturb
-    property bool nightLightEnabled: false
     property bool shuttingDown: false
     property bool islandAutoHideRuntimeEnabled: true
 
@@ -67,6 +66,13 @@ Scope {
     property var notificationUpdatedAt: ({})
     property var transientNotificationShownAt: ({})
     property int internalNotificationSerial: 0
+    // Action key per notification id, waiting for its activation token.
+    property var pendingNotificationActions: ({})
+    // Unread: notifications that reached the history since the notification center was last
+    // opened (on any screen) and are still around. Transient ones and tide's own notices don't
+    // count; ones held back by do-not-disturb do.
+    property var unreadNotificationIds: ({})
+    property int unreadNotificationCount: 0
 
     NotificationServer {
         id: notificationServer
@@ -96,6 +102,33 @@ Scope {
         onTriggered: shellRoot.expireTransientNotifications()
     }
 
+    Connections {
+        target: NotificationActivation
+
+        function onTokenReady(notificationId, token) {
+            const actionKey = shellRoot.pendingNotificationActions[notificationId];
+            if (actionKey === undefined)
+                return;
+            delete shellRoot.pendingNotificationActions[notificationId];
+            const action = shellRoot.notificationAction(notificationId, actionKey);
+            if (action)
+                action.invoke();
+        }
+    }
+
+    function setNotificationUnread(id, unread) {
+        if (unread)
+            unreadNotificationIds[id] = true;
+        else
+            delete unreadNotificationIds[id];
+        unreadNotificationCount = Object.keys(unreadNotificationIds).length;
+    }
+
+    function markNotificationsRead() {
+        unreadNotificationIds = ({});
+        unreadNotificationCount = 0;
+    }
+
     // Ids for tide's own feedback notices; negative so they never collide with daemon ids.
     function nextInternalNotificationId() {
         internalNotificationSerial += 1;
@@ -120,7 +153,6 @@ Scope {
             imagePath: notification.image,
             urgency: Number(notification.urgency),
             senderPid: Number.isFinite(senderPid) && senderPid > 0 ? Math.floor(senderPid) : 0,
-            desktopEntry: notification.desktopEntry || "",
             transient: !!notification.transient
         };
     }
@@ -160,8 +192,11 @@ Scope {
 
         // Notifications re-emitted after a Quickshell reload go to the history only.
         presentNotification(notification, notification.lastGeneration ? "history" : "popup");
-        if (!notification.lastGeneration)
+        if (!notification.lastGeneration) {
             supersedeDuplicates(notification);
+            if (!notification.transient)
+                setNotificationUnread(id, true);
+        }
         trimTrackedNotifications();
     }
 
@@ -229,6 +264,9 @@ Scope {
         delete trackedNotifications[id];
         delete notificationUpdatedAt[id];
         delete transientNotificationShownAt[id];
+        delete pendingNotificationActions[id];
+        if (unreadNotificationIds[id])
+            setNotificationUnread(id, false);
         shellRoot.forEachWindow((window) => {
             if (window.removeNotification)
                 window.removeNotification(id);
@@ -264,18 +302,27 @@ Scope {
         });
     }
 
-    function invokeNotificationAction(id, actionKey) {
+    function notificationAction(id, actionKey) {
         const notification = trackedNotifications[id];
-        if (!notification)
-            return false;
-        const notificationActions = notification.actions || [];
+        const notificationActions = notification ? notification.actions || [] : [];
         for (let i = 0; i < notificationActions.length; i++) {
-            if (notificationActions[i].identifier === actionKey) {
-                notificationActions[i].invoke();
-                return true;
-            }
+            if (notificationActions[i].identifier === actionKey)
+                return notificationActions[i];
         }
-        return false;
+        return null;
+    }
+
+    // Runs an action once an xdg-activation token for `window` (the clicked island) has been
+    // sent to the app, so the compositor lets the app raise its window. Returns whether the
+    // notification has that action; the action itself runs a moment later.
+    function invokeNotificationAction(id, actionKey, window) {
+        if (!notificationAction(id, actionKey))
+            return false;
+        if (pendingNotificationActions[id] === undefined) {
+            pendingNotificationActions[id] = actionKey;
+            NotificationActivation.requestToken(window || null, id);
+        }
+        return true;
     }
 
     function notificationIsResident(id) {

@@ -13,6 +13,10 @@ import "qml/workspace"
 PanelWindow {
     id: root
     property var shellRootController: null
+    // Shell-wide unread notifications (shell.qml); shown on the resting island and the CC bell.
+    readonly property int unreadNotificationCount: shellRootController && shellRootController.unreadNotificationCount
+        ? shellRootController.unreadNotificationCount
+        : 0
     property string overviewPhase: "closed"
     property bool overviewPreloading: false
     readonly property bool overviewPreparing: overviewPhase === "preparing"
@@ -67,7 +71,14 @@ PanelWindow {
         ? !!shellRootController.privacyActive
         : SystemServices.privacyActive
     property bool autoHideVisible: false
-    property bool autoHidePointerInside: false
+    // The pointer over any island surface (capsule and its content, satellites, detail popups)
+    // or the reveal strip. Comes from the layer-wide HoverHandler, which child content cannot
+    // obscure the way it does a MouseArea's containsMouse.
+    readonly property bool autoHidePointerInside: root.pointerOverIsland() || autoHideRevealArea.containsMouse
+    onAutoHidePointerInsideChanged: {
+        if (!autoHidePointerInside)
+            scheduleAutoHide();
+    }
     property bool autoHideForcedHidden: false
     property string autoHideRevealSource: "none"
 
@@ -426,7 +437,7 @@ PanelWindow {
         && !root.overviewVisible
         && !root.connectivityPromptActive
         && !root.anyConnectivityDetailMounted
-    readonly property bool autoHideMustShow: !autoHideRestingState
+    readonly property bool autoHideMustShow: (!autoHideRestingState && !islandContainer.transientSlideOut)
         || restingActivityPinned
         || root.overviewVisible
         || root.connectivityPromptActive
@@ -528,6 +539,9 @@ PanelWindow {
     }
 
     function showAutoHiddenIsland(source) {
+        // Revealed (hover, edge, IPC...) while an OSD slides away: back to the resting layout.
+        if (islandContainer.transientSlideOut)
+            islandContainer.cancelTransientSlideOut();
         setAutoHideRevealSource(source);
         autoHideForcedHidden = false;
         if (!autoHideEnabled) {
@@ -541,6 +555,8 @@ PanelWindow {
     }
 
     function scheduleAutoHide() {
+        if (islandContainer.transientSlideOut)
+            return;
         if (!autoHideEnabled) {
             autoHideHideTimer.stop();
             autoHideVisible = true;
@@ -583,6 +599,23 @@ PanelWindow {
         autoHideVisible = false;
     }
 
+    // Whether the island would hide as soon as it is back at rest; then an OSD that revealed it
+    // can slide it away directly instead of morphing back to the clock first.
+    function transientCanSlideOut() {
+        return (autoHideEnabled || autoHideForcedHidden)
+            && !autoHidePointerInside
+            && !root.overviewVisible
+            && !root.connectivityPromptActive
+            && !root.anyConnectivityDetailMounted
+            && !(userConfig.islandAutoHideKeepActivities
+                && (islandContainer.restingMusicVisible || islandContainer.restingBatteryVisible));
+    }
+
+    onAutoHideProgressChanged: {
+        if (islandContainer.transientSlideOut && autoHideProgress <= 0.001)
+            islandContainer.finishTransientSlideOut();
+    }
+
     function toggleAutoHiddenIsland() {
         if (autoHideTargetVisible)
             hideAutoHiddenIsland(false);
@@ -594,9 +627,9 @@ PanelWindow {
         showAutoHiddenIsland("manual");
     }
 
+    // An explicit hide request wins over the pointer resting on the island.
     function hideIslandWindow() {
-        autoHidePointerInside = false;
-        hideAutoHiddenIsland(false);
+        hideAutoHiddenIsland(autoHideEnabled && autoHideCanHideNow);
     }
 
     function toggleIslandWindow() {
@@ -833,20 +866,22 @@ PanelWindow {
             islandContainer.removeNotificationById(id);
     }
 
+    // The action runs shortly after, once the app has its activation token (see shell.qml).
     function invokeNotificationAction(id, actionKey) {
         return !!(shellRootController && shellRootController.invokeNotificationAction
-            && shellRootController.invokeNotificationAction(id, actionKey));
+            && shellRootController.invokeNotificationAction(id, actionKey, islandContainer.Window.window));
     }
 
     // Body click, the "default" pill and history clicks: run the app's default action (if it
-    // has one), then focus its window. `details` is captured by the caller beforehand, because
-    // invoking can close the notification and clear the popup synchronously.
+    // has one; invoking closes a non-resident notification), then focus its window where the
+    // compositor needs tide's help (niri, Hyprland). `details` is captured by the caller
+    // beforehand, because the popup may be cleared in the meantime.
     function activateNotification(details, dismissAfter) {
-        root.invokeNotificationAction(details.id, "default");
-        SystemServices.focusSenderWindow(details.appName, details.senderPid, details.summary, details.body, details.desktopEntry);
+        const invoked = root.invokeNotificationAction(details.id, "default");
+        SystemServices.focusSenderWindow(details.appName, details.senderPid, details.summary, details.body);
         const resident = !!(shellRootController && shellRootController.notificationIsResident
             && shellRootController.notificationIsResident(details.id));
-        if (dismissAfter && !resident)
+        if (dismissAfter && !invoked && !resident)
             root.dismissNotification(details.id);
     }
 
@@ -1344,7 +1379,6 @@ PanelWindow {
         property string notificationImagePath: ""
         property int notificationUrgency: 1
         property var notificationSenderPid: 0
-        property string notificationDesktopEntry: ""
         property bool notificationExpanded: false
         property bool isEmergencyAlert: false
         property real customCapsuleWidth: userConfig.islandWidth
@@ -1364,6 +1398,17 @@ PanelWindow {
         onIslandStateChanged: {
             if (islandState === "normal" || islandState === "custom" || islandState === "lyrics")
                 hoverExpandedActive = false;
+            if (islandState !== "split") {
+                osdRevealedHiddenIsland = false;
+                if (transientSlideOut) {
+                    // Something else (e.g. a notification) took over during the slide-out.
+                    transientSlideOut = false;
+                    root.showAutoHiddenIsland("state");
+                }
+            }
+            if (islandState === "notification_center" && root.shellRootController
+                    && root.shellRootController.markNotificationsRead)
+                root.shellRootController.markNotificationsRead();
         }
 
         // Pointer position over the whole layer surface. Hover-collapse uses it instead of
@@ -1373,6 +1418,33 @@ PanelWindow {
             id: islandHoverTracker
             onHoveredChanged: islandContainer.updateHoverCollapse()
             onPointChanged: islandContainer.updateHoverCollapse()
+        }
+
+        // The pointer over a notification popup (any of its content) holds the popup's timeout;
+        // leaving restarts it with what was left, but at least notificationResumeMinimumMs.
+        readonly property bool notificationPopupHovered: islandState === "notification"
+            && islandHoverTracker.hovered
+            && islandHoverTracker.point.position.x >= mainCapsule.x
+            && islandHoverTracker.point.position.x < mainCapsule.x + mainCapsule.width
+            && islandHoverTracker.point.position.y >= mainCapsule.y
+            && islandHoverTracker.point.position.y < mainCapsule.y + mainCapsule.height
+        readonly property int notificationResumeMinimumMs: 2000
+        property bool notificationTimeoutPaused: false
+        property int notificationTimeoutRemaining: 0
+        property real autoHideTimerStartedAt: 0
+
+        onNotificationPopupHoveredChanged: {
+            if (notificationPopupHovered) {
+                if (!autoHideTimer.running)
+                    return;
+                notificationTimeoutRemaining = Math.max(0, autoHideTimer.interval - (Date.now() - autoHideTimerStartedAt));
+                autoHideTimer.stop();
+                notificationTimeoutPaused = true;
+            } else if (notificationTimeoutPaused) {
+                notificationTimeoutPaused = false;
+                if (islandState === "notification")
+                    restartAutoHideTimer(Math.max(notificationTimeoutRemaining, notificationResumeMinimumMs));
+            }
         }
 
         function updateHoverCollapse() {
@@ -1553,8 +1625,6 @@ PanelWindow {
                 } else {
                     applyRestingVisuals();
                 }
-            } else if (restingState === "custom") {
-                syncCustomCapsuleWidth();
             }
         }
 
@@ -1581,7 +1651,7 @@ PanelWindow {
             currentArtUrl: islandContainer.currentArtUrl
             currentWorkspace: islandContainer.currentWs
             customSwipeActive: false
-            statsVisible: customSwipeLoader.active && root.autoHideProgress > 0.001
+            statsVisible: false
             lyricsCavaActive: islandContainer.restingMusicVisible && restingLayer.visible
                 && root.autoHideProgress > 0.001
 
@@ -1947,15 +2017,7 @@ PanelWindow {
                 .trim();
         }
 
-        function prepareRestingCapsuleGeometry() {
-            if (restingState === "custom")
-                syncCustomCapsuleWidth();
-            if (restingState === "lyrics")
-                syncLyricsCapsuleWidth();
-        }
-
         function applyRestingVisuals() {
-            prepareRestingCapsuleGeometry();
             swipeTransitionProgress = restingStateProgress(restingState);
         }
 
@@ -2030,12 +2092,47 @@ PanelWindow {
             mainCapsule.displayedWidth = mainCapsule.baseTargetWidth;
         }
 
+        // A volume/brightness OSD that revealed the hidden island slides it away still showing
+        // the OSD and only switches to the resting layout once it is out of sight.
+        property bool osdRevealedHiddenIsland: false
+        property bool transientSlideOut: false
+
+        function handleAutoHideTimeout() {
+            if (islandState === "split" && osdRevealedHiddenIsland && root.transientCanSlideOut()) {
+                transientSlideOut = true;
+                root.hideAutoHiddenIsland(true);
+                return;
+            }
+            smartRestoreState();
+        }
+
+        function finishTransientSlideOut() {
+            transientSlideOut = false;
+            osdRevealedHiddenIsland = false;
+            restoreRestingCapsule(true);
+        }
+
+        function cancelTransientSlideOut() {
+            transientSlideOut = false;
+            osdRevealedHiddenIsland = false;
+            restoreRestingCapsule();
+        }
+
         function restartAutoHideTimer(duration) {
-            autoHideTimer.interval = duration === undefined ? defaultAutoHideInterval : duration;
+            const interval = duration === undefined ? defaultAutoHideInterval : duration;
+            if (notificationPopupHovered) {
+                autoHideTimer.stop();
+                notificationTimeoutRemaining = interval;
+                notificationTimeoutPaused = true;
+                return;
+            }
+            autoHideTimer.interval = interval;
+            autoHideTimerStartedAt = Date.now();
             autoHideTimer.restart();
         }
 
         function stopAutoHideTimer() {
+            notificationTimeoutPaused = false;
             autoHideTimer.stop();
             autoHideTimer.interval = defaultAutoHideInterval;
         }
@@ -2125,6 +2222,15 @@ PanelWindow {
                     && icon !== systemState.brightnessStatusIcon(progress)) return;
             if (blocksTransientSplit) return;
 
+            if (transientSlideOut) {
+                // A new value while the previous OSD slides away: bring it back, still the OSD
+                // that revealed a hidden island.
+                transientSlideOut = false;
+                root.showAutoHiddenIsland("state");
+            } else if (islandState !== "split") {
+                osdRevealedHiddenIsland = !root.autoHideTargetVisible;
+            }
+
             const nextProgress = progress >= 0 ? progress : -1.0;
             const animateProgress = islandState === "split" && osdProgress >= 0 && nextProgress >= 0;
             const animateFromSide = currentTransientOriginSide();
@@ -2159,7 +2265,6 @@ PanelWindow {
                 imagePath: raw.imagePath || "",
                 urgency: typeof raw.urgency === "number" ? raw.urgency : 1,
                 senderPid: (typeof raw.senderPid === "number" && raw.senderPid > 0) ? raw.senderPid : 0,
-                desktopEntry: raw.desktopEntry || "",
                 transient: !!raw.transient
             };
         }
@@ -2210,7 +2315,6 @@ PanelWindow {
             notificationImagePath = record.imagePath;
             notificationUrgency = record.urgency;
             notificationSenderPid = record.senderPid;
-            notificationDesktopEntry = record.desktopEntry;
         }
 
         function notificationDetails() {
@@ -2219,8 +2323,7 @@ PanelWindow {
                 appName: notificationAppName,
                 senderPid: notificationSenderPid,
                 summary: notificationSummary,
-                body: notificationBody,
-                desktopEntry: notificationDesktopEntry
+                body: notificationBody
             };
         }
 
@@ -2254,7 +2357,6 @@ PanelWindow {
                 imagePath: record.imagePath,
                 urgency: record.urgency,
                 senderPid: record.senderPid,
-                desktopEntry: record.desktopEntry,
                 timestamp: new Date(),
                 count: count
             };
@@ -2338,7 +2440,6 @@ PanelWindow {
 
             if (!forceImmediate && shouldAnimateToSide) {
                 expandedByPlayerAutoOpen = false;
-                prepareRestingCapsuleGeometry();
                 swipeTransitionProgress = restingStateProgress(normalizedRestingState);
                 stopAutoHideTimer();
                 sideTransientRestoreTimer.restart();
@@ -2346,7 +2447,6 @@ PanelWindow {
             }
 
             abortSideTransientMode();
-            prepareRestingCapsuleGeometry();
             islandState = normalizedRestingState;
             clearTransientCapsule();
             applyRestingVisuals();
@@ -2515,7 +2615,7 @@ PanelWindow {
             restartAutoHideTimer();
         }
 
-        Timer { id: autoHideTimer; interval: islandContainer.defaultAutoHideInterval; onTriggered: islandContainer.smartRestoreState() }
+        Timer { id: autoHideTimer; interval: islandContainer.defaultAutoHideInterval; onTriggered: islandContainer.handleAutoHideTimeout() }
         Timer {
             id: islandTimerTick
             interval: 1000
@@ -2544,7 +2644,6 @@ PanelWindow {
             onTriggered: {
                 islandContainer.workspaceOriginSide = "none";
                 islandContainer.splitOriginSide = "none";
-                islandContainer.prepareRestingCapsuleGeometry();
                 islandContainer.islandState = islandContainer.normalizeRestingState(islandContainer.restingState);
                 islandContainer.clearTransientCapsule();
                 islandContainer.applyRestingVisuals();
@@ -2589,17 +2688,6 @@ PanelWindow {
             }
         }
 
-        function syncCustomCapsuleWidth() {
-            const view = customSwipeLoader.item;
-            if (!view) return;
-            customCapsuleWidth = Math.max(220, Math.min(root.width - 48, view.preferredWidth));
-        }
-
-        function syncLyricsCapsuleWidth() {
-            const view = lyricsSwipeLoader.item;
-            if (!view) return;
-            lyricsCapsuleWidth = Math.max(220, Math.min(root.width - 48, view.preferredWidth));
-        }
 
         onCurrentTrackChanged: playerCardDismissed = false
 
@@ -2784,8 +2872,6 @@ PanelWindow {
                 }
             }
             Behavior on height {
-                enabled: !(controlCenterLoader.item && controlCenterLoader.item.batteryDrawerMoving)
-
                 NumberAnimation {
                     duration: mainCapsule.morphDuration
                     easing.type: Easing.OutQuint
@@ -2899,7 +2985,6 @@ PanelWindow {
 
                 onEntered: {
                     if (root.autoHideEnabled) {
-                        root.autoHidePointerInside = true;
                         root.showAutoHiddenIsland();
                     }
                     // Hovering a notification popup never expands the island.
@@ -2911,7 +2996,6 @@ PanelWindow {
 
                 onExited: {
                     if (root.autoHideEnabled) {
-                        root.autoHidePointerInside = false;
                         root.scheduleAutoHide();
                     }
                     if (root.hoverExpandEnabled)
@@ -2933,8 +3017,11 @@ PanelWindow {
                     sideSwipeInteractive = swipeArmed;
                     islandContainer.swipeTransitionProgress = swipeStartProgress;
 
+                    // A notification popup ignores the configured island actions.
                     let pressedAction = "";
-                    if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandPrimaryButton)) {
+                    if (islandContainer.islandState === "notification") {
+                        pressedAction = "";
+                    } else if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandPrimaryButton)) {
                         pressedAction = userConfig.dynamicIslandPrimaryAction;
                     } else if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandSecondaryButton)) {
                         pressedAction = userConfig.dynamicIslandSecondaryAction;
@@ -3095,7 +3182,8 @@ PanelWindow {
                             root.cancelPreparedOverviewEverywhere();
                         preparedOverviewOnPress = false;
 
-                        if (mouse.button !== userConfig.mouseButton(userConfig.dynamicIslandPrimaryButton))
+                        // Only a plain left click activates; right and middle do nothing here.
+                        if (mouse.button !== Qt.LeftButton)
                             return;
 
                         // Body click: the app's "default" action (if any) and focus its window.
@@ -3246,67 +3334,6 @@ PanelWindow {
 
 
 
-            Loader {
-                id: customSwipeLoader
-                anchors.fill: parent
-                active: false
-                asynchronous: false
-                visible: active
-
-                onLoaded: islandContainer.syncCustomCapsuleWidth()
-
-                sourceComponent: Component {
-                    SwipeCustomInfoLayer {
-                        items: islandContainer.customLeftItems
-                        cavaLevels: islandContainer.cavaLevels
-                        timeText: timeObj.currentTime
-                        iconFontFamily: root.iconFontFamily
-                        textFontFamily: root.heroFontFamily
-                        timeFontFamily: root.heroFontFamily
-                        textPixelSize: root.bodyFontSize
-                        iconPixelSize: root.iconFontSize
-                        minimumWidth: 220
-                        maximumWidth: Math.max(220, root.width - 48)
-                        transitionProgress: islandContainer.swipeTransitionProgress
-                        recordingActive: islandContainer.screenRecordingActive
-                        showSecondaryText: islandContainer.workspaceOriginSide !== "left"
-                            && islandContainer.splitOriginSide !== "left"
-                        showCondition: true
-                        onPreferredWidthChanged: islandContainer.syncCustomCapsuleWidth()
-                    }
-                }
-            }
-
-            Loader {
-                id: lyricsSwipeLoader
-                anchors.fill: parent
-                active: false
-                asynchronous: false
-                visible: active
-
-                onLoaded: islandContainer.syncLyricsCapsuleWidth()
-
-                sourceComponent: Component {
-                    SwipeLyricsLayer {
-                        lyricText: islandContainer.lyricsDisplayText
-                        currentArtUrl: islandContainer.currentArtUrl
-                        cavaLevels: islandContainer.cavaLevels
-                        timeText: timeObj.currentTime
-                        textFontFamily: root.textFontFamily
-                        timeFontFamily: root.timeFontFamily
-                        textPixelSize: root.bodyFontSize
-                        minimumWidth: 220
-                        maximumWidth: Math.max(220, root.width - 48)
-                        transitionProgress: islandContainer.rightSwipeProgress
-                        recordingActive: islandContainer.screenRecordingActive
-                        showSecondaryText: islandContainer.workspaceOriginSide !== "right"
-                            && islandContainer.splitOriginSide !== "right"
-                        showCondition: true
-                        onPreferredWidthChanged: islandContainer.syncLyricsCapsuleWidth()
-                    }
-                }
-            }
-
             RestingIslandLayer {
                 id: restingLayer
                 showCondition: !root.overviewVisible && islandContainer.islandState === "normal"
@@ -3324,6 +3351,7 @@ PanelWindow {
                 batteryVisible: islandContainer.restingBatteryVisible
                 batteryCapacity: islandContainer.batteryCapacity
                 batteryCharging: islandContainer.isCharging
+                unreadVisible: root.unreadNotificationCount > 0
             }
 
             Loader {
@@ -3475,7 +3503,7 @@ PanelWindow {
                             if (actionKey === "dismiss" || actionKey === "close")
                                 root.dismissNotification(details.id);
                             else if (actionKey === "focus")
-                                SystemServices.focusSenderWindow(details.appName, details.senderPid, details.summary, details.body, details.desktopEntry);
+                                SystemServices.focusSenderWindow(details.appName, details.senderPid, details.summary, details.body);
                             else if (actionKey === "default")
                                 root.activateNotification(details, false);
                             else
@@ -3514,6 +3542,7 @@ PanelWindow {
                         textFontFamily: root.textFontFamily
                         heroFontFamily: root.heroFontFamily
                         playerCardVisible: islandContainer.playerCardVisible
+                        unreadNotificationCount: root.unreadNotificationCount
                         playerTitle: islandContainer.currentTrack
                         playerArtist: islandContainer.currentArtist
                         playerArtUrl: islandContainer.currentArtUrl
@@ -3544,14 +3573,7 @@ PanelWindow {
                         currentWorkspace: islandContainer.currentWs
                         currentTrack: islandContainer.currentTrack
                         currentArtist: islandContainer.currentArtist
-                        nightLightEnabled: root.shellRootController && root.shellRootController.nightLightEnabled !== undefined
-                            ? root.shellRootController.nightLightEnabled
-                            : false
                         showCondition: islandContainer.controlCenterLayerVisible
-                        onNightLightModeChanged: function(enabled) {
-                            if (root.shellRootController && root.shellRootController.nightLightEnabled !== undefined)
-                                root.shellRootController.nightLightEnabled = enabled;
-                        }
                         onRequestNotification: function(appName, summary, body) {
                             islandContainer.showNotificationCapsule(appName, summary, body);
                         }
@@ -3597,9 +3619,9 @@ PanelWindow {
                         onNotificationDismissRequested: function(id) {
                             root.dismissNotification(id);
                         }
-                        onNotificationActivated: function(id, appName, senderPid, summary, body, desktopEntry) {
+                        onNotificationActivated: function(id, appName, senderPid, summary, body) {
                             root.activateNotification({ id: id, appName: appName, senderPid: senderPid,
-                                summary: summary, body: body, desktopEntry: desktopEntry }, true);
+                                summary: summary, body: body }, true);
                             islandContainer.smartRestoreState();
                         }
                         onCloseRequested: islandContainer.smartRestoreState()
@@ -3916,13 +3938,11 @@ PanelWindow {
             autoHideEnabled: root.autoHideEnabled
             onEntered: {
                 if (root.autoHideEnabled) {
-                    root.autoHidePointerInside = true;
                     root.showAutoHiddenIsland();
                 }
             }
             onExited: {
                 if (root.autoHideEnabled) {
-                    root.autoHidePointerInside = false;
                     root.scheduleAutoHide();
                 }
             }
@@ -4024,13 +4044,11 @@ PanelWindow {
             onClicked: root.togglePrivacyHudWindow()
             onEntered: {
                 if (root.autoHideEnabled) {
-                    root.autoHidePointerInside = true;
                     root.showAutoHiddenIsland();
                 }
             }
             onExited: {
                 if (root.autoHideEnabled) {
-                    root.autoHidePointerInside = false;
                     root.scheduleAutoHide();
                 }
             }
@@ -4053,13 +4071,11 @@ PanelWindow {
             onClicked: root.togglePrivacyHudWindow()
             onEntered: {
                 if (root.autoHideEnabled) {
-                    root.autoHidePointerInside = true;
                     root.showAutoHiddenIsland();
                 }
             }
             onExited: {
                 if (root.autoHideEnabled) {
-                    root.autoHidePointerInside = false;
                     root.scheduleAutoHide();
                 }
             }
@@ -4302,13 +4318,11 @@ PanelWindow {
                 cursorShape: Qt.PointingHandCursor
                 onEntered: {
                     if (root.autoHideEnabled) {
-                        root.autoHidePointerInside = true;
                         root.showAutoHiddenIsland();
                     }
                 }
                 onExited: {
                     if (root.autoHideEnabled) {
-                        root.autoHidePointerInside = false;
                         root.scheduleAutoHide();
                     }
                 }
@@ -4448,12 +4462,10 @@ PanelWindow {
         acceptedButtons: Qt.NoButton
 
         onEntered: {
-            root.autoHidePointerInside = true;
             root.showAutoHiddenIsland("edge");
         }
 
         onExited: {
-            root.autoHidePointerInside = false;
             root.scheduleAutoHide();
         }
     }

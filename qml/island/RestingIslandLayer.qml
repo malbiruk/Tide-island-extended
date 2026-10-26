@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell.Widgets
 import IslandBackend
 
-// The resting island: [cover - lyric/title - cava] [clock] [battery]. The clock is kept at the
+// The resting island: [cover - lyric/title - cava] [clock] [unread bell, battery]. The clock is kept at the
 // island's anchor (the capsule's centre plus `centerShift`); the music section grows to its
 // left and the battery section to its right, so the capsule is asymmetric. Section widths are
 // exposed for the capsule geometry and stay valid while the layer is hidden.
@@ -27,17 +27,22 @@ Item {
     property int batteryCapacity: 0
     property bool batteryCharging: false
 
+    property bool unreadVisible: false
+
     property bool showCondition: true
 
     readonly property real edgePadding: 12
     readonly property real innerSpacing: 8
     readonly property real coverSize: 20
     readonly property real musicTextMaxWidth: 200
+    readonly property real bellWidth: 22
 
     readonly property real centerSectionWidth: Math.max(minimumCenterWidth, Math.ceil(timeMetrics.advanceWidth) + edgePadding * 2)
     readonly property real musicContentWidth: coverSize + innerSpacing + musicTitle.width + innerSpacing + cavaBars.implicitWidth
     readonly property real leftSectionWidth: musicVisible ? edgePadding + musicContentWidth : 0
-    readonly property real rightSectionWidth: batteryVisible ? battery.implicitWidth + edgePadding : 0
+    readonly property real bellSlotWidth: unreadVisible ? bellWidth + (batteryVisible ? innerSpacing : 0) : 0
+    readonly property real rightContentWidth: bellSlotWidth + (batteryVisible ? battery.implicitWidth : 0)
+    readonly property real rightSectionWidth: rightContentWidth > 0 ? rightContentWidth + edgePadding : 0
 
     readonly property real centerX: width / 2 + centerShift - centerSectionWidth / 2
 
@@ -143,10 +148,47 @@ Item {
         font.letterSpacing: -0.25
     }
 
+    // --- Unread notifications: bell with an accent dot ---
+    Item {
+        id: unreadBell
+        x: root.centerX + root.centerSectionWidth
+        anchors.verticalCenter: parent.verticalCenter
+        width: root.bellWidth
+        height: 20
+        opacity: root.unreadVisible ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 130
+                easing.type: Easing.InOutQuad
+            }
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: "\uf0f3"
+            textFormat: Text.PlainText
+            color: StyleTokens.textPrimary
+            font.family: root.iconFontFamily
+            font.pixelSize: 14
+        }
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.topMargin: 1
+            anchors.rightMargin: 2
+            width: 6
+            height: 6
+            radius: 3
+            color: StyleTokens.accent
+        }
+    }
+
     // --- Battery ---
     BatteryIndicator {
         id: battery
-        x: root.centerX + root.centerSectionWidth
+        x: root.centerX + root.centerSectionWidth + root.bellSlotWidth
         anchors.verticalCenter: parent.verticalCenter
         capacity: root.batteryCapacity
         charging: root.batteryCharging

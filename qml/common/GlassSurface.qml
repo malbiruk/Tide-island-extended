@@ -11,14 +11,14 @@ Rectangle {
 
     radius: 10
     color: Qt.rgba(tint.r, tint.g, tint.b, materialOpacity)
-    border.width: 1
+    border.width: 2
     border.color: StyleTokens.surfaceBorder
     antialiasing: true
 
     Rectangle {
         anchors.fill: parent
-        anchors.margins: 1
-        radius: Math.max(0, root.radius - 1)
+        anchors.margins: 2
+        radius: Math.max(0, root.radius - 2)
         gradient: Gradient {
             GradientStop { position: 0; color: "#0cffffff" }
             GradientStop { position: 0.45; color: "#02ffffff" }
