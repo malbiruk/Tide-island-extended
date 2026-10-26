@@ -221,10 +221,10 @@ Item {
     readonly property bool bluetoothEnabled: bluetoothAdapter
         ? bluetoothAdapter.enabled && bluetoothAdapter.state !== BluetoothAdapterState.Blocked
         : false
-    readonly property bool bluetoothBusy: bluetoothAdapter
+    readonly property bool bluetoothBusy: bluetoothPowerOnPending || (bluetoothAdapter
         ? bluetoothAdapter.state === BluetoothAdapterState.Enabling
             || bluetoothAdapter.state === BluetoothAdapterState.Disabling
-        : false
+        : false)
     readonly property bool bluetoothPairingActive: !!(bluetoothPairingAgent && bluetoothPairingAgent.requestActive)
     readonly property bool bluetoothPairingRequiresInput: !!(bluetoothPairingAgent && bluetoothPairingAgent.requestRequiresInput)
     readonly property bool bluetoothPairingNumericInput: !!(bluetoothPairingAgent && bluetoothPairingAgent.requestNumericInput)
@@ -999,7 +999,7 @@ Item {
 
     function buildBluetoothStatusText() {
         if (!bluetoothAvailable) return "Unavailable";
-        if (!bluetoothEnabled) return "Off";
+        if (!bluetoothEnabled) return bluetoothBusy ? "Working..." : "Off";
 
         const devices = bluetoothDeviceValues || [];
         const connectedNames = [];
@@ -1033,6 +1033,8 @@ Item {
             bluetoothAdapter.enabled = false;
         } else if (bluetoothAdapter.state === BluetoothAdapterState.Blocked) {
             bluetoothPowerOnPending = true;
+            bluetoothPowerOnTimeout.restart();
+            bluetoothUnblockProcess.exitSeen = false;
             bluetoothUnblockProcess.running = true;
         } else {
             bluetoothAdapter.enabled = true;
@@ -1044,7 +1046,14 @@ Item {
                 || bluetoothAdapter.state === BluetoothAdapterState.Blocked)
             return;
         bluetoothPowerOnPending = false;
+        bluetoothPowerOnTimeout.stop();
         bluetoothAdapter.enabled = true;
+    }
+
+    function failBluetoothPowerOn(message) {
+        bluetoothPowerOnPending = false;
+        bluetoothPowerOnTimeout.stop();
+        bluetoothError = message;
     }
 
     function toggleBluetoothScan() {
@@ -1344,15 +1353,33 @@ Item {
     // saved block at boot): lift the block, then power on once BlueZ no longer reports it blocked.
     Process {
         id: bluetoothUnblockProcess
+        property bool exitSeen: false
         command: ["rfkill", "unblock", "bluetooth"]
         running: false
         onExited: function(exitCode) {
+            bluetoothUnblockProcess.exitSeen = true;
             if (exitCode !== 0) {
-                controlCenter.bluetoothPowerOnPending = false;
-                controlCenter.bluetoothError = "Could not unblock Bluetooth (rfkill).";
+                controlCenter.failBluetoothPowerOn("Could not unblock Bluetooth (rfkill).");
                 return;
             }
             controlCenter.powerOnBluetoothIfUnblocked();
+        }
+        // A spawn failure (e.g. no rfkill on PATH) only turns `running` off, without `exited`.
+        onRunningChanged: {
+            if (!bluetoothUnblockProcess.running && !bluetoothUnblockProcess.exitSeen
+                    && controlCenter.bluetoothPowerOnPending)
+                controlCenter.failBluetoothPowerOn("Could not run rfkill to unblock Bluetooth.");
+        }
+    }
+    // A hard block survives `rfkill unblock`; give up instead of powering on whenever it lifts.
+    Timer {
+        id: bluetoothPowerOnTimeout
+        interval: 4000
+        repeat: false
+        onTriggered: {
+            controlCenter.powerOnBluetoothIfUnblocked();
+            if (controlCenter.bluetoothPowerOnPending)
+                controlCenter.failBluetoothPowerOn("Bluetooth is still blocked, possibly by a hardware switch.");
         }
     }
     Process {
