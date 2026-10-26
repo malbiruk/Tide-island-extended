@@ -87,7 +87,9 @@ Item {
         return "";
     }
 
-    readonly property string extractedOtp: extractOtp(summary, body)
+    // Only the text people see: link targets and URLs are not scanned for codes.
+    readonly property string extractedOtp: extractOtp(summary,
+        NotificationText.linkLabels(body).replace(/https?:\/\/\S+/gi, " "))
     readonly property bool hasOtp: extractedOtp !== ""
 
     function copyOtpToClipboard() {
