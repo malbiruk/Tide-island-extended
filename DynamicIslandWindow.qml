@@ -2746,6 +2746,16 @@ PanelWindow {
                 visible: islandFileDropArea.containsDrag
             }
 
+            // Content sliding away has closed: it takes no clicks, hover or wheel, so nothing on it
+            // can open (a connectivity popup would hold the island up). File drags still arrive.
+            MouseArea {
+                z: 10001
+                anchors.fill: parent
+                enabled: islandContainer.transientSlideOut
+                hoverEnabled: true
+                acceptedButtons: Qt.AllButtons
+                onWheel: (wheel) => wheel.accepted = true
+            }
         }
 
         Item {
