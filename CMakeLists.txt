@@ -10,6 +10,8 @@ set(CMAKE_AUTOUIC ON)
 
 option(TIDE_ISLAND_WITH_NIRI "Build niri compositor integration" ON)
 
+# GuiPrivate only for qpa/qplatformnativeinterface.h (a window's wl_surface, via a virtual call).
+set(QT_NO_PRIVATE_MODULE_WARNING ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui GuiPrivate Qml Quick Network DBus Test Concurrent)
 find_library(UDEV_LIB NAMES udev REQUIRED)
 

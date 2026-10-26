@@ -187,7 +187,8 @@ private slots:
         QCOMPARE(message.path(), QStringLiteral("/org/freedesktop/Notifications"));
         QCOMPARE(message.interface(), QStringLiteral("org.freedesktop.Notifications"));
         QCOMPARE(message.member(), QStringLiteral("ActivationToken"));
-        QCOMPARE(message.signature(), QStringLiteral("us"));
+        QCOMPARE(message.arguments().size(), 2);
+        QCOMPARE(message.arguments().at(0).metaType(), QMetaType::fromType<uint>());
         QCOMPARE(message.arguments().at(0).toUInt(), 42u);
         QCOMPARE(message.arguments().at(1).toString(), QStringLiteral("token-1"));
     }
