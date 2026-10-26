@@ -1,10 +1,11 @@
 #include "NotificationActivation.h"
 #include "SystemServices.h"
+#include "../common/ScopedLaunch.h"
 
 #include <QtTest>
 #include <QProcess>
 #include <QSignalSpy>
-#include <QElapsedTimer>
+#include <QDir>
 #include <QFileInfo>
 #include <QScopeGuard>
 #include <QTemporaryDir>
@@ -13,6 +14,7 @@
 #include <QVariantMap>
 
 #include <csignal>
+#include <memory>
 #include <sys/stat.h>
 
 class SystemServicesNotificationTests : public QObject
@@ -126,26 +128,138 @@ private slots:
         QVERIFY(readySpy.at(0).at(1).toString().isEmpty());
     }
 
-    void scopedCommandDropsServiceVariablesAndKeepsTheExitCode()
+    void childrenGetTheUsersEnvironmentBack()
     {
-        // No user manager in this runtime dir: the program runs as a plain child through env.
-        SystemServices services;
-        QVERIFY(services.scopedCommand({}).isEmpty());
+        QProcessEnvironment launched;
+        launched.insert(QStringLiteral("HOME"), QStringLiteral("/home/someone"));
+        launched.insert(QStringLiteral("INVOCATION_ID"), QStringLiteral("abc"));
+        launched.insert(QStringLiteral("JOURNAL_STREAM"), QStringLiteral("8:1"));
+        launched.insert(QStringLiteral("TIDE_ISLAND_LAUNCHER"), QStringLiteral("1"));
+        launched.insert(QStringLiteral("MALLOC_CONF"), QStringLiteral("narenas:1"));
+        launched.insert(QStringLiteral("QML_IMPORT_PATH"), QStringLiteral("/usr/lib/qt6/qml:/mine"));
+        launched.insert(QStringLiteral("TIDE_ISLAND_ORIGINAL_QML_IMPORT_PATH"), QStringLiteral("/mine"));
+        launched.insert(QStringLiteral("QUICKSHELL_LYRICS_BACKEND"), QStringLiteral("/usr/share/x"));
+        launched.insert(QStringLiteral("QS_ICON_THEME"), QStringLiteral("Papirus"));
 
-        const QStringList command = services.scopedCommand(
-            {QStringLiteral("/bin/sh"), QStringLiteral("-c"),
-             QStringLiteral("printf '%s|%s|%s' \"${MALLOC_CONF-unset}\" \"$1\" \"$HOME\"; exit 3"),
-             QStringLiteral("sh"), QStringLiteral("$HOME a b")});
-        QProcess process;
-        QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
-        environment.insert(QStringLiteral("MALLOC_CONF"), QStringLiteral("narenas:1"));
-        environment.insert(QStringLiteral("HOME"), QStringLiteral("/home/someone"));
-        process.setProcessEnvironment(environment);
-        process.start(command.first(), command.mid(1));
-        QVERIFY(process.waitForFinished(5000));
-        QCOMPARE(QString::fromUtf8(process.readAllStandardOutput()),
-                 QStringLiteral("unset|$HOME a b|/home/someone"));
-        QCOMPARE(process.exitCode(), 3);
+        const QProcessEnvironment child = ScopedLaunch::childEnvironment(launched);
+        QCOMPARE(child.value(QStringLiteral("HOME")), QStringLiteral("/home/someone"));
+        QCOMPARE(child.value(QStringLiteral("QS_ICON_THEME")), QStringLiteral("Papirus"));
+        QCOMPARE(child.value(QStringLiteral("QML_IMPORT_PATH")), QStringLiteral("/mine"));
+        for (const char *gone : {"INVOCATION_ID", "JOURNAL_STREAM", "MALLOC_CONF", "QUICKSHELL_LYRICS_BACKEND",
+                                 "TIDE_ISLAND_LAUNCHER", "TIDE_ISLAND_ORIGINAL_QML_IMPORT_PATH"})
+            QVERIFY2(!child.contains(QString::fromLatin1(gone)), gone);
+
+        // Not started by the launcher: a user's own MALLOC_CONF is not touched.
+        QProcessEnvironment direct;
+        direct.insert(QStringLiteral("MALLOC_CONF"), QStringLiteral("mine"));
+        QCOMPARE(ScopedLaunch::childEnvironment(direct).value(QStringLiteral("MALLOC_CONF")), QStringLiteral("mine"));
+    }
+
+    // A fake systemd-run that logs its arguments and runs what follows "--".
+    void scopesUseAFixedDescriptionAndNoVariableExpansion_data()
+    {
+        QTest::addColumn<QString>("version");
+        QTest::addColumn<bool>("scopeWorks");
+        QTest::addColumn<bool>("expectExpandFlag");
+        QTest::newRow("systemd 262") << QStringLiteral("systemd 262 (262.1-1-arch)") << true << true;
+        QTest::newRow("systemd 249") << QStringLiteral("systemd 249 (249.11)") << true << false;
+        QTest::newRow("no user manager behind the socket") << QStringLiteral("systemd 262") << false << false;
+    }
+
+    void scopesUseAFixedDescriptionAndNoVariableExpansion()
+    {
+        QFETCH(QString, version);
+        QFETCH(bool, scopeWorks);
+        QFETCH(bool, expectExpandFlag);
+
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString log = directory.path() + QStringLiteral("/systemd-run.log");
+        QVERIFY(QDir().mkpath(directory.path() + QStringLiteral("/runtime/systemd")));
+        QFile socket(directory.path() + QStringLiteral("/runtime/systemd/private"));
+        QVERIFY(socket.open(QIODevice::WriteOnly));
+        socket.close();
+        QFile fake(directory.path() + QStringLiteral("/systemd-run"));
+        QVERIFY(fake.open(QIODevice::WriteOnly));
+        fake.write("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '" + log.toUtf8() + "'\n"
+                   "if [ \"$1\" = --version ]; then echo '" + version.toUtf8() + "'; exit 0; fi\n"
+                   + QByteArray(scopeWorks ? "" : "exit 1\n") +
+                   "while [ $# -gt 0 ]; do if [ \"$1\" = -- ]; then shift; break; fi; shift; done\n"
+                   "exec \"$@\"\n");
+        fake.close();
+        QVERIFY(fake.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner));
+
+        const QByteArray originalPath = qgetenv("PATH");
+        const QByteArray originalRuntime = qgetenv("XDG_RUNTIME_DIR");
+        qputenv("PATH", directory.path().toUtf8());
+        qputenv("XDG_RUNTIME_DIR", (directory.path() + QStringLiteral("/runtime")).toUtf8());
+        const auto restore = qScopeGuard([&]() {
+            qputenv("PATH", originalPath);
+            qputenv("XDG_RUNTIME_DIR", originalRuntime);
+            ScopedLaunch::resetProbe();
+        });
+
+        ScopedLaunch::resetProbe();
+        ScopedLaunch::probe();
+        QTRY_VERIFY(ScopedLaunch::scopeSupport().state != ScopedLaunch::ScopeSupport::Probing);
+        QCOMPARE(ScopedLaunch::scopesAvailable(), scopeWorks);
+
+        const QString out = directory.path() + QStringLiteral("/out");
+        QVERIFY(ScopedLaunch::startDetached({QStringLiteral("/bin/sh"), QStringLiteral("-c"),
+                                            QStringLiteral("printf '%s' \"$1\" > '") + out + QStringLiteral("'"),
+                                            QStringLiteral("sh"), QStringLiteral("$HOME https://x.org/?a=1&b=$c")}));
+        QTRY_VERIFY(QFileInfo(out).size() > 0);
+        QFile result(out);
+        QVERIFY(result.open(QIODevice::ReadOnly));
+        QCOMPARE(QString::fromUtf8(result.readAll()), QStringLiteral("$HOME https://x.org/?a=1&b=$c"));
+
+        QFile logFile(log);
+        QVERIFY(logFile.open(QIODevice::ReadOnly));
+        const QStringList calls = QString::fromUtf8(logFile.readAll()).split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        const QString launch = calls.last();
+        if (!scopeWorks) {
+            QVERIFY2(!launch.contains(QStringLiteral("/bin/sh -c")), qPrintable(launch));
+            return;
+        }
+        QVERIFY2(launch.startsWith(QStringLiteral("--user --scope --quiet --collect --description=Tide Island launch ")),
+                 qPrintable(launch));
+        QCOMPARE(launch.contains(QStringLiteral("--expand-environment=no")), expectExpandFlag);
+        QVERIFY2(launch.contains(QStringLiteral(" -- /bin/sh -c ")), qPrintable(launch));
+    }
+
+    void runCommandReportsFailuresAndOutlivesItsOwner()
+    {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        auto services = std::make_unique<SystemServices>();
+        QSignalSpy notices(services.get(), &SystemServices::noticeRequested);
+        QSignalSpy finished(services.get(), &SystemServices::commandFinished);
+
+        const int failing = services->runCommand({QStringLiteral("/bin/sh"), QStringLiteral("-c"), QStringLiteral("exit 3")},
+                                                 QStringLiteral("Power"), QStringLiteral("Lock failed"));
+        QTRY_COMPARE(finished.count(), 1);
+        QCOMPARE(finished.at(0).at(0).toInt(), failing);
+        QCOMPARE(finished.at(0).at(1).toInt(), 3);
+        QCOMPARE(notices.count(), 1);
+        QCOMPARE(notices.at(0).at(1).toString(), QStringLiteral("Lock failed"));
+        QCOMPARE(notices.at(0).at(2).toString(), QStringLiteral("sh exited with code 3."));
+
+        services->runCommand({QStringLiteral("no-such-locker-xyz")}, QStringLiteral("Power"), QStringLiteral("Lock failed"),
+                             QStringLiteral("Install a locker."));
+        QTRY_COMPARE(notices.count(), 2);
+        QCOMPARE(notices.at(1).at(2).toString(), QStringLiteral("Install a locker."));
+
+        services->runCommand({QStringLiteral("/bin/true")}, QStringLiteral("Power"), QStringLiteral("Lock failed"));
+        QTRY_COMPARE(finished.count(), 3);
+        QCOMPARE(notices.count(), 2);
+
+        // A locker still running when its owner goes away keeps running.
+        const QString marker = directory.path() + QStringLiteral("/still-running");
+        services->runCommand({QStringLiteral("/bin/sh"), QStringLiteral("-c"),
+                              QStringLiteral("/bin/sleep 0.3; : > '") + marker + QStringLiteral("'")},
+                             QStringLiteral("Power"), QStringLiteral("Lock failed"));
+        services.reset();
+        QTRY_VERIFY(QFileInfo::exists(marker));
     }
 
     void cavaFeedsFiveBarsAndStopsWithoutBlocking()
@@ -173,10 +287,9 @@ private slots:
         const pid_t pid = pidSource.readAll().trimmed().toInt();
         QVERIFY(pid > 0);
 
-        QElapsedTimer elapsed;
-        elapsed.start();
+        // A blocking stop would have waited and killed it; it is still there right after, then goes.
         services.setCavaClientActive(QStringLiteral("test"), false);
-        QVERIFY(elapsed.elapsed() < 100);
+        QCOMPARE(::kill(pid, 0), 0);
         QTRY_VERIFY_WITH_TIMEOUT(::kill(pid, 0) != 0, 3000);
     }
 

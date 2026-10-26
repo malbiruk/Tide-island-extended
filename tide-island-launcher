@@ -17,6 +17,14 @@ if [[ "$QML_MODULE_PATH" == *"@CMAKE_INSTALL_LIBDIR@"* ]]; then
   fi
 fi
 
+# Programs the shell starts for you get your own values of these back (see ScopedLaunch.h).
+export TIDE_ISLAND_LAUNCHER=1
+for name in MALLOC_CONF QML_IMPORT_PATH QUICKSHELL_LYRICS_BACKEND; do
+  if [[ -v $name ]]; then
+    export "TIDE_ISLAND_ORIGINAL_$name=${!name}"
+  fi
+done
+
 export QML_IMPORT_PATH="$QML_MODULE_PATH${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
 export QUICKSHELL_LYRICS_BACKEND="${QUICKSHELL_LYRICS_BACKEND:-$QML_PATH/bin/lyricsmpris}"
 # Quickshell uses jemalloc. Reclaim released Loader/image allocations in the

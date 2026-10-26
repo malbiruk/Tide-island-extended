@@ -113,13 +113,19 @@ public:
     Q_INVOKABLE void setBatteryConservationMode(bool enabled);
     Q_INVOKABLE void setBatteryThreshold(int threshold);
     // User-facing programs run in their own systemd scope (common/ScopedLaunch.h).
-    Q_INVOKABLE QStringList scopedCommand(const QStringList &argv) const;
     Q_INVOKABLE bool launchDetached(const QStringList &argv) const;
+    // Runs argv outside the asking QML (an unloaded layer or a reload never kills it). A start
+    // failure or non-zero exit becomes noticeRequested(appName, failureSummary, …), with
+    // notFoundBody for exit code 127 when given. Returns the id commandFinished reports.
+    Q_INVOKABLE int runCommand(const QStringList &argv, const QString &appName,
+                               const QString &failureSummary, const QString &notFoundBody = QString());
     // An existing regular file (symlinks followed), given as a path or file:// URL. Notification
     // images must not point the image loader at FIFOs, devices or directories.
     Q_INVOKABLE bool isRegularFile(const QString &pathOrUrl) const;
 
 signals:
+    void commandFinished(int id, int exitCode);
+    void noticeRequested(const QString &appName, const QString &summary, const QString &body);
     void screenRecordingActiveChanged();
     void privacyIndicatorsChanged();
     void brightnessSnapshotReady(double value, const QString &errorString);
@@ -233,6 +239,7 @@ private:
     static constexpr int kCavaBars = 5;
     QVariantList m_cavaLevels;
     QSet<QString> m_cavaClients;
+    int m_lastCommandId = 0;
     bool m_cavaMissingWarned = false;
     int m_tlpCommandGeneration = 0;
     bool m_configAppLaunchRequested = false;

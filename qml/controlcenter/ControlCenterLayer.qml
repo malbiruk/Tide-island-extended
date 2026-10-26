@@ -37,7 +37,9 @@ Item {
     readonly property var idleInhibitCommand: UserConfig.idleInhibitCommand
     readonly property bool idleInhibitConfigured: idleInhibitCommand.length > 0
     property bool idleInhibitOn: false
-    readonly property bool idleInhibitBusy: idleInhibitToggleProcess.running || idleInhibitStatusProcess.running
+    // The toggle runs outside this layer (it may start an inhibitor that must outlive it).
+    property int idleInhibitToggleId: -1
+    readonly property bool idleInhibitBusy: idleInhibitToggleId >= 0 || idleInhibitStatusProcess.running
 
     function refreshIdleInhibit() {
         if (idleInhibitConfigured && !idleInhibitStatusProcess.running)
@@ -46,15 +48,19 @@ Item {
 
     function toggleIdleInhibit() {
         if (idleInhibitConfigured && !idleInhibitBusy)
-            idleInhibitToggleProcess.running = true;
+            idleInhibitToggleId = SystemServices.runCommand(Array.from(idleInhibitCommand).concat(["toggle"]),
+                                                            "Caffeine", "Caffeine toggle failed");
     }
 
-    Process {
-        id: idleInhibitToggleProcess
-        // Toggling may start an inhibitor that must outlive the shell.
-        command: SystemServices.scopedCommand(Array.from(controlCenter.idleInhibitCommand).concat(["toggle"]))
-        running: false
-        onExited: controlCenter.refreshIdleInhibit()
+    Connections {
+        target: SystemServices
+
+        function onCommandFinished(id, exitCode) {
+            if (id !== controlCenter.idleInhibitToggleId)
+                return;
+            controlCenter.idleInhibitToggleId = -1;
+            controlCenter.refreshIdleInhibit();
+        }
     }
 
     Process {
@@ -654,9 +660,18 @@ Item {
         if (!sleepProcess.running)
             sleepProcess.running = true;
     }
+    // The locker runs outside this layer: closing or unloading the control center while the
+    // screen is locked must not kill it. Failures arrive as notices through the shell.
     function triggerLock() {
-        if (!lockProcess.running)
-            lockProcess.running = true;
+        const configured = Array.from(UserConfig.lockCommand);
+        SystemServices.runCommand(configured.length > 0 ? configured : [
+            "sh",
+            "-c",
+            "if command -v gtklock >/dev/null 2>&1; then gtklock -d; "
+                + "elif command -v loginctl >/dev/null 2>&1; then loginctl lock-session; "
+                + "elif command -v swaylock >/dev/null 2>&1; then swaylock; "
+                + "else exit 127; fi"
+        ], "Power", "Lock failed", configured.length > 0 ? "" : "Set a lock command, or install gtklock or swaylock.");
     }
 
     function closeConnectivityPanels(emitSignals) {
@@ -1343,31 +1358,6 @@ Item {
                     "Could not suspend via systemctl.");
         }
     }
-    Process {
-        id: lockProcess
-        readonly property var configuredCommand: UserConfig.lockCommand
-        command: SystemServices.scopedCommand(configuredCommand.length > 0 ? configuredCommand : [
-            "sh",
-            "-c",
-            "if command -v gtklock >/dev/null 2>&1; then gtklock -d; "
-                + "elif command -v loginctl >/dev/null 2>&1; then loginctl lock-session; "
-                + "elif command -v swaylock >/dev/null 2>&1; then swaylock; "
-                + "else exit 127; fi"
-        ])
-        running: false
-        onExited: function(exitCode) {
-            if (exitCode === 0)
-                return;
-            if (configuredCommand.length === 0 && exitCode === 127)
-                controlCenter.requestNotification("Power", "Lock unavailable",
-                    "Set a lock command, or install gtklock or swaylock.");
-            else
-                controlCenter.requestNotification("Power", "Lock failed",
-                    (configuredCommand.length > 0 ? configuredCommand[0] : "The screen locker")
-                        + " exited with code " + exitCode + ".");
-        }
-    }
-
     Connections {
         target: SystemServices
 

@@ -13,6 +13,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QPointer>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QTextStream>
@@ -98,6 +99,7 @@ SystemServices::SystemServices(QObject *parent)
         }
     });
 
+    ScopedLaunch::probe();
     startBusMonitor();
     startPipeWireMonitor();
     requestScreenRecordingSnapshot();
@@ -2063,12 +2065,41 @@ void SystemServices::handleCavaLine(const QString &line) {
     emit cavaLevelsChanged();
 }
 
-QStringList SystemServices::scopedCommand(const QStringList &argv) const {
-    return ScopedLaunch::command(argv);
-}
-
 bool SystemServices::launchDetached(const QStringList &argv) const {
     return ScopedLaunch::startDetached(argv);
+}
+
+int SystemServices::runCommand(const QStringList &argv, const QString &appName,
+                               const QString &failureSummary, const QString &notFoundBody) {
+    const int id = ++m_lastCommandId;
+    const QString program = argv.isEmpty() ? QString() : QFileInfo(argv.first()).fileName();
+    const QString missingBody = notFoundBody.isEmpty() ? QStringLiteral("%1 was not found.").arg(program) : notFoundBody;
+
+    // Reported by whichever SystemServices exists when it ends (the QML engine may have been
+    // reloaded meanwhile); commandFinished only to the instance that asked.
+    QPointer<SystemServices> self(this);
+    auto report = [self, id, appName, failureSummary, missingBody, program](int exitCode) {
+        if (exitCode != 0) {
+            const QString body = exitCode == 127 ? missingBody
+                : exitCode < 0 ? QStringLiteral("%1 could not be started or stopped unexpectedly.").arg(program)
+                : QStringLiteral("%1 exited with code %2.").arg(program).arg(exitCode);
+            if (SystemServices *services = SystemServices::instance())
+                emit services->noticeRequested(appName, failureSummary, body);
+        }
+        if (self)
+            emit self->commandFinished(id, exitCode);
+    };
+
+    const QString pathValue = ScopedLaunch::environment().value(QStringLiteral("PATH"));
+    const bool found = !argv.isEmpty() && (argv.first().contains(QLatin1Char('/'))
+        ? QFileInfo(argv.first()).isExecutable()
+        : !QStandardPaths::findExecutable(argv.first(), pathValue.split(QLatin1Char(':'), Qt::SkipEmptyParts)).isEmpty());
+    if (!found) {
+        QTimer::singleShot(0, this, [report]() { report(127); });
+        return id;
+    }
+    ScopedLaunch::run(argv, report);
+    return id;
 }
 
 bool SystemServices::isRegularFile(const QString &pathOrUrl) const {

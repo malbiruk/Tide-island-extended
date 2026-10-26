@@ -143,6 +143,15 @@ Scope {
         }
     }
 
+    // E.g. a screen locker that failed, reported even when the control center is long closed.
+    Connections {
+        target: SystemServices
+
+        function onNoticeRequested(appName, summary, body) {
+            shellRoot.showInternalNotice(appName, summary, body);
+        }
+    }
+
     // The app's expire_timeout (D-Bus milliseconds; -1 = server default, 0 = never).
     function notificationExpireTimeoutMs(notification) {
         const value = Number(notification.expireTimeout);
