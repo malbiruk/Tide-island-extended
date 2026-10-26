@@ -13,6 +13,7 @@ Item {
     signal requestNotification(string appName, string summary, string body)
     signal weatherRequested()
     signal calendarRequested()
+    signal timerRequested()
     signal notificationCenterRequested()
     signal powerMenuRequested()
     signal playerPreviousRequested()
@@ -1637,16 +1638,27 @@ Item {
                 width: 220
                 height: parent.height
 
+                // The clock opens the timer.
                 Text {
                     id: timeLabel
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     text: currentTime
-                    color: StyleTokens.textPrimaryBright
+                    color: timeMouse.containsMouse ? StyleTokens.accent : StyleTokens.textPrimaryBright
                     font.pixelSize: 19
                     font.family: heroFontFamily
                     font.weight: Font.Bold
                     font.letterSpacing: -0.45
+
+                    Behavior on color { ColorAnimation { duration: 60 } }
+
+                    MouseArea {
+                        id: timeMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: controlCenter.timerRequested()
+                    }
                 }
 
                 Text {

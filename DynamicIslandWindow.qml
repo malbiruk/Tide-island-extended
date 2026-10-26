@@ -3129,6 +3129,7 @@ PanelWindow {
                         weatherService: root.weatherService
                         onWeatherRequested: islandContainer.showWeather()
                         onCalendarRequested: islandContainer.showCalendar()
+                        onTimerRequested: islandContainer.showExpandedTimerPage()
                         onNotificationCenterRequested: islandContainer.showNotificationCenter()
                         onPowerMenuRequested: root.togglePowerMenuWindow()
                         onCloseRequested: islandContainer.smartRestoreState()
