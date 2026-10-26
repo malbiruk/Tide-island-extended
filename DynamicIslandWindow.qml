@@ -2042,9 +2042,24 @@ PanelWindow {
                 notificationHistoryModel.remove(existingIndex);
 
             notificationHistoryModel.insert(0, notificationHistoryEntry(record, count));
+            trimNotificationHistory();
+        }
 
-            if (notificationHistoryModel.count > 50)
-                notificationHistoryModel.remove(50, notificationHistoryModel.count - 50);
+        // Real notifications and tide's own notices have separate caps, so feedback never
+        // pushes real notifications out. A real one that falls out no longer counts as unread.
+        function trimNotificationHistory() {
+            let real = 0;
+            let internal = 0;
+            for (let i = 0; i < notificationHistoryModel.count; i++) {
+                const id = notificationHistoryModel.get(i).id;
+                const kept = id < 0 ? ++internal <= 10 : ++real <= 50;
+                if (kept)
+                    continue;
+                notificationHistoryModel.remove(i);
+                i--;
+                if (id >= 0 && root.shellRootController && root.shellRootController.setNotificationUnread)
+                    root.shellRootController.setNotificationUnread(id, false);
+            }
         }
 
         // The notification was dismissed or closed by its sender: drop it everywhere.
