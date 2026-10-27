@@ -8,6 +8,8 @@ Item {
 
     // A left click activated an app; the control center closes so the app is in view.
     signal itemActivated()
+    // The item's menu should open at its icon (anchor).
+    signal menuRequested(SystemTrayItem item, Item anchor)
 
     readonly property var userConfig: UserConfig
     readonly property var trayItems: SystemTray.items.values
@@ -273,8 +275,7 @@ Item {
                                         modelData.secondaryActivate();
                                     } else if (mouse.button === Qt.RightButton || modelData.onlyMenu) {
                                         if (modelData.hasMenu) {
-                                            const point = trayMouse.mapToItem(null, mouse.x, mouse.y);
-                                            modelData.display(QsWindow.window, point.x, point.y);
+                                            root.menuRequested(modelData, trayDelegate);
                                         } else if (mouse.button === Qt.RightButton) {
                                             modelData.secondaryActivate();
                                         }

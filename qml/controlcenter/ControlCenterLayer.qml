@@ -675,6 +675,8 @@ Item {
         if (emitSignals === undefined)
             emitSignals = true;
 
+        // The control center hiding or sliding away resets through here; the tray menu goes too.
+        trayMenu.close();
         setConnectivityPanelOpen("wifi", false, emitSignals);
         setConnectivityPanelOpen("bluetooth", false, emitSignals);
         setConnectivityPanelOpen("power", false, emitSignals);
@@ -1201,6 +1203,11 @@ Item {
     visible: opacity > 0
 
     Keys.onEscapePressed: function(event) {
+        if (trayMenu.shown) {
+            trayMenu.close();
+            event.accepted = true;
+            return;
+        }
         if (controlCenter.hasConnectivityPrompt) {
             if (controlCenter.wifiPendingPasswordSsid.length > 0)
                 controlCenter.clearWifiPrompt();
@@ -1226,6 +1233,11 @@ Item {
 
     Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) {
+            if (trayMenu.shown) {
+                trayMenu.close();
+                event.accepted = true;
+                return;
+            }
             if (controlCenter.hasConnectivityPrompt) {
                 if (controlCenter.wifiPendingPasswordSsid.length > 0)
                     controlCenter.clearWifiPrompt();
@@ -2152,6 +2164,7 @@ Item {
                 y: 0
                 clip: true
                 onItemActivated: controlCenter.closeRequested()
+                onMenuRequested: (item, anchor) => trayMenu.openFor(item, anchor)
             }
 
             DrawerRecorderCard {
@@ -2388,5 +2401,15 @@ Item {
                 }
             }
         }
+    }
+
+    // Over the cards and the whole capsule, its margin too: while the menu is open, a click
+    // anywhere else on the control center only closes the menu.
+    TrayMenu {
+        id: trayMenu
+        anchors.fill: parent
+        anchors.margins: -controlCenter.anchors.margins
+        z: 10
+        onEntryTriggered: controlCenter.closeRequested()
     }
 }

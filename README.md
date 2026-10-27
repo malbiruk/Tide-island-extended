@@ -84,6 +84,7 @@ Compared with [Bimbok/Tide-island-extended](https://github.com/Bimbok/Tide-islan
 - Screen recording uses wf-recorder instead of gpu-screen-recorder (no replay buffer or pause).
 - The control center is always fully expanded, and a horizontal touchpad swipe flips between it and the Glance.
 - Panels close on a click outside them, and the side popups (Wi-Fi, Bluetooth, audio, battery) fit their content.
+- Tray icons open their menus inside the control center, drawn in its theme, with submenus in place.
 - Faster animations and a colour pass that works with light palettes.
 - Lower idle memory: rarely used panels load on first open and the lyrics daemon runs only during playback ([details](#performance--resource-efficiency)).
 - The settings app writes only the keys you changed and refuses to overwrite an invalid file.
