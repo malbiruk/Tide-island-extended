@@ -76,6 +76,7 @@ Compared with [Bimbok/Tide-island-extended](https://github.com/Bimbok/Tide-islan
 - Its own Do Not Disturb, kept across restarts (upstream used swaync's), and per-urgency pop-up durations.
 - [`lockCommand`](#configuration) picks the screen locker; `idleInhibitCommand` adds a caffeine toggle.
 - Resting-island battery modes (`islandBatteryMode`, `islandBatteryThreshold`) and an optional bottom edge (`islandEdge`).
+- An option to keep the island above fullscreen windows (`islandAboveFullscreen`).
 - Turning Bluetooth on lifts an rfkill soft block first.
 
 **Changed**
@@ -258,6 +259,7 @@ Tide Island has no compositor-specific code. What it uses from the compositor:
 - **wlr-screencopy** for the screen recorder, which is what wf-recorder captures through.
 - **Data control** (`ext-data-control-v1` or `wlr-data-control`) for clipboard history, which `wl-paste --watch` needs.
 - **ext-background-effect-v1** (optional) for the blur behind the island (`islandBlurEnabled`).
+- **Overlay layer above fullscreen windows** (optional): with `islandAboveFullscreen` the island always sits on the overlay layer, but it only shows over a fullscreen window if the compositor draws overlay-layer surfaces above fullscreen ones.
 - **Shortcuts**: Tide Island binds no keys itself; bind the [IPC commands](#ipc-commands) in your compositor's keybinding config.
 
 Each output gets its own island, but the shell can't ask the compositor which output has focus, so a
@@ -395,6 +397,7 @@ tide-island-config-app
   - `lockCommand`: the screen locker for the power menu's Lock (e.g. `gtklock -d`); empty tries gtklock, `loginctl lock-session`, then swaylock. Any failure is shown as a notice.
   - `idleInhibitCommand`: adds the caffeine button; it is run as `<command> toggle` and `<command> status` (which prints `on` or `off`).
 - **Island edge**: `islandEdge` is `top` (default) or `bottom`.
+- **Above fullscreen**: `islandAboveFullscreen` (default `false`) keeps the island on the overlay layer, so it stays visible over fullscreen windows ([if the compositor allows it](#compositor-support)).
 
 Saving from the island (e.g. Do Not Disturb, the avatar) or the settings app rewrites
 `userconfig.json` as plain JSON, so comments in it are not kept. When the file holds the TLP

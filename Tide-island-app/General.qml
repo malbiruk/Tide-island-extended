@@ -133,6 +133,16 @@ PagePanel {
 
                     SplitLine { width: parent.width }
 
+                    SwitchRow {
+                        title: "Above Fullscreen"
+                        description: "Show the island above fullscreen windows (uses the overlay layer)"
+                        keyName: "islandAboveFullscreen"
+                        fallbackValue: false
+                        width: parent.width
+                    }
+
+                    SplitLine { width: parent.width }
+
                     ConfigRow {
                         title: "Island Width"
                         description: "Width of island in clock mode"

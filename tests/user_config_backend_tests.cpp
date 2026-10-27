@@ -362,6 +362,27 @@ private slots:
         QCOMPARE(runtime.islandEdge(), QStringLiteral("top"));
     }
 
+    void islandAboveFullscreenIsOffUnlessTrue() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        QVERIFY(writeConfig(directory.path(), "{}"));
+
+        UserConfigBackend runtime;
+        QCOMPARE(runtime.islandAboveFullscreen(), false);
+        QSignalSpy changed(&runtime, &UserConfigBackend::islandAboveFullscreenChanged);
+
+        QVERIFY(writeConfig(directory.path(), "{\"islandAboveFullscreen\": true}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandAboveFullscreen(), true);
+        QCOMPARE(changed.count(), 1);
+
+        QVERIFY(writeConfig(directory.path(), "{\"islandAboveFullscreen\": \"true\"}"));
+        runtime.reload();
+        QCOMPARE(runtime.islandAboveFullscreen(), false);
+        QCOMPARE(changed.count(), 2);
+    }
+
     void commandsSplitLikeAShell_data() {
         QTest::addColumn<QByteArray>("json");
         QTest::addColumn<QStringList>("expected");

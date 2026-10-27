@@ -37,6 +37,7 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(QString islandBatteryMode READ islandBatteryMode NOTIFY islandBatteryModeChanged FINAL)
     Q_PROPERTY(int islandBatteryThreshold READ islandBatteryThreshold NOTIFY islandBatteryThresholdChanged FINAL)
     Q_PROPERTY(bool islandAutoHideKeepActivities READ islandAutoHideKeepActivities NOTIFY islandAutoHideKeepActivitiesChanged FINAL)
+    Q_PROPERTY(bool islandAboveFullscreen READ islandAboveFullscreen NOTIFY islandAboveFullscreenChanged FINAL)
     // Popup timeouts in seconds for normal and low urgency (critical popups stay until dismissed).
     // Screen edge the island lives on: "top" or "bottom" (anything else is "top").
     Q_PROPERTY(QString islandEdge READ islandEdge NOTIFY islandEdgeChanged FINAL)
@@ -94,6 +95,7 @@ public:
     QString islandBatteryMode() const;
     int islandBatteryThreshold() const;
     bool islandAutoHideKeepActivities() const;
+    bool islandAboveFullscreen() const;
     int notificationTimeout() const;
     QString islandEdge() const;
     int notificationTimeoutLow() const;
@@ -151,6 +153,7 @@ signals:
     void islandBatteryModeChanged();
     void islandBatteryThresholdChanged();
     void islandAutoHideKeepActivitiesChanged();
+    void islandAboveFullscreenChanged();
     void notificationTimeoutChanged();
     void islandEdgeChanged();
     void notificationTimeoutLowChanged();
@@ -209,6 +212,7 @@ private:
     QString m_islandBatteryMode = QStringLiteral("low");
     int m_islandBatteryThreshold = 40;
     bool m_islandAutoHideKeepActivities = true;
+    bool m_islandAboveFullscreen = false;
     int m_notificationTimeout = 8;
     QString m_islandEdge = QStringLiteral("top");
     int m_notificationTimeoutLow = 5;

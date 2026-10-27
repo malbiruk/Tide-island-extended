@@ -283,6 +283,11 @@ bool UserConfigBackend::islandAutoHideKeepActivities() const
     return m_islandAutoHideKeepActivities;
 }
 
+bool UserConfigBackend::islandAboveFullscreen() const
+{
+    return m_islandAboveFullscreen;
+}
+
 QString UserConfigBackend::islandEdge() const
 {
     return m_islandEdge;
@@ -612,6 +617,7 @@ void UserConfigBackend::loadConfig()
                 &UserConfigBackend::islandBatteryModeChanged);
     updateField(this, m_islandBatteryThreshold, jsonBoundedInt(configObject, QLatin1String("islandBatteryThreshold"), 40, 5, 100), &UserConfigBackend::islandBatteryThresholdChanged);
     updateField(this, m_islandAutoHideKeepActivities, jsonBool(configObject, QLatin1String("islandAutoHideKeepActivities"), true), &UserConfigBackend::islandAutoHideKeepActivitiesChanged);
+    updateField(this, m_islandAboveFullscreen, jsonBool(configObject, QLatin1String("islandAboveFullscreen"), false), &UserConfigBackend::islandAboveFullscreenChanged);
     updateField(this, m_islandEdge,
                 jsonString(configObject, QLatin1String("islandEdge"), QString()).trimmed().toLower() == QLatin1String("bottom")
                     ? QStringLiteral("bottom")

@@ -312,7 +312,10 @@ PanelWindow {
     Component.onCompleted: root.retainedWindowHeight = root.requestedWindowHeight
 
     exclusiveZone: Math.ceil(root.baseExclusiveZone * root.exclusiveZoneProgress)
-    WlrLayershell.layer: islandContainer.fileShelfLayerVisible
+    // Many compositors draw only overlay-layer surfaces over a fullscreen window;
+    // islandAboveFullscreen keeps the whole island there.
+    WlrLayershell.layer: root.userConfig.islandAboveFullscreen
+        || islandContainer.fileShelfLayerVisible
         || islandContainer.clipboardLayerVisible
         || islandContainer.weatherLayerVisible
         || islandContainer.calendarLayerVisible
