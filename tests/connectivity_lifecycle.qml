@@ -205,7 +205,7 @@ ShellRoot {
             } else if (test.step === 1) {
                 if (!test.check(island.controlCenterRef !== null, "control center loaded")) return;
                 const center = island.controlCenterRef;
-                if (!test.check(center.wifiSupported && center.wifiEnabled && center.wifiCurrentSsid === "Home", "Wi-Fi state reaches control center")) return;
+                if (!test.check(center.wifiSupported && center.wifiEnabled && center.wifiCurrentSsid === "Home" && center.wifiCurrentSignal === 85, "Wi-Fi state reaches control center")) return;
                 center.setConnectivityPanelOpen("wifi", true);
                 center.setConnectivityPanelOpen("bluetooth", true);
                 center.setConnectivityPanelOpen("power", true);

@@ -46,6 +46,7 @@ public:
                 const auto config = qdbus_cast<QVariantMap>(message.arguments().value(0));
                 m_delay = config.value("delay", m_delay).toInt();
                 m_failList = config.value("failList", m_failList).toBool();
+                m_connected = config.value("connected", m_connected).toBool();
                 const bool enabled = config.value("enabled", m_enabled).toBool();
                 const bool changed = enabled != m_enabled;
                 m_enabled = enabled;
@@ -84,7 +85,7 @@ public:
                 count("snapshots");
                 values = {{"WirelessEnabled", m_enabled}, {"Devices", QVariant::fromValue(Paths {QDBusObjectPath(nmDevice)})}};
             } else if (interface.endsWith(QLatin1String(".Device.Wireless"))) {
-                values = {{"ActiveAccessPoint", QVariant::fromValue(QDBusObjectPath(QString(nmAp) + "1"))}};
+                values = {{"ActiveAccessPoint", QVariant::fromValue(QDBusObjectPath(m_connected ? QString(nmAp) + "1" : QString("/")))}};
             } else if (interface.endsWith(QLatin1String(".Device"))) {
                 values = {{"DeviceType", uint(2)}};
             } else if (interface.endsWith(QLatin1String(".AccessPoint"))) {
@@ -150,6 +151,7 @@ private:
     bool m_iwd;
     bool m_enabled = true;
     bool m_failList = false;
+    bool m_connected = true;
     int m_delay = 0;
     QVariantMap m_counters;
 };
@@ -212,6 +214,7 @@ private slots:
                 readonly property var state: controller.%2
                 readonly property bool callable: typeof controller.%3 === "function"
                 readonly property var ssid: %1 === WifiController ? controller.currentSsid : ""
+                readonly property var strength: %1 === WifiController ? controller.currentSignal : -1
                 function refresh() { controller.clearMessages(); controller.refreshState(); }
             }
         )").arg(typeName, propertyName, methodName).toUtf8(), QUrl());
@@ -222,14 +225,17 @@ private slots:
         QVERIFY2(consumer->property("callable").toBool(), "QML singleton has no invokable methods");
         if (typeName == QLatin1String("WifiController")) {
             QTRY_COMPARE(consumer->property("ssid").toString(), QString("Home"));
+            QCOMPARE(consumer->property("strength").toInt(), 85);
             QVERIFY(consumer->property("state").toBool());
             QVERIFY(QMetaObject::invokeMethod(consumer.get(), "refresh"));
             configure({{"enabled", false}});
             QTRY_VERIFY(!consumer->property("state").toBool());
             QTRY_COMPARE(consumer->property("ssid").toString(), QString());
+            QCOMPARE(consumer->property("strength").toInt(), -1);
             configure({{"enabled", true}});
             QTRY_VERIFY(consumer->property("state").toBool());
             QTRY_COMPARE(consumer->property("ssid").toString(), QString("Home"));
+            QCOMPARE(consumer->property("strength").toInt(), 85);
         } else {
             QVERIFY(!consumer->property("state").toBool());
         }
@@ -260,6 +266,7 @@ private slots:
         QVERIFY(ticks >= 15);
         QVERIFY(!wrongThread);
         QCOMPARE(wifi.currentSsid(), QStringLiteral("Home"));
+        QCOMPARE(wifi.currentSignal(), 85);
         QCOMPARE(row(wifi, 0, WifiNetworkModel::SsidRole).toString(), QStringLiteral("Home"));
         QCOMPARE(row(wifi, 0, WifiNetworkModel::SignalRole).toInt(), 85);
         QVERIFY(row(wifi, 0, WifiNetworkModel::SecureRole).toBool());
@@ -303,6 +310,17 @@ private slots:
         QVERIFY(!wifi.enabled());
         QCOMPARE(wifi.networks()->rowCount(), 0);
         QCOMPARE(wifi.currentSsid(), QString());
+        QCOMPARE(wifi.currentSignal(), -1);
+    }
+
+    void disconnectClearsCurrentSignal() {
+        startService();
+        WifiController wifi;
+        QTRY_COMPARE(wifi.currentSignal(), 85);
+        configure({{"connected", false}});
+        wifi.refreshNetworks();
+        QTRY_COMPARE(wifi.currentSsid(), QString());
+        QCOMPARE(wifi.currentSignal(), -1);
     }
 
     void failedRefreshKeepsLastListAndReportsError() {
@@ -313,6 +331,7 @@ private slots:
         wifi.refreshNetworks();
         QTRY_VERIFY(wifi.errorMessage().contains("AP list unavailable"));
         QCOMPARE(wifi.networks()->rowCount(), 3);
+        QCOMPARE(wifi.currentSignal(), 85);
         wifi.clearMessages();
         configure({{"failList", false}, {"delay", 1700}});
         wifi.refreshNetworks();
@@ -331,6 +350,7 @@ private slots:
         QCOMPARE(wifi.backendName(), QStringLiteral("iwd"));
         QVERIFY(wifi.enabled());
         QCOMPARE(wifi.currentSsid(), QStringLiteral("Home"));
+        QCOMPARE(wifi.currentSignal(), 45);
         QVERIFY(row(wifi, 0, WifiNetworkModel::SavedConnectionRole).toBool());
         QVERIFY(row(wifi, 0, WifiNetworkModel::SecureRole).toBool());
         QVERIFY(!row(wifi, 1, WifiNetworkModel::SecureRole).toBool());

@@ -684,6 +684,10 @@ QString WifiController::currentSsid() const {
     return m_currentSsid;
 }
 
+int WifiController::currentSignal() const {
+    return m_currentSignal;
+}
+
 QString WifiController::statusText() const {
     return m_statusText;
 }
@@ -1223,7 +1227,21 @@ void WifiController::applyRefreshSnapshot(const WifiRefreshSnapshot &snapshot) {
     setUnsupportedReason(snapshot.unsupportedReason);
     setAvailable(snapshot.available);
     setEnabledState(snapshot.enabled);
+    const bool ssidChanged = m_currentSsid != snapshot.currentSsid;
     setCurrentSsid(snapshot.currentSsid);
+    // A failed list read keeps the last list, so it keeps that list's signal too.
+    if (ssidChanged || snapshot.networksValid) {
+        int signal = -1;
+        if (snapshot.networksValid && !snapshot.currentSsid.isEmpty()) {
+            for (const auto &network : snapshot.networks) {
+                if (network.connected) {
+                    signal = network.signal;
+                    break;
+                }
+            }
+        }
+        setCurrentSignal(signal);
+    }
     setScanningState(snapshot.scanning);
     if (snapshot.scanning) {
         if (!m_scanTimeoutTimer.isActive())
@@ -1519,6 +1537,14 @@ void WifiController::setCurrentSsid(const QString &currentSsid) {
     m_currentSsid = currentSsid;
     emit currentSsidChanged();
     updateStatusText();
+}
+
+void WifiController::setCurrentSignal(int currentSignal) {
+    if (m_currentSignal == currentSignal)
+        return;
+
+    m_currentSignal = currentSignal;
+    emit currentSignalChanged();
 }
 
 void WifiController::setStatusText(const QString &statusText) {

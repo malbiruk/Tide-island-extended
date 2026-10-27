@@ -206,6 +206,7 @@ Item {
     readonly property bool wifiBusy: !!(wifiController && wifiController.busy)
     readonly property bool wifiListRunning: !!(wifiController && wifiController.scanning)
     readonly property string wifiCurrentSsid: (wifiController && wifiController.currentSsid) || ""
+    readonly property int wifiCurrentSignal: wifiController ? wifiController.currentSignal : -1
     readonly property string wifiInfoMessage: wifiLocalInfoMessage.length > 0
         ? wifiLocalInfoMessage
         : ((wifiController && wifiController.infoMessage) || "")

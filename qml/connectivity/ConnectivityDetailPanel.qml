@@ -309,7 +309,7 @@ Item {
                         anchors.leftMargin: 28
                         anchors.top: parent.top
                         anchors.right: parent.right
-                        anchors.rightMargin: 24
+                        anchors.rightMargin: currentWifiSignal.visible ? 24 + currentWifiSignal.width + 8 : 24
                         text: root.provider ? root.provider.wifiCurrentSsid : ""
                         color: StyleTokens.textPrimary
                         font.pixelSize: 12
@@ -326,6 +326,18 @@ Item {
                         color: StyleTokens.textSoft
                         font.pixelSize: 11
                         font.family: root.textFontFamily
+                    }
+
+                    Text {
+                        id: currentWifiSignal
+                        anchors.right: parent.right
+                        anchors.rightMargin: 24
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.provider ? root.provider.wifiCurrentSignal + "%" : ""
+                        color: StyleTokens.textPrimary
+                        font.pixelSize: 11
+                        font.family: root.textFontFamily
+                        visible: !!root.provider && root.provider.wifiCurrentSignal >= 0
                     }
 
                     Text {

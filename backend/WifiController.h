@@ -37,6 +37,7 @@ class WifiController final : public QObject {
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
     Q_PROPERTY(QString currentSsid READ currentSsid NOTIFY currentSsidChanged)
+    Q_PROPERTY(int currentSignal READ currentSignal NOTIFY currentSignalChanged)
     Q_PROPERTY(QString statusText READ statusText NOTIFY statusTextChanged)
     Q_PROPERTY(QString infoMessage READ infoMessage NOTIFY infoMessageChanged)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
@@ -57,6 +58,7 @@ public:
     bool busy() const;
     bool scanning() const;
     QString currentSsid() const;
+    int currentSignal() const;
     QString statusText() const;
     QString infoMessage() const;
     QString errorMessage() const;
@@ -79,6 +81,7 @@ signals:
     void busyChanged();
     void scanningChanged();
     void currentSsidChanged();
+    void currentSignalChanged();
     void statusTextChanged();
     void infoMessageChanged();
     void errorMessageChanged();
@@ -127,6 +130,7 @@ private:
     void setBusyState(bool busy);
     void setScanningState(bool scanning);
     void setCurrentSsid(const QString &currentSsid);
+    void setCurrentSignal(int currentSignal);
     void setStatusText(const QString &statusText);
     void setInfoMessage(const QString &infoMessage);
     void setErrorMessage(const QString &errorMessage);
@@ -145,6 +149,7 @@ private:
     QString m_infoMessage;
     QString m_errorMessage;
     QString m_currentSsid;
+    int m_currentSignal = -1;
     QString m_statusText = QStringLiteral("Unavailable");
     QString m_unsupportedReason;
     bool m_supported = false;
