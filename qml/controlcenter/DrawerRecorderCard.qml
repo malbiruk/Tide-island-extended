@@ -5,6 +5,9 @@ import IslandBackend
 Item {
     id: root
 
+    // The recordings folder was opened; the control center closes so the file manager is in view.
+    signal folderOpened()
+
     readonly property var userConfig: UserConfig
     readonly property var recorder: ScreenRecorder
 
@@ -216,8 +219,10 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (root.recorder)
+                        if (root.recorder) {
                             root.recorder.openRecordingsFolder();
+                            root.folderOpened();
+                        }
                     }
                 }
             }

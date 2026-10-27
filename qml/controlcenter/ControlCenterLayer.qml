@@ -2175,6 +2175,7 @@ Item {
                 width: batteryDrawer.cardWidth
                 height: controlCenter.batteryModeCardHeight
                 clip: true
+                onFolderOpened: controlCenter.closeRequested()
             }
         }
 
@@ -2204,6 +2205,7 @@ Item {
             height: shouldBeVisible ? 98 : 0
             opacity: shouldBeVisible ? 1 : 0
             clip: true
+            onFolderOpened: controlCenter.closeRequested()
 
             Behavior on height {
                 enabled: controlCenter.readyForCardAnimations
