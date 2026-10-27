@@ -104,17 +104,6 @@ void ScreenRecorderController::setMicEnabled(bool enabled) {
     emit micEnabledChanged();
 }
 
-int ScreenRecorderController::fps() const {
-    return m_fps;
-}
-
-void ScreenRecorderController::setFps(int value) {
-    if (value <= 0 || m_fps == value)
-        return;
-    m_fps = value;
-    emit fpsChanged();
-}
-
 QString ScreenRecorderController::screenName() const {
     return m_screenName;
 }
@@ -330,12 +319,12 @@ void ScreenRecorderController::startRecording(bool withMic) {
 
     // CPU H.264 (veryfast preset, cheap enough for real time) in yuv420p for broad player
     // compatibility; the container comes from the .mp4 extension. The target path is unique,
-    // so wf-recorder never asks about overwriting.
+    // so wf-recorder never asks about overwriting. No -r: it would force a constant-rate fps
+    // filter that drops/duplicates frames; without it frames keep their real timestamps.
     QStringList args;
     if (!screen.isEmpty())
         args << QStringLiteral("-o") << screen;
     args << QStringLiteral("-f") << m_currentRecordingFile;
-    args << QStringLiteral("-r") << QString::number(m_fps);
     args << QStringLiteral("-c") << QStringLiteral("libx264");
     args << QStringLiteral("-p") << QStringLiteral("preset=veryfast");
     args << QStringLiteral("-x") << QStringLiteral("yuv420p");
@@ -370,9 +359,9 @@ void ScreenRecorderController::startRecording(bool withMic) {
     emit recordingSecondsChanged();
 
     emit notificationRequested(QStringLiteral("Recording Started"),
-                               QStringLiteral("%1 • %2 FPS • %3")
+                               QStringLiteral("%1 • %2")
                                    .arg(screen.isEmpty() ? QStringLiteral("Default output") : screen)
-                                   .arg(m_fps).arg(audioStatus));
+                                   .arg(audioStatus));
 
     if (SystemServices::instance())
         SystemServices::instance()->updateScreenRecordingActive();

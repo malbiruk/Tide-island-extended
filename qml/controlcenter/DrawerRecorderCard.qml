@@ -72,11 +72,11 @@ Item {
                 }
             }
 
-            // Right status text (timer when recording, or 60 FPS when idle)
+            // Right status text (timer when recording, empty when idle)
             Text {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.isRecording ? root.timerText : "60 FPS"
+                text: root.isRecording ? root.timerText : ""
                 color: root.isRecording ? root.cardRed : StyleTokens.textSecondary
                 font.pixelSize: 10
                 font.family: userConfig.textFontFamily

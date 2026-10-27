@@ -16,7 +16,6 @@ class ScreenRecorderController final : public QObject {
     Q_PROPERTY(int recordingSeconds READ recordingSeconds NOTIFY recordingSecondsChanged FINAL)
     Q_PROPERTY(QString recordingTimeFormatted READ recordingTimeFormatted NOTIFY recordingSecondsChanged FINAL)
     Q_PROPERTY(bool micEnabled READ micEnabled WRITE setMicEnabled NOTIFY micEnabledChanged FINAL)
-    Q_PROPERTY(int fps READ fps WRITE setFps NOTIFY fpsChanged FINAL)
     Q_PROPERTY(QString screenName READ screenName WRITE setScreenName NOTIFY screenNameChanged FINAL)
     Q_PROPERTY(QString recordingsDir READ recordingsDir WRITE setRecordingsDir NOTIFY recordingsDirChanged FINAL)
     Q_PROPERTY(bool isAvailable READ isAvailable CONSTANT FINAL)
@@ -33,8 +32,6 @@ public:
     QString recordingTimeFormatted() const;
     bool micEnabled() const;
     void setMicEnabled(bool enabled);
-    int fps() const;
-    void setFps(int value);
     QString screenName() const;
     void setScreenName(const QString &name);
     QString recordingsDir() const;
@@ -53,7 +50,6 @@ signals:
     void recordingStateChanged();
     void recordingSecondsChanged();
     void micEnabledChanged();
-    void fpsChanged();
     void screenNameChanged();
     void recordingsDirChanged();
     void lastSavedFileChanged();
@@ -95,7 +91,6 @@ private:
     bool m_isRecording = false;
     int m_recordingSeconds = 0;
     bool m_micEnabled = false;
-    int m_fps = 60;
     QString m_screenName;
     QString m_recordingsDir;
     QString m_lastSavedFile;

@@ -60,7 +60,6 @@ void ScreenRecorderTests::testInitialState() {
     QCOMPARE(controller.isRecording(), false);
     QCOMPARE(controller.recordingSeconds(), 0);
     QCOMPARE(controller.recordingTimeFormatted(), QStringLiteral("00:00"));
-    QCOMPARE(controller.fps(), 60);
 }
 
 void ScreenRecorderTests::testTimeFormatting() {
@@ -75,11 +74,6 @@ void ScreenRecorderTests::testPropertySetters() {
     controller.setMicEnabled(true);
     QCOMPARE(controller.micEnabled(), true);
     QCOMPARE(micSpy.count(), 1);
-
-    QSignalSpy fpsSpy(&controller, &ScreenRecorderController::fpsChanged);
-    controller.setFps(120);
-    QCOMPARE(controller.fps(), 120);
-    QCOMPARE(fpsSpy.count(), 1);
 
     QSignalSpy screenSpy(&controller, &ScreenRecorderController::screenNameChanged);
     controller.setScreenName(QStringLiteral("DP-1"));
@@ -147,7 +141,8 @@ void ScreenRecorderTests::testWfRecorderArgumentsAndStartFailure() {
     };
     QVERIFY(valueAfter(QStringLiteral("-f")).startsWith(recordingsDir + QStringLiteral("/recording_")));
     QVERIFY(valueAfter(QStringLiteral("-f")).endsWith(QStringLiteral(".mp4")));
-    QCOMPARE(valueAfter(QStringLiteral("-r")), QStringLiteral("60"));
+    // No forced framerate: wf-recorder keeps each frame's real timestamp.
+    QVERIFY(!args.contains(QStringLiteral("-r")));
     QCOMPARE(valueAfter(QStringLiteral("-c")), QStringLiteral("libx264"));
     QCOMPARE(valueAfter(QStringLiteral("-p")), QStringLiteral("preset=veryfast"));
     QCOMPARE(valueAfter(QStringLiteral("-x")), QStringLiteral("yuv420p"));

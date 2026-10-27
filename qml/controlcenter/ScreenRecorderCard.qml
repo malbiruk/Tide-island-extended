@@ -144,7 +144,7 @@ Item {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: root.isRecording ? ("Recording • " + root.timerText) : "60 FPS • wf-recorder"
+                            text: root.isRecording ? ("Recording • " + root.timerText) : "wf-recorder"
                             color: root.isRecording ? root.cardRed : StyleTokens.textMuted
                             font.pixelSize: 11
                             font.family: userConfig.textFontFamily
