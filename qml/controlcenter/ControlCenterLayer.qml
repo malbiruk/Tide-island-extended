@@ -2151,6 +2151,7 @@ Item {
                 height: controlCenter.batteryModeCardHeight
                 y: 0
                 clip: true
+                onItemActivated: controlCenter.closeRequested()
             }
 
             DrawerRecorderCard {

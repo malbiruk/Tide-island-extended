@@ -6,6 +6,9 @@ import IslandBackend
 Item {
     id: root
 
+    // A left click activated an app; the control center closes so the app is in view.
+    signal itemActivated()
+
     readonly property var userConfig: UserConfig
     readonly property var trayItems: SystemTray.items.values
     readonly property int itemCount: trayItems ? trayItems.length : 0
@@ -266,15 +269,26 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
 
                                 onClicked: function(mouse) {
-                                    if (mouse.button === Qt.LeftButton) {
-                                        modelData.activate();
-                                    } else if (mouse.button === Qt.RightButton || mouse.button === Qt.MiddleButton) {
+                                    if (mouse.button === Qt.MiddleButton) {
                                         modelData.secondaryActivate();
+                                    } else if (mouse.button === Qt.RightButton || modelData.onlyMenu) {
+                                        if (modelData.hasMenu) {
+                                            const point = trayMouse.mapToItem(null, mouse.x, mouse.y);
+                                            modelData.display(QsWindow.window, point.x, point.y);
+                                        } else if (mouse.button === Qt.RightButton) {
+                                            modelData.secondaryActivate();
+                                        }
+                                    } else {
+                                        modelData.activate();
+                                        root.itemActivated();
                                     }
                                 }
 
                                 onWheel: function(wheel) {
-                                    modelData.scroll(wheel.angleDelta.y);
+                                    if (wheel.angleDelta.y !== 0)
+                                        modelData.scroll(wheel.angleDelta.y, false);
+                                    else if (wheel.angleDelta.x !== 0)
+                                        modelData.scroll(wheel.angleDelta.x, true);
                                 }
                             }
 
