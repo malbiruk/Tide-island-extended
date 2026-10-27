@@ -522,10 +522,11 @@ PanelWindow {
     }
 
     // Whether the island would hide once back at rest; then leaving a panel, popup or OSD slides
-    // it away directly instead of morphing back to the clock first.
-    function transientCanSlideOut() {
+    // it away directly instead of morphing back to the clock first. A click to dismiss
+    // (ignorePointer) slides it away even when it lands over the resting clock.
+    function transientCanSlideOut(ignorePointer) {
         return (autoHideEnabled || autoHideForcedHidden)
-            && !pointerInsideAtRest()
+            && (ignorePointer || !pointerInsideAtRest())
             && !root.connectivityPromptActive
             && !root.anyConnectivityDetailOpen
             && !(userConfig.islandAutoHideKeepActivities
@@ -1841,14 +1842,14 @@ PanelWindow {
             stopAutoHideTimer();
         }
 
-        function smartRestoreState() {
+        function smartRestoreState(byClick) {
             if (transientSlideOut)
                 return;
             // The control center's connectivity popups close with it; closed, they no longer keep
             // the island up.
             if (islandState === "control_center")
                 root.closeAllConnectivityDetails();
-            if (islandState !== "normal" && root.transientCanSlideOut())
+            if (islandState !== "normal" && root.transientCanSlideOut(byClick))
                 startTransientSlideOut();
             else
                 restoreRestingCapsule();
@@ -2298,7 +2299,7 @@ PanelWindow {
 
                     if (islandContainer.islandState === "privacy_hud") {
                         if (!pressTravelled)
-                            islandContainer.smartRestoreState();
+                            islandContainer.smartRestoreState(true);
                         return;
                     }
 
@@ -2323,7 +2324,7 @@ PanelWindow {
                     // configured actions belong to the compact island only.
                     if (islandContainer.islandState !== "normal" && islandContainer.islandState !== "split") {
                         if (mouse.button === Qt.LeftButton && !pressTravelled)
-                            islandContainer.smartRestoreState();
+                            islandContainer.smartRestoreState(true);
                         return;
                     }
 
@@ -2508,7 +2509,7 @@ PanelWindow {
                         timerActive: islandContainer.timerActive
                         showCondition: islandContainer.expandedLayerVisible
                         onControlPressed: islandContainer.suppressCapsuleClick()
-                        onBackgroundClicked: islandContainer.smartRestoreState()
+                        onBackgroundClicked: islandContainer.smartRestoreState(true)
                         onCloseRequested: islandContainer.smartRestoreState()
                         onKeyboardFocusRequested: islandContainer.requestExpandedPlayerKeyboardFocus()
                         onKeyboardFocusReleased: islandContainer.releaseExpandedPlayerKeyboardFocus()
@@ -3272,7 +3273,7 @@ PanelWindow {
             if (root.powerDetailStandalone)
                 root.closeConnectivityOverlays();
             else
-                islandContainer.smartRestoreState();
+                islandContainer.smartRestoreState(true);
         }
     }
 
