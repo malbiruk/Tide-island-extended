@@ -607,6 +607,11 @@ FocusScope {
                         }
                     }
 
+                    // Switched off, the button still takes clicks, so they never return to the island.
+                    MouseArea {
+                        anchors.fill: parent
+                    }
+
                     MouseArea {
                         id: wipeMouse
                         anchors.fill: parent
@@ -636,6 +641,11 @@ FocusScope {
 
             Behavior on color { ColorAnimation { duration: 80 } }
             Behavior on border.color { ColorAnimation { duration: 80 } }
+
+            // Clicks anywhere on the field stay on it instead of returning to the island.
+            MouseArea {
+                anchors.fill: parent
+            }
 
             RowLayout {
                 anchors.fill: parent
@@ -835,6 +845,11 @@ FocusScope {
                         border.color: StyleTokens.surfaceBorder
                         clip: true
                         antialiasing: true
+
+                        // Clicks anywhere on the card stay on it instead of returning to the island.
+                        MouseArea {
+                            anchors.fill: parent
+                        }
 
                         ClipboardPreviewImage {
                             id: fullPreviewImg

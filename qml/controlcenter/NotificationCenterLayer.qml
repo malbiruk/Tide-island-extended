@@ -204,6 +204,11 @@ Item {
             }
         }
 
+        // Switched off, the button still takes clicks, so they never return to the island.
+        MouseArea {
+            anchors.fill: parent
+        }
+
         MouseArea {
             id: clearMouse
 

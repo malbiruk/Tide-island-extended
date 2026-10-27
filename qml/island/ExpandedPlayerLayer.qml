@@ -832,7 +832,7 @@ Item {
                         width: (parent.width - 8) / 2
                         height: parent.height
                         label: timerRoot.timerRunning ? "Stop" : (timerRoot.timerActive && timerRoot.timerRemainingSeconds < timerRoot.timerTotalSeconds && timerRoot.timerRemainingSeconds > 0 ? "Continue" : "Start")
-                        enabled: timerRoot.timerRunning || timerRoot.canStart
+                        available: timerRoot.timerRunning || timerRoot.canStart
                         accent: true
                         textFontFamily: timerRoot.textFontFamily
                         onClicked: timerRoot.toggleTimer()
@@ -981,8 +981,11 @@ Item {
         property string label: ""
         property bool accent: false
         property string textFontFamily: ""
+        // Switched off it dims and ignores clicks, but still takes them (not `enabled`), so they
+        // never fall through to the page, where a click closes the player.
+        property bool available: true
 
-        opacity: enabled ? 1.0 : 0.45
+        opacity: available ? 1.0 : 0.45
         scale: buttonArea.pressed ? 0.96 : 1.0
 
         Behavior on scale {
@@ -1024,10 +1027,14 @@ Item {
         }
 
         MouseArea {
+            anchors.fill: parent
+        }
+
+        MouseArea {
             id: buttonArea
 
             anchors.fill: parent
-            enabled: buttonRoot.enabled
+            enabled: buttonRoot.available
             hoverEnabled: true
             preventStealing: true
             onPressed: (mouse) => {

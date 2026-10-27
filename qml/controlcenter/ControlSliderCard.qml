@@ -49,6 +49,11 @@ Rectangle {
         pressed: sliderArea.pressed
     }
 
+    // Clicks anywhere on the card stay on it instead of returning to the island.
+    MouseArea {
+        anchors.fill: parent
+    }
+
     Item {
         anchors.fill: parent
         anchors.margins: 12

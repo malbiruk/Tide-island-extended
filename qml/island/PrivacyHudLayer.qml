@@ -223,6 +223,11 @@ FocusScope {
                 border.width: 1
                 border.color: StyleTokens.inputBorder
 
+                // Clicks anywhere on the card stay on it instead of returning to the island.
+                MouseArea {
+                    anchors.fill: parent
+                }
+
                 Text {
                     anchors.centerIn: parent
                     text: "No active microphone or camera capture."

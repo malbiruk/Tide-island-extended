@@ -373,7 +373,18 @@ FocusScope {
         return Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     }
 
+    // Clicks anywhere on the month grid, between the day cells too, stay on it instead of
+    // returning to the island.
+    MouseArea {
+        x: calendarColumn.x + dayNamesGrid.x
+        y: calendarColumn.y + dayNamesGrid.y
+        width: daysGrid.width
+        height: daysGrid.y + daysGrid.height - dayNamesGrid.y
+    }
+
     ColumnLayout {
+        id: calendarColumn
+
         anchors.fill: parent
         anchors.margins: 16
         spacing: 8

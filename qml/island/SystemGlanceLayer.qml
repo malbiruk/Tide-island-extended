@@ -304,6 +304,11 @@ FocusScope {
                 border.width: 1
                 border.color: StyleTokens.inputBorder
 
+                // Clicks anywhere on the card stay on it instead of returning to the island.
+                MouseArea {
+                    anchors.fill: parent
+                }
+
                 Column {
                     anchors.fill: parent
                     anchors.margins: 10
@@ -415,6 +420,11 @@ FocusScope {
                 border.width: 1
                 border.color: StyleTokens.inputBorder
 
+                // Clicks anywhere on the card stay on it instead of returning to the island.
+                MouseArea {
+                    anchors.fill: parent
+                }
+
                 Column {
                     anchors.fill: parent
                     anchors.margins: 10
@@ -522,6 +532,11 @@ FocusScope {
                 color: StyleTokens.cardFill
                 border.width: 1
                 border.color: StyleTokens.inputBorder
+
+                // Clicks anywhere on the card stay on it instead of returning to the island.
+                MouseArea {
+                    anchors.fill: parent
+                }
 
                 Column {
                     anchors.fill: parent
@@ -642,6 +657,11 @@ FocusScope {
                 color: StyleTokens.cardFill
                 border.width: 1
                 border.color: StyleTokens.inputBorder
+
+                // Clicks anywhere on the card stay on it instead of returning to the island.
+                MouseArea {
+                    anchors.fill: parent
+                }
 
                 Column {
                     anchors.fill: parent

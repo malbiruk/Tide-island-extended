@@ -297,12 +297,6 @@ FocusScope {
         }
     }
 
-    MouseArea {
-        anchors.fill: parent
-        z: 0
-        onClicked: root.closeRequested()
-    }
-
     Column {
         z: 2
         anchors.centerIn: parent

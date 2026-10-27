@@ -35,6 +35,11 @@ Item {
             radius: parent.radius
         }
 
+        // Clicks anywhere on the card stay on it instead of returning to the island.
+        MouseArea {
+            anchors.fill: parent
+        }
+
         // Subtle glowing border when active, harmonized with Matugen
         Rectangle {
             anchors.fill: parent

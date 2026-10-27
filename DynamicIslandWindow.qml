@@ -2191,6 +2191,8 @@ PanelWindow {
                 property bool suppressNextClick: false
                 property bool swipeDownDetected: false
                 property bool swipeUpDetected: false
+                // The press moved past the drag distance: its release is no click on a panel.
+                property bool pressTravelled: false
 
                 Timer {
                     id: swipeSuppressReset
@@ -2227,9 +2229,15 @@ PanelWindow {
                     swipeUpDetected = false;
                     swipeArmed = mouse.button === Qt.LeftButton && islandContainer.islandState === "normal";
                     swipeMoved = false;
+                    pressTravelled = false;
                 }
 
                 onPositionChanged: (mouse) => {
+                    if (pressed && !pressTravelled) {
+                        const point = capsuleMouseArea.mapToItem(islandContainer, mouse.x, mouse.y);
+                        pressTravelled = Math.hypot(point.x - swipeStartX, point.y - swipeStartY)
+                            > Qt.styleHints.startDragDistance;
+                    }
                     if (!pressed || !swipeArmed || suppressNextClick || twoFingerTouchArea.touchPoints.length >= 2) return;
 
                     const mappedPoint = capsuleMouseArea.mapToItem(islandContainer, mouse.x, mouse.y);
@@ -2286,7 +2294,8 @@ PanelWindow {
                     }
 
                     if (islandContainer.islandState === "privacy_hud") {
-                        islandContainer.smartRestoreState();
+                        if (!pressTravelled)
+                            islandContainer.smartRestoreState();
                         return;
                     }
 
@@ -2306,10 +2315,11 @@ PanelWindow {
                         return;
                     }
 
-                    // A left click on an open panel's empty space returns to the island; the
+                    // A left click on an open panel's background returns to the island (cards and
+                    // controls take their own clicks, switched off too); a drag does not. The
                     // configured actions belong to the compact island only.
                     if (islandContainer.islandState !== "normal" && islandContainer.islandState !== "split") {
-                        if (mouse.button === Qt.LeftButton)
+                        if (mouse.button === Qt.LeftButton && !pressTravelled)
                             islandContainer.smartRestoreState();
                         return;
                     }

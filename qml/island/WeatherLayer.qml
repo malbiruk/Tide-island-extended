@@ -228,6 +228,11 @@ FocusScope {
                     radius: 10
                     color: StyleTokens.module
 
+                    // Clicks anywhere on the card stay on it instead of returning to the island.
+                    MouseArea {
+                        anchors.fill: parent
+                    }
+
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 16
@@ -301,6 +306,11 @@ FocusScope {
                         radius: 10
                         color: StyleTokens.module
 
+                        // Clicks anywhere on the card stay on it instead of returning to the island.
+                        MouseArea {
+                            anchors.fill: parent
+                        }
+
                         ColumnLayout {
                             anchors.centerIn: parent
                             spacing: 2
@@ -341,6 +351,11 @@ FocusScope {
                         Layout.preferredHeight: 56
                         radius: 10
                         color: StyleTokens.module
+
+                        // Clicks anywhere on the card stay on it instead of returning to the island.
+                        MouseArea {
+                            anchors.fill: parent
+                        }
 
                         ColumnLayout {
                             anchors.centerIn: parent
@@ -383,6 +398,11 @@ FocusScope {
                         radius: 10
                         color: StyleTokens.module
 
+                        // Clicks anywhere on the card stay on it instead of returning to the island.
+                        MouseArea {
+                            anchors.fill: parent
+                        }
+
                         ColumnLayout {
                             anchors.centerIn: parent
                             spacing: 2
@@ -423,6 +443,11 @@ FocusScope {
                         Layout.preferredHeight: 56
                         radius: 10
                         color: StyleTokens.module
+
+                        // Clicks anywhere on the card stay on it instead of returning to the island.
+                        MouseArea {
+                            anchors.fill: parent
+                        }
 
                         ColumnLayout {
                             anchors.centerIn: parent
@@ -471,6 +496,11 @@ FocusScope {
                         Layout.fillHeight: true
                         radius: 10
                         color: StyleTokens.module
+
+                        // Clicks anywhere on the card stay on it instead of returning to the island.
+                        MouseArea {
+                            anchors.fill: parent
+                        }
 
                         ColumnLayout {
                             anchors.centerIn: parent
@@ -528,6 +558,11 @@ FocusScope {
                                 Layout.fillHeight: true
                                 radius: 10
                                 color: StyleTokens.module
+
+                                // Clicks anywhere on the card stay on it instead of returning to the island.
+                                MouseArea {
+                                    anchors.fill: parent
+                                }
 
                                 ColumnLayout {
                                     anchors.centerIn: parent

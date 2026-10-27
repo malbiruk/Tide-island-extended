@@ -31,6 +31,11 @@ Rectangle {
         radius: root.radius
     }
 
+    // Clicks anywhere on the card stay on it instead of returning to the island.
+    MouseArea {
+        anchors.fill: parent
+    }
+
     ClippingRectangle {
         id: cover
         anchors.left: parent.left

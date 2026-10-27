@@ -45,6 +45,11 @@ Item {
             radius: parent.radius
         }
 
+        // Clicks anywhere on the card stay on it instead of returning to the island.
+        MouseArea {
+            anchors.fill: parent
+        }
+
         // Top Header Row
         Item {
             anchors.left: parent.left
