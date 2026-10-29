@@ -11,4 +11,5 @@ FileShelfLayer {
     showCondition: island.fileShelfLayerVisible
     dropPreviewOnly: !island.fileShelfOpenedManually
     onCloseRequested: island.smartRestoreState()
+    onClearedAll: island.smartRestoreState(true)
 }

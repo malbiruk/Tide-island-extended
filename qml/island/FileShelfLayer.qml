@@ -8,6 +8,7 @@ FocusScope {
     id: root
 
     signal closeRequested
+    signal clearedAll // clear-all button pressed; host closes the shelf
 
     property bool showCondition: false
     property bool dropPreviewOnly: false
@@ -624,7 +625,7 @@ FocusScope {
                 if (root.reorderActive)
                     return;
                 FileShelf.clear();
-                root.grabKeyboardFocus();
+                root.clearedAll();
             }
         }
     }
