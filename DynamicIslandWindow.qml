@@ -395,7 +395,7 @@ PanelWindow {
         || (autoHideRevealSource === "edge" && autoHideTargetVisible)
         || (islandContainer.notificationLayerVisible && !islandContainer.transientSlideOut)
     property real exclusiveZoneProgress: exclusiveZoneTargetActive ? 1 : 0
-    readonly property real autoHideRevealWidth: autoHideEnabled ? Math.min(root.width, Math.max(userConfig.islandWidth + 120, 240)) : 0
+    readonly property real autoHideRevealWidth: autoHideEnabled ? Math.min(root.width, 2 * Math.max(userConfig.islandWidth + 120, 240)) : 0
     readonly property real autoHideRevealHeight: autoHideEnabled ? 10 : 0
     readonly property real autoHideRevealY: root.edgeY(0, autoHideRevealHeight)
     readonly property real autoHideRevealX: Math.max(
