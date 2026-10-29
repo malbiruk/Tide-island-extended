@@ -584,6 +584,51 @@ FocusScope {
         }
     }
 
+    Rectangle {
+        z: 5
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 6
+        anchors.rightMargin: 8
+        width: 26
+        height: 26
+        radius: 13
+        visible: !root.dropPreviewOnly && FileShelf.count > 0
+        scale: clearMouse.pressed ? 0.88 : (clearMouse.containsMouse ? 1.08 : 1.0)
+        color: clearMouse.containsMouse ? StyleTokens.moduleHover : StyleTokens.module
+
+        Behavior on scale {
+            NumberAnimation {
+                duration: 70
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: "" // nf-fa-trash
+            color: clearMouse.containsMouse ? StyleTokens.textPrimaryBright : StyleTokens.textSecondary
+            font.family: root.iconFontFamily
+            font.pixelSize: 12
+        }
+
+        MouseArea {
+            id: clearMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            preventStealing: true
+            cursorShape: Qt.PointingHandCursor
+
+            onClicked: mouse => {
+                mouse.accepted = true;
+                if (root.reorderActive)
+                    return;
+                FileShelf.clear();
+                root.grabKeyboardFocus();
+            }
+        }
+    }
+
     NumberAnimation {
         id: shelfScrollAnim
         target: trayViewport
