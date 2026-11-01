@@ -16,6 +16,7 @@ NotificationCenterLayer {
             host.shellRootController.clearAllNotifications();
         else
             island.notificationHistoryModel.clear();
+        island.smartRestoreState(true);
     }
     onNotificationDismissRequested: function(id) {
         host.dismissNotification(id);
