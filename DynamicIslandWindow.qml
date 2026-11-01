@@ -2640,6 +2640,7 @@ PanelWindow {
                         onNotificationCenterRequested: islandContainer.showNotificationCenter()
                         onPowerMenuRequested: root.togglePowerMenuWindow()
                         onCloseRequested: islandContainer.smartRestoreState()
+                        onPowerActionTriggered: islandContainer.smartRestoreState(true)
                     }
                 }
             }

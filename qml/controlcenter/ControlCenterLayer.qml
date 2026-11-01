@@ -21,6 +21,7 @@ Item {
     signal playerNextRequested()
     signal playerDismissRequested()
     signal closeRequested()
+    signal powerActionTriggered() // a power menu action is about to run; host closes the island
 
     // Shell-wide unread notifications: an accent dot on the header bell.
     property int unreadNotificationCount: 0
@@ -645,21 +646,28 @@ Item {
     }
 
     function triggerShutdown() {
-        if (!shutdownProcess.running)
-            shutdownProcess.running = true;
+        if (shutdownProcess.running)
+            return;
+        controlCenter.powerActionTriggered();
+        shutdownProcess.running = true;
     }
     function triggerRestart() {
-        if (!restartProcess.running)
-            restartProcess.running = true;
+        if (restartProcess.running)
+            return;
+        controlCenter.powerActionTriggered();
+        restartProcess.running = true;
     }
     function triggerSleep() {
-        if (!sleepProcess.running)
-            sleepProcess.running = true;
+        if (sleepProcess.running)
+            return;
+        controlCenter.powerActionTriggered();
+        sleepProcess.running = true;
     }
     // The locker runs outside this layer: closing or unloading the control center while the
     // screen is locked must not kill it. A second Lock while one runs is ignored; failures arrive
     // as urgent notices through the shell, shown even during Do Not Disturb.
     function triggerLock() {
+        controlCenter.powerActionTriggered();
         const configured = Array.from(UserConfig.lockCommand);
         SystemServices.runCommand(configured.length > 0 ? configured : [
             "sh",
