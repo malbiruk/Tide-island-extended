@@ -46,11 +46,25 @@ Item {
         if (artist) return Array.isArray(artist) ? artist.join(", ") : String(artist);
         return "";
     }
-    readonly property string currentTrack: activePlayer ? (lyricsLookupTitle !== "" ? lyricsLookupTitle : "Unknown") : ""
+    // Display-only fallback for players (e.g. Celluloid) that publish just xesam:url.
+    function fileNameFromUrl(url) {
+        const path = String(url || "").split(/[?#]/)[0].replace(/\/+$/, "");
+        const raw = path.substring(path.lastIndexOf("/") + 1);
+        let name = raw;
+        try { name = decodeURIComponent(raw); } catch (e) {}
+        return name.replace(/\.[A-Za-z0-9]{1,5}$/, "");
+    }
+
+    readonly property string currentTrack: {
+        if (!activePlayer) return "";
+        if (lyricsLookupTitle !== "") return lyricsLookupTitle;
+        const fileName = activePlayer.metadata ? fileNameFromUrl(activePlayer.metadata["xesam:url"]) : "";
+        return fileName !== "" ? fileName : "Unknown";
+    }
     readonly property string currentArtist: {
         if (!activePlayer) return "";
         if (lyricsLookupArtist !== "") return lyricsLookupArtist;
-        return "Unknown";
+        return activePlayer.identity || "Unknown";
     }
     readonly property string currentArtUrl: activePlayer ? (activePlayer.trackArtUrl || activePlayer.artUrl || "") : ""
     readonly property string inlineLyricsRaw: {
