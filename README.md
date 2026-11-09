@@ -78,12 +78,17 @@ Compared with [Bimbok/Tide-island-extended](https://github.com/Bimbok/Tide-islan
 - Resting-island battery modes (`islandBatteryMode`, `islandBatteryThreshold`) and an optional bottom edge (`islandEdge`).
 - An option to keep the island above fullscreen windows (`islandAboveFullscreen`).
 - Turning Bluetooth on lifts an rfkill soft block first.
+- The connected Wi-Fi network shows its signal strength.
+- A clear-all button in the file shelf.
 
 **Changed**
 
-- Screen recording uses wf-recorder instead of gpu-screen-recorder (no replay buffer or pause).
+- Screen recording uses wf-recorder instead of gpu-screen-recorder (no replay buffer or pause), and keeps each frame's real timestamp instead of forcing 60 fps, so recordings play back smoothly.
 - The control center is always fully expanded, and a horizontal touchpad swipe flips between it and the Glance.
-- Panels close on a click outside them, and the side popups (Wi-Fi, Bluetooth, audio, battery) fit their content.
+- Panels close on a click outside them or on their empty background, and the side popups (Wi-Fi, Bluetooth, audio, battery) fit their content.
+- Finished actions close the island: clearing notifications or the file shelf, a power menu action, opening the recordings folder, activating a tray app. With auto-hide, these and deliberate clicks slide the island away instead of leaving the clock up.
+- The auto-hide reveal strip at the screen edge is twice as wide.
+- Players that send no track metadata (e.g. Celluloid) show the file name and the player's name instead of "Unknown".
 - Tray icons open their menus inside the control center, drawn in its theme, with submenus in place.
 - Faster animations and a colour pass that works with light palettes.
 - Lower idle memory: rarely used panels load on first open and the lyrics daemon runs only during playback ([details](#performance--resource-efficiency)).
