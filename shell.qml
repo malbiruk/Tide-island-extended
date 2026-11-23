@@ -140,6 +140,12 @@ Scope {
         });
     }
 
+    // Rings even during Do Not Disturb: the user set the timer themselves.
+    Process {
+        id: timerAlarmSound
+        command: ["pw-play", "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"]
+    }
+
     Connections {
         target: ScreenRecorder
 
@@ -938,10 +944,15 @@ Scope {
         model: Quickshell.screens
 
         DynamicIslandWindow {
+            id: islandWindow
             required property var modelData
 
             screen: modelData
             shellRootController: shellRoot
+            onTimerFinished: {
+                shellRoot.showInternalNotice("Timer", "Time is up!", "Timer countdown finished", islandWindow);
+                timerAlarmSound.running = true;
+            }
         }
     }
 }

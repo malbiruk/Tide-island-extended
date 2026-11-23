@@ -12,6 +12,7 @@ import "qml/island"
 PanelWindow {
     id: root
     property var shellRootController: null
+    signal timerFinished()
 
     // The screen edge the island lives on. At the bottom everything mirrors vertically: the
     // capsule rests on the bottom margin and grows upward, side popups align with its bottom
@@ -1189,6 +1190,12 @@ PanelWindow {
         property int timerTotalSeconds: 300
         property int timerRemainingSeconds: 0
         property bool timerRunning: false
+        // Wall-clock, so the countdown keeps going while the machine sleeps (Timer's clock is monotonic).
+        property real timerDeadlineMs: 0
+        onTimerRunningChanged: {
+            if (timerRunning)
+                timerDeadlineMs = Date.now() + timerRemainingSeconds * 1000;
+        }
         property bool timerActive: false
         property bool timerCompletionAnimating: false
         property real timerCompletionPulse: 0
@@ -1931,16 +1938,17 @@ PanelWindow {
         Timer { id: autoHideTimer; interval: islandContainer.defaultAutoHideInterval; onTriggered: islandContainer.smartRestoreState() }
         Timer {
             id: islandTimerTick
-            interval: 1000
+            interval: 250
             repeat: true
             running: islandContainer.timerRunning
             onTriggered: {
-                const nextRemainingSeconds = Math.max(0, islandContainer.timerRemainingSeconds - 1);
+                const nextRemainingSeconds = Math.max(0, Math.ceil((islandContainer.timerDeadlineMs - Date.now()) / 1000));
                 if (nextRemainingSeconds <= 0) {
                     islandContainer.startTimerCompletionAnimation();
                     islandContainer.timerRemainingSeconds = 0;
                     islandContainer.timerRunning = false;
                     islandContainer.timerActive = false;
+                    root.timerFinished();
                 } else {
                     islandContainer.timerRemainingSeconds = nextRemainingSeconds;
                 }

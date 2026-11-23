@@ -80,6 +80,7 @@ Compared with [Bimbok/Tide-island-extended](https://github.com/Bimbok/Tide-islan
 - Turning Bluetooth on lifts an rfkill soft block first.
 - The connected Wi-Fi network shows its signal strength.
 - A clear-all button in the file shelf.
+- The timer rings and sends a notification when it ends, and counts real time, so it keeps going through sleep.
 
 **Changed**
 
