@@ -52,6 +52,19 @@ PanelWindow {
         && shellRootController.privacyActive !== undefined
         ? !!shellRootController.privacyActive
         : SystemServices.privacyActive
+    // voxtype dictation (shell.qml): "idle", "recording" or "transcribing".
+    readonly property string dictationState: shellRootController
+        && shellRootController.dictationState !== undefined
+        ? shellRootController.dictationState
+        : "idle"
+    readonly property bool dictationActive: dictationState === "recording" || dictationState === "transcribing"
+    // Recording and transcribing share one capsule; only starting and ending change the island.
+    onDictationActiveChanged: {
+        if (dictationActive)
+            islandContainer.showDictationCapsule();
+        else if (islandContainer.islandState === "split" && islandContainer.dictationMode)
+            islandContainer.smartRestoreState();
+    }
     property bool autoHideVisible: false
     // The pointer over any island surface (capsule and its content, satellites, detail popups)
     // or the reveal strip. Comes from the layer-wide HoverHandler, which child content cannot
@@ -310,7 +323,12 @@ PanelWindow {
     }
 
     onRequestedWindowHeightChanged: root.reconcileWindowHeight()
-    Component.onCompleted: root.retainedWindowHeight = root.requestedWindowHeight
+    Component.onCompleted: {
+        root.retainedWindowHeight = root.requestedWindowHeight;
+        // Created mid-dictation (shell restart, new screen).
+        if (root.dictationActive)
+            islandContainer.showDictationCapsule();
+    }
 
     exclusiveZone: Math.ceil(root.baseExclusiveZone * root.exclusiveZoneProgress)
     // Many compositors draw only overlay-layer surfaces over a fullscreen window;
@@ -1038,6 +1056,8 @@ PanelWindow {
         property real osdProgress: -1.0
         property bool osdProgressAnimationEnabled: true
         property string osdCustomText: ""
+        // The split capsule shows dictation (DictationLayer) instead of an OSD.
+        property bool dictationMode: false
         readonly property int batteryCapacity: systemState.batteryCapacity
         readonly property bool isCharging: systemState.isCharging
 
@@ -1239,11 +1259,12 @@ PanelWindow {
             || islandState === "privacy_hud"
             || islandState === "glance"
             || islandState === "notification_center")
-        readonly property bool splitShowsProgress: islandState === "split" && osdProgress >= 0
-        readonly property bool splitShowsText: islandState === "split" && osdProgress < 0 && osdCustomText !== ""
-        readonly property bool splitShowsIconOnly: islandState === "split" && osdProgress < 0 && osdCustomText === ""
+        readonly property bool splitShowsDictation: islandState === "split" && dictationMode
+        readonly property bool splitShowsProgress: islandState === "split" && !dictationMode && osdProgress >= 0
+        readonly property bool splitShowsText: islandState === "split" && !dictationMode && osdProgress < 0 && osdCustomText !== ""
+        readonly property bool splitShowsIconOnly: islandState === "split" && !dictationMode && osdProgress < 0 && osdCustomText === ""
         readonly property bool splitUsesExtendedLayout: splitShowsProgress || splitShowsText
-        readonly property real splitCapsuleWidth: splitShowsProgress ? 248 : (splitShowsText ? 220 : userConfig.islandWidth)
+        readonly property real splitCapsuleWidth: splitShowsProgress || splitShowsDictation ? 248 : (splitShowsText ? 220 : userConfig.islandWidth)
         readonly property bool expandedLayerVisible: islandState === "expanded"
         readonly property bool notificationLayerVisible: islandState === "notification"
         readonly property bool controlCenterLayerVisible: islandState === "control_center"
@@ -1470,6 +1491,7 @@ PanelWindow {
         function clearTransientCapsule() {
             setOsdProgress(-1.0, false);
             osdCustomText = "";
+            dictationMode = false;
             notificationAppName = "";
             notificationSummary = "";
             notificationBody = "";
@@ -1623,8 +1645,20 @@ PanelWindow {
             splitIcon = icon;
             osdCustomText = customText;
             setOsdProgress(nextProgress, animateProgress);
+            dictationMode = false;
             enterState("split");
             restartAutoHideTimer();
+        }
+
+        // No auto-hide timer, and not through showTransientCapsule, whose reveal filter would
+        // drop it. `force` skips blocksTransientSplit: smartRestoreState calls it as the
+        // blocking panel or popup closes.
+        function showDictationCapsule(force) {
+            if (blocksTransientSplit && !force)
+                return;
+            dictationMode = true;
+            stopAutoHideTimer();
+            enterState("split");
         }
 
         // Normalizes a notification record (from the daemon or tide itself) for display.
@@ -1856,6 +1890,11 @@ PanelWindow {
             // the island up.
             if (islandState === "control_center")
                 root.closeAllConnectivityDetails();
+            // While voxtype dictates, whatever closes (OSD, popup, panel) returns to its capsule.
+            if (root.dictationActive) {
+                showDictationCapsule(true);
+                return;
+            }
             if (islandState !== "normal" && root.transientCanSlideOut(byClick))
                 startTransientSlideOut();
             else
@@ -2478,6 +2517,27 @@ PanelWindow {
                         textFontFamily: root.textFontFamily
                         heroFontFamily: root.heroFontFamily
                         showCondition: true
+                    }
+                }
+            }
+
+            Loader {
+                id: dictationLayerLoader
+                anchors.fill: parent
+                active: islandContainer.splitShowsDictation
+                asynchronous: false
+                visible: active
+
+                sourceComponent: Component {
+                    DictationLayer {
+                        iconText: systemState.micStatusIcon
+                        iconFontFamily: root.iconFontFamily
+                        waveform: root.shellRootController ? root.shellRootController.dictationWaveform : []
+                        publishSerial: root.shellRootController ? root.shellRootController.dictationWaveformSerial : 0
+                        columnInterval: root.shellRootController ? root.shellRootController.dictationColumnMs : 0
+                        // Idle too: the frozen look holds while the capsule leaves.
+                        transcribing: root.dictationState !== "recording"
+                        showCondition: islandContainer.splitShowsDictation
                     }
                 }
             }

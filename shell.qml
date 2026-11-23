@@ -38,6 +38,118 @@ Scope {
     }
     readonly property var weatherService: globalWeatherService
 
+    // Without voxtype this stays idle: no state file, and the audio bridge never starts.
+    readonly property string voxtypeRuntimeDir: {
+        const xdg = Quickshell.env("XDG_RUNTIME_DIR");
+        return xdg && xdg.length > 0 ? xdg + "/voxtype" : "";
+    }
+    property string dictationState: "idle"
+    readonly property bool dictationRecording: dictationState === "recording"
+    // Mic level per column (0..1), oldest first. Kept while transcribing, cleared when the
+    // next recording starts.
+    readonly property int dictationColumns: 32
+    readonly property int dictationColumnMs: 94
+    property var dictationWaveform: new Array(dictationColumns).fill(0)
+    // Bumped with every new column, so the layer restarts its scroll.
+    property int dictationWaveformSerial: 0
+    property real dictationColumnPeak: 0
+    property bool dictationStateMissing: false
+
+    FileView {
+        id: dictationStateFile
+        path: shellRoot.voxtypeRuntimeDir !== "" ? shellRoot.voxtypeRuntimeDir + "/state" : ""
+        watchChanges: true
+        printErrors: false
+
+        onLoaded: {
+            shellRoot.dictationStateMissing = false;
+            // The daemon rewrites the file in place, so a read can land in between and see nothing.
+            const word = (text() || "").trim();
+            if (word === "")
+                return;
+            shellRoot.dictationState = word === "recording" || word === "streaming" ? "recording"
+                : word === "transcribing" ? "transcribing" : "idle";
+        }
+        onLoadFailed: {
+            shellRoot.dictationStateMissing = true;
+            shellRoot.dictationState = "idle";
+        }
+        onFileChanged: reload()
+    }
+
+    // The watch only follows a file that existed when it was loaded, and voxtype creates it only
+    // at its first recording after starting: poll often enough not to miss a short one.
+    Timer {
+        interval: 300
+        repeat: true
+        running: shellRoot.dictationStateMissing
+        onTriggered: dictationStateFile.reload()
+    }
+
+    onDictationRecordingChanged: {
+        if (dictationRecording) {
+            dictationBridgeStopTimer.stop();
+            dictationColumnPeak = 0;
+            dictationWaveform = new Array(dictationColumns).fill(0);
+            dictationAudioBridge.running = true;
+        } else {
+            dictationBridgeStopTimer.restart();
+        }
+    }
+
+    // NDJSON mic levels (~100 frames/s) from the daemon; runs only while recording.
+    Process {
+        id: dictationAudioBridge
+        command: ["voxtype-audio-bridge"]
+
+        stdout: SplitParser {
+            onRead: data => shellRoot.foldDictationFrame(data)
+        }
+    }
+
+    // Quick stop/start toggles reuse the running bridge.
+    Timer {
+        id: dictationBridgeStopTimer
+        interval: 300
+        onTriggered: dictationAudioBridge.running = false
+    }
+
+    Timer {
+        interval: shellRoot.dictationColumnMs
+        repeat: true
+        running: shellRoot.dictationRecording
+        onTriggered: shellRoot.publishDictationColumn()
+    }
+
+    // Status and malformed lines are dropped silently: at this rate a log line each would flood
+    // the journal.
+    function foldDictationFrame(line) {
+        if (!dictationRecording)
+            return;
+        try {
+            const frame = JSON.parse(line);
+            if (frame && typeof frame.peak === "number" && frame.peak > dictationColumnPeak)
+                dictationColumnPeak = frame.peak;
+        } catch (e) {
+        }
+    }
+
+    // Loudest peak of the column on a decibel scale: room noise (up to about -36 dBFS on this
+    // mic) stays at 0, speech peaks (typically -30..-8 dBFS) fill the height.
+    function dictationLevel(peak) {
+        if (!(peak > 0))
+            return 0;
+        return Math.max(0, Math.min(1, (20 * Math.log10(peak) + 32) / 24));
+    }
+
+    function publishDictationColumn() {
+        const next = dictationWaveform.slice(1);
+        next.push(dictationLevel(dictationColumnPeak));
+        dictationColumnPeak = 0;
+        dictationWaveform = next;
+        dictationWaveformSerial++;
+    }
+
     function forEachWindow(callback) {
         const windows = panelVariants.instances ? panelVariants.instances : [];
         for (let index = 0; index < windows.length; index++) {
