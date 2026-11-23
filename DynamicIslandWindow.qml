@@ -57,10 +57,14 @@ PanelWindow {
         && shellRootController.dictationState !== undefined
         ? shellRootController.dictationState
         : "idle"
-    readonly property bool dictationActive: dictationState === "recording" || dictationState === "transcribing"
-    // Recording and transcribing share one capsule; only starting and ending change the island.
-    onDictationActiveChanged: {
-        if (dictationActive)
+    // Recording, transcribing and the result flash share one capsule; only starting and ending
+    // change the island.
+    readonly property bool dictationShowing: shellRootController
+        && shellRootController.dictationShowing !== undefined
+        ? !!shellRootController.dictationShowing
+        : false
+    onDictationShowingChanged: {
+        if (dictationShowing)
             islandContainer.showDictationCapsule();
         else if (islandContainer.islandState === "split" && islandContainer.dictationMode)
             islandContainer.smartRestoreState();
@@ -326,7 +330,7 @@ PanelWindow {
     Component.onCompleted: {
         root.retainedWindowHeight = root.requestedWindowHeight;
         // Created mid-dictation (shell restart, new screen).
-        if (root.dictationActive)
+        if (root.dictationShowing)
             islandContainer.showDictationCapsule();
     }
 
@@ -1264,7 +1268,9 @@ PanelWindow {
         readonly property bool splitShowsText: islandState === "split" && !dictationMode && osdProgress < 0 && osdCustomText !== ""
         readonly property bool splitShowsIconOnly: islandState === "split" && !dictationMode && osdProgress < 0 && osdCustomText === ""
         readonly property bool splitUsesExtendedLayout: splitShowsProgress || splitShowsText
-        readonly property real splitCapsuleWidth: splitShowsProgress || splitShowsDictation ? 248 : (splitShowsText ? 220 : userConfig.islandWidth)
+        readonly property real splitCapsuleWidth: splitShowsProgress ? 248
+            : splitShowsDictation ? Math.max(248, Math.min(root.width - 48, dictationLayerLoader.item ? dictationLayerLoader.item.implicitWidth : 248))
+            : (splitShowsText ? 220 : userConfig.islandWidth)
         readonly property bool expandedLayerVisible: islandState === "expanded"
         readonly property bool notificationLayerVisible: islandState === "notification"
         readonly property bool controlCenterLayerVisible: islandState === "control_center"
@@ -1890,8 +1896,10 @@ PanelWindow {
             // the island up.
             if (islandState === "control_center")
                 root.closeAllConnectivityDetails();
-            // While voxtype dictates, whatever closes (OSD, popup, panel) returns to its capsule.
-            if (root.dictationActive) {
+            // While voxtype dictates or flashes its result, whatever closes (OSD, popup, panel)
+            // returns to its capsule. Not for the grace alone: the capsule is about to leave.
+            if (root.dictationState !== "idle"
+                    || (root.shellRootController && root.shellRootController.dictationResult)) {
                 showDictationCapsule(true);
                 return;
             }
@@ -2532,11 +2540,17 @@ PanelWindow {
                     DictationLayer {
                         iconText: systemState.micStatusIcon
                         iconFontFamily: root.iconFontFamily
+                        textFontFamily: root.textFontFamily
+                        heroFontFamily: root.heroFontFamily
+                        maximumWidth: root.width - 48
                         waveform: root.shellRootController ? root.shellRootController.dictationWaveform : []
                         publishSerial: root.shellRootController ? root.shellRootController.dictationWaveformSerial : 0
                         columnInterval: root.shellRootController ? root.shellRootController.dictationColumnMs : 0
-                        // Idle too: the frozen look holds while the capsule leaves.
-                        transcribing: root.dictationState !== "recording"
+                        dictationState: root.dictationState
+                        result: root.shellRootController ? root.shellRootController.dictationResult : null
+                        startedAtMs: root.shellRootController ? root.shellRootController.dictationStartedAtMs : 0
+                        limitSecs: root.shellRootController ? root.shellRootController.dictationLimitSecs : 0
+                        finalSecs: root.shellRootController ? root.shellRootController.dictationFinalSecs : 0
                         showCondition: islandContainer.splitShowsDictation
                     }
                 }

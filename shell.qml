@@ -54,6 +54,22 @@ Scope {
     property int dictationWaveformSerial: 0
     property real dictationColumnPeak: 0
     property bool dictationStateMissing: false
+    // The session's start (epoch ms) and voxtype's limit (0 = unknown), from recording.json. The
+    // start outlives the session: its outcome is matched against it.
+    property real dictationStartedAtMs: 0
+    property int dictationLimitSecs: 0
+    property bool dictationSessionLoaded: false
+    property real dictationFinalSecs: 0
+    // {chars, limit} of a successful dictation while flashed; failures are left to voxtype's notifications.
+    property var dictationResult: null
+    // An outcome that came before voxtype went idle: {ok, chars, limit}.
+    property var dictationHeldOutcome: null
+    // Just after a session, while its outcome may still be on its way.
+    property bool dictationGrace: false
+    property real dictationOutcomeAt: 0
+    property bool dictationOutcomeSeeded: false
+    property bool dictationOutcomeMissing: false
+    readonly property bool dictationShowing: dictationState !== "idle" || dictationResult !== null || dictationGrace
 
     FileView {
         id: dictationStateFile
@@ -67,12 +83,12 @@ Scope {
             const word = (text() || "").trim();
             if (word === "")
                 return;
-            shellRoot.dictationState = word === "recording" || word === "streaming" ? "recording"
-                : word === "transcribing" ? "transcribing" : "idle";
+            shellRoot.setDictationState(word === "recording" || word === "streaming" ? "recording"
+                : word === "transcribing" ? "transcribing" : "idle");
         }
         onLoadFailed: {
             shellRoot.dictationStateMissing = true;
-            shellRoot.dictationState = "idle";
+            shellRoot.setDictationState("idle");
         }
         onFileChanged: reload()
     }
@@ -86,8 +102,179 @@ Scope {
         onTriggered: dictationStateFile.reload()
     }
 
+    // Exists only while a session runs, so it is usually created after the last load failed.
+    FileView {
+        id: dictationSessionFile
+        path: shellRoot.voxtypeRuntimeDir !== "" ? shellRoot.voxtypeRuntimeDir + "/recording.json" : ""
+        watchChanges: true
+        printErrors: false
+
+        onLoaded: shellRoot.takeDictationSession(text())
+        // Start and limit stay until the next recording: the outcome is matched against the start.
+        onLoadFailed: shellRoot.dictationSessionLoaded = false
+        onFileChanged: reload()
+    }
+
+    Timer {
+        interval: 250
+        repeat: true
+        running: shellRoot.dictationRecording && !shellRoot.dictationSessionLoaded
+        onTriggered: dictationSessionFile.reload()
+    }
+
+    // Rewritten as each session ends; absent until the first one does.
+    FileView {
+        id: dictationOutcomeFile
+        path: shellRoot.voxtypeRuntimeDir !== "" ? shellRoot.voxtypeRuntimeDir + "/outcome.json" : ""
+        watchChanges: true
+        printErrors: false
+
+        onLoaded: {
+            shellRoot.dictationOutcomeMissing = false;
+            shellRoot.takeDictationOutcome(text());
+        }
+        onLoadFailed: {
+            shellRoot.dictationOutcomeMissing = true;
+            shellRoot.dictationOutcomeSeeded = true;
+        }
+        onFileChanged: reload()
+    }
+
+    // Also through the grace: voxtype replaces the file, which can leave the watch on the old one.
+    Timer {
+        interval: 250
+        repeat: true
+        running: (shellRoot.dictationShowing && shellRoot.dictationOutcomeMissing) || shellRoot.dictationGrace
+        onTriggered: dictationOutcomeFile.reload()
+    }
+
+    // Keeps the capsule up as voxtype goes idle, until the outcome says how the session went; with
+    // no outcome (a cancel on an older daemon, a lost write) it just leaves a moment later.
+    Timer {
+        id: dictationGraceTimer
+        interval: 800
+        onTriggered: shellRoot.dictationGrace = false
+    }
+
+    Timer {
+        id: dictationFlashTimer
+        onTriggered: shellRoot.dictationResult = null
+    }
+
+    // Whatever keeps the capsule up after the session is set before the state turns idle, so
+    // dictationShowing never dips in between (the island would start to leave and come back).
+    function setDictationState(next) {
+        const prev = dictationState;
+        if (next === prev)
+            return;
+        // recording.json may be gone by the time the clock needs this.
+        if (prev === "recording")
+            dictationFinalSecs = Math.max(0, Date.now() - dictationStartedAtMs) / 1000;
+        if (next === "idle") {
+            const held = dictationHeldOutcome;
+            dictationHeldOutcome = null;
+            if (!held)
+                startDictationGrace();
+            else if (held.ok)
+                showDictationResult(held.chars, held.limit);
+        }
+        dictationState = next;
+        // Look for the outcome right away, the watch may be stale. After the assignment: read while
+        // still active, it would be held past the point where held outcomes are applied.
+        if (dictationGrace)
+            dictationOutcomeFile.reload();
+    }
+
+    function parseDictationJson(raw) {
+        try {
+            const value = JSON.parse(raw || "null");
+            return value && typeof value === "object" ? value : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Checked against the clock rather than the moment recording began, so a session already
+    // running when the island starts is timed right too.
+    function takeDictationSession(raw) {
+        if (!dictationRecording)
+            return;
+        const session = parseDictationJson(raw);
+        if (!session || !(session.started_at_ms > 0))
+            return;
+        const maxSecs = Number(session.max_duration_secs);
+        const limit = maxSecs > 0 ? maxSecs : 0;
+        const age = Date.now() - session.started_at_ms;
+        if (age < 0 || age > (limit > 0 ? limit + 10 : 3600) * 1000)
+            return;
+        dictationStartedAtMs = session.started_at_ms;
+        dictationLimitSecs = limit;
+        dictationSessionLoaded = true;
+    }
+
+    // Only a fresh outcome of the session just seen counts, once. The first read (island start)
+    // is whatever an earlier session left.
+    function takeDictationOutcome(raw) {
+        const first = !dictationOutcomeSeeded;
+        dictationOutcomeSeeded = true;
+        const outcome = parseDictationJson(raw);
+        if (!outcome || !(outcome.at_ms > 0))
+            return;
+        if (first) {
+            dictationOutcomeAt = outcome.at_ms;
+            return;
+        }
+        if (outcome.at_ms === dictationOutcomeAt
+                || !(outcome.session_started_at_ms > 0)
+                || outcome.session_started_at_ms < dictationStartedAtMs - 2000
+                || Date.now() - outcome.at_ms > 3000)
+            return;
+        dictationOutcomeAt = outcome.at_ms;
+        const ending = { ok: outcome.outcome === "ok", chars: Number(outcome.chars) || 0, limit: !!outcome.limit_reached };
+        if (dictationState !== "idle") {
+            dictationHeldOutcome = ending;
+        } else if (dictationGrace) {
+            // Past the grace it is too late: the capsule doesn't come back for it.
+            if (ending.ok)
+                showDictationResult(ending.chars, ending.limit);
+            else
+                endDictationGrace();
+        }
+    }
+
+    // The result goes up before the grace ends, so dictationShowing never dips between them.
+    function showDictationResult(chars, limit) {
+        dictationResult = { chars: chars, limit: limit };
+        dictationFlashTimer.interval = limit ? 2600 : 1000;
+        dictationFlashTimer.restart();
+        endDictationGrace();
+    }
+
+    function startDictationGrace() {
+        dictationGrace = true;
+        dictationGraceTimer.restart();
+    }
+
+    function endDictationGrace() {
+        dictationGraceTimer.stop();
+        dictationGrace = false;
+    }
+
     onDictationRecordingChanged: {
         if (dictationRecording) {
+            // New session: clear the last result; time from now until recording.json says otherwise.
+            dictationFlashTimer.stop();
+            dictationResult = null;
+            dictationHeldOutcome = null;
+            endDictationGrace();
+            // Whatever outcome.json holds now is an earlier session's.
+            const loaded = parseDictationJson(dictationOutcomeFile.text());
+            if (loaded && loaded.at_ms > 0)
+                dictationOutcomeAt = loaded.at_ms;
+            dictationStartedAtMs = Date.now();
+            dictationLimitSecs = 0;
+            dictationSessionLoaded = false;
+            dictationSessionFile.reload();
             dictationBridgeStopTimer.stop();
             dictationColumnPeak = 0;
             dictationWaveform = new Array(dictationColumns).fill(0);
